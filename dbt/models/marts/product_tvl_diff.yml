@@ -1,0 +1,124 @@
+version: 2
+
+models:
+  - name: product_tvl_diff
+    description: "Top TVL gainers and losers by product. Uses product_stats_latest for latest TVL per product; computes tvl_usd_diff over the last day, week, month, and year from product_stats, with rank columns for each period (rank_1d_gainer, rank_1d_loser, etc.). One row per product; ref_hour is each product's latest snapshot time."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id", "product_address"]
+    tests:
+      - relationships_multi_key:
+          name: relationships_product_tvl_diff_product
+          arguments:
+            to: ref('product')
+            from_columns: ["chain_id", "product_address"]
+            to_columns: ["chain_id", "product_address"]
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists (foreign key to chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: product_address
+        description: "Product contract address (foreign key to product.product_address)"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_type
+        description: "Type of product (classic_vault, clm_manager, reward_pool, or classic_boost)"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["classic_vault", "clm_manager", "reward_pool", "classic_boost"]
+      - name: beefy_key
+        description: "Beefy-specific vault/product identifier (foreign key to product.beefy_key)"
+        data_type: String
+        tests:
+          - not_null
+      - name: display_name
+        description: "Product/vault display name"
+        data_type: String
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the vault is currently active"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: platform_id
+        description: "Platform identifier (foreign key to platform.platform_id)"
+        data_type: Nullable(String)
+        tests:
+          - relationships:
+              arguments:
+                to: ref('platform')
+                field: platform_id
+      - name: ref_hour
+        description: "Latest snapshot time for this product (from product_stats_latest.date_hour); used as 'current' for computing past periods"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: tvl_usd_current
+        description: "Total value locked in USD at ref_hour"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_1d_ago
+        description: "TVL in USD at the latest snapshot before ref_hour - 1 day"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_1w_ago
+        description: "TVL in USD at the latest snapshot before ref_hour - 7 days"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_1m_ago
+        description: "TVL in USD at the latest snapshot before ref_hour - 30 days"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_1y_ago
+        description: "TVL in USD at the latest snapshot before ref_hour - 365 days"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_diff_1d
+        description: "Change in TVL over the last day (tvl_usd_current - tvl_usd_1d_ago); positive = gainer"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_diff_1w
+        description: "Change in TVL over the last week (tvl_usd_current - tvl_usd_1w_ago)"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_diff_1m
+        description: "Change in TVL over the last month (tvl_usd_current - tvl_usd_1m_ago)"
+        data_type: Nullable(Float64)
+      - name: tvl_usd_diff_1y
+        description: "Change in TVL over the last year (tvl_usd_current - tvl_usd_1y_ago)"
+        data_type: Nullable(Float64)
+      - name: rank_1d_gainer
+        description: "Rank by tvl_usd_diff_1d descending (1 = top gainer over last day)"
+        data_type: UInt64
+      - name: rank_1d_loser
+        description: "Rank by tvl_usd_diff_1d ascending (1 = top loser over last day)"
+        data_type: UInt64
+      - name: rank_1w_gainer
+        description: "Rank by tvl_usd_diff_1w descending (1 = top gainer over last week)"
+        data_type: UInt64
+      - name: rank_1w_loser
+        description: "Rank by tvl_usd_diff_1w ascending (1 = top loser over last week)"
+        data_type: UInt64
+      - name: rank_1m_gainer
+        description: "Rank by tvl_usd_diff_1m descending (1 = top gainer over last month)"
+        data_type: UInt64
+      - name: rank_1m_loser
+        description: "Rank by tvl_usd_diff_1m ascending (1 = top loser over last month)"
+        data_type: UInt64
+      - name: rank_1y_gainer
+        description: "Rank by tvl_usd_diff_1y descending (1 = top gainer over last year)"
+        data_type: UInt64
+      - name: rank_1y_loser
+        description: "Rank by tvl_usd_diff_1y ascending (1 = top loser over last year)"
+        data_type: UInt64

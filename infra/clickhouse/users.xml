@@ -9,9 +9,9 @@
             <use_uncompressed_cache from_env="CLICKHOUSE_USE_UNCOMPRESSED_CACHE" replace="1">1</use_uncompressed_cache>
 
             <!-- Parallelism: dev 4/2/4; prod set env (e.g. 32/16/32 for 32 cores) -->
-            <max_threads from_env="CLICKHOUSE_MAX_THREADS" replace="1">auto(4)</max_threads>
-            <max_insert_threads from_env="CLICKHOUSE_MAX_INSERT_THREADS" replace="1">auto(2)</max_insert_threads>
-            <max_final_threads from_env="CLICKHOUSE_MAX_FINAL_THREADS" replace="1">auto(4)</max_final_threads>
+            <max_threads from_env="CLICKHOUSE_MAX_THREADS" replace="1">4</max_threads>
+            <max_insert_threads from_env="CLICKHOUSE_MAX_INSERT_THREADS" replace="1">2</max_insert_threads>
+            <max_final_threads from_env="CLICKHOUSE_MAX_FINAL_THREADS" replace="1">4</max_final_threads>
 
             <!-- Push to attached materialized views concurrently instead of sequentially -->
             <parallel_view_processing from_env="CLICKHOUSE_PARALLEL_VIEW_PROCESSING" replace="1">1</parallel_view_processing>
