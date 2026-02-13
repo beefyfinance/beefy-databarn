@@ -103,6 +103,9 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "is null or creation_datetime >= '2020-01-01'"
+      - name: declared_creation_date
+        description: "User-declared creation date from the API (created_at)"
+        data_type: Nullable(DateTime64(3, 'UTC'))
       - name: strategies_json
         description: "JSON array of all strategies associated with this product. Each strategy object contains address, initialized_block (Int64), and initialized_timestamp (DateTime64). Empty array '[]' if no strategies exist."
         data_type: String

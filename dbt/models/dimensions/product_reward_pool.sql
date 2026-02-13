@@ -22,7 +22,8 @@ SELECT
   vaults.token_address as underlying_product_address,
   arrayMap(x -> {{ to_representation_evm_address('x') }}, vaults.earned_token_addresses) as reward_token_representation_addresses,
   envio.initialized_block as creation_block,
-  envio.initialized_timestamp as creation_datetime
+  envio.initialized_timestamp as creation_datetime,
+  toDateTime64(vaults.created_at, 3, 'UTC') as declared_creation_date
 FROM {{ ref('stg_beefy_api__gov_vaults') }} vaults
 LEFT JOIN {{ ref('chain') }} chain_dim
   ON vaults.network = chain_dim.beefy_key

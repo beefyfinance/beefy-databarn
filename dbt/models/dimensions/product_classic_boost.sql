@@ -18,7 +18,8 @@ select
   {{ to_representation_evm_address('boost.underlying_token_address') }} as underlying_token_representation_address,
   {{ to_representation_evm_address('boost.reward_token_address') }} as reward_token_representation_address,
   envio.initialized_block as creation_block,
-  envio.initialized_timestamp as creation_datetime
+  envio.initialized_timestamp as creation_datetime,
+  cast(null as Nullable(DateTime64(3, 'UTC'))) as declared_creation_date
 from {{ ref('stg_beefy_api__boosts') }} boost
 join {{ ref('chain') }} chain_dim on boost.chain = chain_dim.beefy_key
 left join {{ ref('stg_envio__classic_boost') }} envio

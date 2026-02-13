@@ -22,6 +22,7 @@ missing_classic as (
     p.beefy_key as beefy_key,
     p.display_name as display_name,
     p.is_active as is_active,
+    p.declared_creation_date as declared_creation_date,
     'stg_envio__classic_vault' as missing_in_envio_model
   FROM {{ ref('product_classic') }} p
   INNER JOIN envio_chains ec
@@ -42,6 +43,7 @@ missing_clm as (
     p.beefy_key as beefy_key,
     p.display_name as display_name,
     p.is_active as is_active,
+    p.declared_creation_date as declared_creation_date,
     'stg_envio__clm_manager' as missing_in_envio_model
   FROM {{ ref('product_clm') }} p
   INNER JOIN envio_chains ec
@@ -62,6 +64,7 @@ missing_reward_pool as (
     p.beefy_key as beefy_key,
     p.display_name as display_name,
     p.is_active as is_active,
+    p.declared_creation_date as declared_creation_date,
     'stg_envio__reward_pool' as missing_in_envio_model
   FROM {{ ref('product_reward_pool') }} p
   INNER JOIN envio_chains ec
@@ -82,6 +85,7 @@ missing_classic_boost as (
     p.beefy_key as beefy_key,
     p.display_name as display_name,
     p.is_active as is_active,
+    p.declared_creation_date as declared_creation_date,
     'stg_envio__classic_boost' as missing_in_envio_model
   FROM {{ ref('product_classic_boost') }} p
   INNER JOIN envio_chains ec

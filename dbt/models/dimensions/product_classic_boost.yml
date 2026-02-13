@@ -86,4 +86,7 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "is null or creation_datetime >= '2020-01-01'"
+      - name: declared_creation_date
+        description: "User-declared creation date from the API (created_at). Always null for boosts."
+        data_type: Nullable(DateTime64(3, 'UTC'))
 
