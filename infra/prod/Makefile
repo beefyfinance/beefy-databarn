@@ -42,9 +42,16 @@ infra: ensure-dirs
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
 		build) \
-			echo "Rebuilding infrastructure images..."; \
-			$(DC) build; \
-			echo "✓ Infrastructure images rebuilt"; \
+			SERVICE="$(word 3,$(MAKECMDGOALS))" && \
+			if [ -n "$$SERVICE" ]; then \
+				echo "Rebuilding infrastructure image: $$SERVICE..."; \
+				$(DC) build $$SERVICE; \
+				echo "✓ Infrastructure image $$SERVICE rebuilt"; \
+			else \
+				echo "Rebuilding infrastructure images..."; \
+				$(DC) build; \
+				echo "✓ Infrastructure images rebuilt"; \
+			fi; \
 			;; \
 		start|up) \
 			echo "Starting infrastructure services (rebuilding images if needed)..."; \
@@ -70,6 +77,7 @@ infra: ensure-dirs
 			;; \
 		help|"") \
 			echo "infra:"; \
+			echo "  make infra build [<svc>] Build all images (or only <svc>, e.g. dlt)"; \
 			echo "  make infra start         Start infrastructure services (rebuilds if needed)"; \
 			echo "  make infra stop          Stop infrastructure services"; \
 			echo "  make infra restart       Restart infrastructure services"; \
@@ -78,7 +86,7 @@ infra: ensure-dirs
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make infra [start|stop|restart|logs|ps|help]"; \
+			echo "Usage: make infra [build [<svc>]|start|stop|restart|logs|ps|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -167,10 +175,10 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Running dlt source: $$SOURCE, resource: $$RESOURCE..."; \
-				$(DC) exec dlt uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE; \
 			elif [ -n "$$SOURCE" ]; then \
 				echo "Running dlt source: $$SOURCE..."; \
-				$(DC) exec dlt uv run /app/dlt/$${SOURCE}_pipeline.py; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py; \
 			else \
 				echo "Usage: make dlt run <source> [resource]"; \
 				exit 1; \
@@ -182,7 +190,7 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Looping dlt source: $$SOURCE, resource: $$RESOURCE..."; \
-				$(DC) exec dlt uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --loop; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --loop; \
 			fi; \
 			echo "dlt loop completed successfully"; \
 		;; \
