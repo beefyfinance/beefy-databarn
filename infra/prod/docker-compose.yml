@@ -85,7 +85,11 @@ services:
       - "traefik.http.routers.clickhouse.rule=Host(`${CLICKHOUSE_EXTERNAL_DOMAIN_NAME}`)"
       - "traefik.http.routers.clickhouse.entrypoints=websecure"
       - "traefik.http.routers.clickhouse.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.clickhouse.middlewares=clickhouse-ratelimit"
+      - "traefik.http.routers.clickhouse.middlewares=clickhouse-ratelimit,clickhouse-buffering"
+      - "traefik.http.middlewares.clickhouse-buffering.buffering.maxRequestBodyBytes=1073741824" # 1GB max request body size.
+      - "traefik.http.middlewares.clickhouse-buffering.buffering.maxResponseBodyBytes=1073741824" # 1GB max response body size.
+      - "traefik.http.middlewares.clickhouse-buffering.buffering.memRequestBodyBytes=268435456" # 256MB above this, the request body is buffered to disk instead of memory.
+      - "traefik.http.middlewares.clickhouse-buffering.buffering.memResponseBodyBytes=268435456" # 256MB above this, the response body is buffered to disk instead of memory.
       - "traefik.http.middlewares.clickhouse-ratelimit.ratelimit.average=300"
       - "traefik.http.middlewares.clickhouse-ratelimit.ratelimit.period=1s"
       - "traefik.http.middlewares.clickhouse-ratelimit.ratelimit.burst=100"
