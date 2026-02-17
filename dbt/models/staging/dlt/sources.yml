@@ -66,6 +66,8 @@ sources:
         description: "Chain-level TVL time series from Beefy database"
       - name: beefy_db___zap_events
         description: "Zap (cross-chain bridge) events from Beefy database"
+      - name: beefy_db___zap_token_transfers
+        description: "Zap token transfer rows (inputs/outputs/refunds per zap event) from Beefy database"
       # github_files tables
       - name: github_files___beefy_platforms
         description: "Beefy platform configurations from GitHub files"

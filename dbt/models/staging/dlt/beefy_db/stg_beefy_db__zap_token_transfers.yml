@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__zap_token_transfers
+    description: "Staging model for zap token transfers (inputs, outputs, refunds per zap) from dlt beefy_db dataset"
+    columns:
+      - name: network_id
+        description: "Source chain ID where the zap occurred (references chain.network_id)"
+        data_type: Int64
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number when the zap transaction occurred"
+        data_type: Int64
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: parent_event_idx
+        description: "Parent zap event index within the transaction"
+        data_type: Int32
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Event index for this token transfer within the transaction"
+        data_type: Int32
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: zap_type
+        description: "Transfer direction/type (e.g. input, output, refund)"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: token_id
+        description: "Token identifier when applicable"
+        data_type: Int64
+        codec: Delta, LZ4
+      - name: token_amount
+        description: "Token amount (raw units)"
+        data_type: Decimal256(20)
+        codec: ZSTD(3)
+        tests:
+          - not_null
+      - name: usd_value
+        description: "USD value of the transfer at time of zap"
+        data_type: Decimal256(20)
+        codec: ZSTD(3)
+      - name: token_address
+        description: "Contract address of the token (or native sentinel)"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: updated_at
+        description: "When the record was last updated (for ReplacingMergeTree)"
+        data_type: DateTime64(6, 'UTC')
+        codec: DoubleDelta, LZ4
+        tests:
+          - not_null

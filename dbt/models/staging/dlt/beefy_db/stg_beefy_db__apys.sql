@@ -1,6 +1,7 @@
 {{
   config(
-    materialized='materialized_view',
+    materialized='table',
+    engine='MergeTree',
     order_by=['date_time', 'vault_id'],
   )
 }}

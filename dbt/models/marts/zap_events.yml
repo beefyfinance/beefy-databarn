@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: zap_events
+    description: "Zap (cross-chain bridge) events with source and target chain dimension context for reporting and analytics"
+    columns:
+      - name: chain_id
+        description: "Source chain ID where the zap occurred (references chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: source_chain_name
+        description: "Human-readable name of the source chain"
+        data_type: String
+      - name: source_chain_beefy_key
+        description: "Beefy chain key for the source chain"
+        data_type: String
+      - name: source_chain_beefy_enabled
+        description: "Whether the source chain is enabled in Beefy"
+        data_type: UInt8
+      - name: block_number
+        description: "Block number of the zap transaction"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Event index within the transaction"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: txn_timestamp
+        description: "Timestamp of the zap transaction"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: txn_hash
+        description: "Transaction hash"
+        data_type: String
+        tests:
+          - not_null
+      - name: caller_address
+        description: "Address that initiated the zap"
+        data_type: String
+        tests:
+          - not_null
+      - name: recipient_address
+        description: "Address that received the zap on the target chain"
+        data_type: String
+        tests:
+          - not_null
+      - name: target_chain_id
+        description: "Destination chain ID (references chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: target_chain_name
+        description: "Human-readable name of the target chain"
+        data_type: String
+      - name: target_chain_beefy_key
+        description: "Beefy chain key for the target chain"
+        data_type: String
+      - name: target_chain_beefy_enabled
+        description: "Whether the target chain is enabled in Beefy"
+        data_type: UInt8
+      - name: vault_id
+        description: "Vault identifier (Beefy key) when applicable"
+        data_type: String
+      - name: action
+        description: "Zap action type"
+        data_type: String
+      - name: total_usd
+        description: "Total USD value of the zap"
+        data_type: Decimal256(20)
+      - name: updated_at
+        description: "When the record was last updated"
+        data_type: DateTime('UTC')

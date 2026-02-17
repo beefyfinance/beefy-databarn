@@ -1,6 +1,7 @@
 {{
   config(
-    materialized='materialized_view',
+    materialized='table',
+    engine='MergeTree',
     tags=['intermediate', 'yield'],
     order_by=['date_time', 'chain_id', 'product_address'],
     on_schema_change='sync_all_columns',

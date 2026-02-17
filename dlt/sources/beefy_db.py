@@ -11,7 +11,7 @@ from .resources.beefy_db.apys import get_beefy_db_apys_resource
 from .resources.beefy_db.tvl_by_chain import get_beefy_db_tvl_by_chain_resource
 from .resources.beefy_db.tables import get_beefy_db_other_tables_resources
 from .resources.beefy_db.zap_events import get_beefy_db_zap_events_resource
-from .resources.beefy_db.zap_token_returns import get_beefy_db_zap_token_returns_resource
+from .resources.beefy_db.zap_token_transfers import get_beefy_db_zap_token_transfers_resource
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ async def beefy_db_source() -> Any:
         await get_beefy_db_apys_resource(),
         await get_beefy_db_tvl_by_chain_resource(),
         await get_beefy_db_zap_events_resource(),
-        # await get_beefy_db_zap_token_returns_resource(),
+        await get_beefy_db_zap_token_transfers_resource(),
     ]
     resources.extend(get_beefy_db_other_tables_resources())
 

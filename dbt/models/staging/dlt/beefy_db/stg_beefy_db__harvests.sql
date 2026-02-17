@@ -1,6 +1,7 @@
 {{
   config(
-    materialized='materialized_view',
+    materialized='table',
+    engine='MergeTree',
     order_by=['txn_timestamp', 'network_id', 'block_number', 'txn_idx', 'event_idx'],
   )
 }}

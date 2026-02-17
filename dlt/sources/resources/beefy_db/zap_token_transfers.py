@@ -4,7 +4,7 @@ from dlt.destinations.adapters import clickhouse_adapter
 from dlt.sources.sql_database import sql_table
 from lib.config import BATCH_SIZE, get_beefy_db_url
 
-async def get_beefy_db_zap_token_returns_resource() -> Any:
+async def get_beefy_db_zap_token_transfers_resource() -> Any:
 
     # data_type docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/arrow-pandas#supported-arrow-data-types
     columns = {
@@ -66,9 +66,9 @@ async def get_beefy_db_zap_token_returns_resource() -> Any:
     }
 
     pk = [name for name, c in columns.items() if c.get("primary_key")]
-    zap_token_returns = sql_table(
+    zap_token_transfers = sql_table(
         credentials=get_beefy_db_url(),
-        table="zap_token_returns",
+        table="zap_token_transfers",
         backend="pyarrow",
         chunk_size=BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
@@ -83,16 +83,16 @@ async def get_beefy_db_zap_token_returns_resource() -> Any:
             row_order="asc"
         ),
     )
-    zap_token_returns.apply_hints(
+    zap_token_transfers.apply_hints(
         columns=[{"name": name, **{k: v for k, v in c.items() if k != "codec"}} for name, c in columns.items()]
     )
 
-    zap_token_returns = clickhouse_adapter(
-        zap_token_returns,
+    zap_token_transfers = clickhouse_adapter(
+        zap_token_transfers,
         table_engine_type="replacing_merge_tree",
         sort=pk,
         settings={"allow_nullable_key": False},
         codecs={name: c["codec"] for name, c in columns.items() if "codec" in c}
     )
 
-    return zap_token_returns
+    return zap_token_transfers

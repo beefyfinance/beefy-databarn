@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: zap_token_transfers
+    description: "Zap token transfers (inputs, outputs, refunds) with chain, token and parent zap event context for reporting and analytics"
+    columns:
+      - name: chain_id
+        description: "Chain ID where the transfer occurred (references chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: chain_name
+        description: "Human-readable name of the chain"
+        data_type: String
+      - name: chain_beefy_key
+        description: "Beefy chain key"
+        data_type: String
+      - name: block_number
+        description: "Block number of the parent zap transaction"
+        data_type: Int64
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+      - name: parent_event_idx
+        description: "Parent zap event index within the transaction"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Event index for this token transfer"
+        data_type: Int32
+      - name: zap_type
+        description: "Transfer direction/type (e.g. input, output, refund)"
+        data_type: String
+        tests:
+          - not_null
+      - name: token_id
+        description: "Token identifier when applicable"
+        data_type: Int64
+      - name: token_amount
+        description: "Token amount (raw units)"
+        data_type: Decimal256(20)
+        tests:
+          - not_null
+      - name: usd_value
+        description: "USD value of the transfer at time of zap"
+        data_type: Decimal256(20)
+      - name: token_address
+        description: "Contract address of the token (or native sentinel)"
+        data_type: String
+        tests:
+          - not_null
+      - name: token_representation_address
+        description: "Normalized token address for joining to token dimension"
+        data_type: String
+      - name: token_symbol
+        description: "Token symbol from dimension (when matched)"
+        data_type: String
+      - name: token_name
+        description: "Token name from dimension (when matched)"
+        data_type: String
+      - name: token_decimals
+        description: "Token decimals from dimension (when matched)"
+        data_type: Nullable(Int32)
+      - name: token_is_native
+        description: "Whether the token is native from dimension (when matched)"
+        data_type: UInt8
+      - name: txn_timestamp
+        description: "Timestamp of the parent zap transaction"
+        data_type: DateTime('UTC')
+      - name: txn_hash
+        description: "Transaction hash of the parent zap"
+        data_type: String
+      - name: caller_address
+        description: "Address that initiated the parent zap"
+        data_type: String
+      - name: recipient_address
+        description: "Address that received the zap on the target chain"
+        data_type: String
+      - name: target_chain_id
+        description: "Destination chain ID of the parent zap"
+        data_type: Int64
+      - name: vault_id
+        description: "Vault identifier from parent zap when applicable"
+        data_type: String
+      - name: zap_action
+        description: "Action type of the parent zap"
+        data_type: String
+      - name: zap_total_usd
+        description: "Total USD value of the parent zap"
+        data_type: Decimal256(20)
+      - name: updated_at
+        description: "When the record was last updated"
+        data_type: DateTime('UTC')

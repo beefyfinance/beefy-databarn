@@ -1,16 +1,12 @@
 {{
   config(
-    materialized='materialized_view',
+    materialized='table',
+    engine='MergeTree',
     tags=['intermediate', 'product_stats'],
     order_by=['date_hour', 'chain_id', 'product_address'],
     on_schema_change='append_new_columns',
   )
 }}
-
-
--- Materialized intermediate: Hourly tvl aggregations
--- This reduces memory usage by materializing tvl aggregations separately
--- Combines tvl staging data with product information and aggregates to hourly
 
 WITH yield_with_product AS (
   SELECT
