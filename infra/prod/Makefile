@@ -180,7 +180,7 @@ dlt:
 				echo "Running dlt source: $$SOURCE..."; \
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py; \
 			else \
-				echo "Usage: make dlt run <source> [resource]"; \
+				echo "Usage: make dlt run <source>|all [resource]"; \
 				exit 1; \
 			fi; \
 		;; \
@@ -196,11 +196,11 @@ dlt:
 		;; \
 		help|"") \
 			echo "dlt:"; \
-			echo "  make dlt run [<pipeline>]   Run dlt pipeline"; \
+			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>]|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|help]"; \
 			exit 1; \
 		;; \
 	esac
