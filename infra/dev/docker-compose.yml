@@ -141,24 +141,22 @@ services:
         max-size: "1G"
         max-file: "3"
       
-  minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.83
     ports:
       - "9002:9000"  # API port (mapped to 9002 to avoid conflict with ClickHouse)
       - "9001:9001"  # Console port
     volumes:
-      - minio_data:/data
-      - ../minio/entrypoint.sh:/entrypoint.sh
+      - rustfs_data:/data
     environment:
-      MINIO_BROWSER: on
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_DLT_STAGING_BUCKET: ${MINIO_DLT_STAGING_BUCKET:-dlt_staging}
-      MINIO_PROMETHEUS_AUTH_TYPE: public
-    command: server /data --console-address ":9001"
-    entrypoint: ["/entrypoint.sh"]
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 1s
       timeout: 20s
       retries: 10
@@ -167,6 +165,26 @@ services:
       options:
         max-size: "1G"
         max-file: "3"
+
+  rustfs-init:
+    image: minio/mc:latest
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_DLT_STAGING_BUCKET: ${RUSTFS_DLT_STAGING_BUCKET:-dlt-staging}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Configuring mc alias for RustFS..."
+        mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
+        echo "Creating bucket $${RUSTFS_DLT_STAGING_BUCKET}..."
+        mc mb rustfs/$${RUSTFS_DLT_STAGING_BUCKET} || true
+        echo "Bucket ready."
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    restart: "no"
 
   postgres:
     image: pgautoupgrade/pgautoupgrade:17-alpine
@@ -287,7 +305,7 @@ volumes:
   clickhouse_data:
   prometheus_data:
   grafana_data:
-  minio_data:
+  rustfs_data:
   postgres_data:
   superset_data:
   redis_data:

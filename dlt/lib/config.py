@@ -18,7 +18,7 @@ PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT"
 def configure_env() -> None:
     """Configure the environment for the DLT pipelines."""
     configure_dlt()
-    configure_minio_filesystem_destination()
+    configure_rustfs_filesystem_destination()
     configure_beefy_db_source()
     configure_clickhouse_destination()
 
@@ -59,40 +59,39 @@ def configure_dlt() -> None:
 
 
 ## ========================================================
-## MinIO filesystem destination configuration
+## RustFS (S3-compatible) filesystem destination configuration
 ## ========================================================
 
-def configure_minio_filesystem_destination() -> None:
+def configure_rustfs_filesystem_destination() -> None:
     """
     [destination.filesystem]
-    bucket_url = "s3://[your_bucket_name]" # replace with your bucket name,
+    bucket_url = "s3://[your_bucket_name]"
 
     [destination.filesystem.credentials]
-    aws_access_key_id = "please set me up!" # copy the access key here
-    aws_secret_access_key = "please set me up!" # copy the secret access key here
+    aws_access_key_id = "..."
+    aws_secret_access_key = "..."
+    endpoint_url = "..."
     """
 
-    # only use minio in prod because dlt connects to the minio server directly
-    # but sends connection info to clickhouse to make it read from the minio server directly
-    # and in dev clickhouse knows minio via "minio" network alias and dlt as localhost bind
+    # In prod, dlt and ClickHouse use RustFS (S3-compatible). In dev, dlt uses local file storage.
 
     if is_production():
-        minio_bucket_name = os.environ.get("MINIO_DLT_STAGING_BUCKET")
-        minio_access_key_id = os.environ.get("MINIO_ACCESS_KEY")
-        minio_secret_access_key = os.environ.get("MINIO_SECRET_KEY")
-        minio_endpoint = os.environ.get("MINIO_ENDPOINT")
+        rustfs_bucket_name = os.environ.get("RUSTFS_DLT_STAGING_BUCKET")
+        rustfs_access_key_id = os.environ.get("RUSTFS_ACCESS_KEY")
+        rustfs_secret_access_key = os.environ.get("RUSTFS_SECRET_KEY")
+        rustfs_endpoint = os.environ.get("RUSTFS_ENDPOINT")
 
-        if not all([minio_bucket_name, minio_access_key_id, minio_secret_access_key, minio_endpoint]):
-            raise ValueError("All MinIO configuration must be set")
+        if not all([rustfs_bucket_name, rustfs_access_key_id, rustfs_secret_access_key, rustfs_endpoint]):
+            raise ValueError("All RustFS configuration must be set")
 
         dlt.config["destination.filesystem"] = {
-            "bucket_url": f"s3://{minio_bucket_name}",
+            "bucket_url": f"s3://{rustfs_bucket_name}",
         }
 
         dlt.secrets["destination.filesystem.credentials"] = {
-            "aws_access_key_id": minio_access_key_id,
-            "aws_secret_access_key": minio_secret_access_key,
-            "endpoint_url": minio_endpoint,
+            "aws_access_key_id": rustfs_access_key_id,
+            "aws_secret_access_key": rustfs_secret_access_key,
+            "endpoint_url": rustfs_endpoint,
         }
     else:
         storage_dir = os.environ.get("STORAGE_DIR")

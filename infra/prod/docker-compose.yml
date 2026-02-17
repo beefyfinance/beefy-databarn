@@ -213,25 +213,23 @@ services:
         max-file: "3"
     restart: unless-stopped
 
-  minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ":9001"
-    entrypoint: ["/entrypoint.sh"]
+  rustfs:
+    image: rustfs/rustfs:latest
     volumes:
-      - minio_data:/data
-      - ../minio/entrypoint.sh:/entrypoint.sh
+      - rustfs_data:/data
     environment:
-      MINIO_BROWSER: off
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_DLT_STAGING_BUCKET: ${MINIO_DLT_STAGING_BUCKET:-dlt_staging}
-      MINIO_PROMETHEUS_AUTH_TYPE: public
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "false"
     networks:
       - backend_network
     labels:
       - "traefik.enable=false"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 1s
       timeout: 20s
       retries: 10
@@ -241,6 +239,28 @@ services:
         max-size: "1G"
         max-file: "3"
     restart: unless-stopped
+
+  rustfs-init:
+    image: minio/mc:latest
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_DLT_STAGING_BUCKET: ${RUSTFS_DLT_STAGING_BUCKET:-dlt-staging}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Configuring mc alias for RustFS..."
+        mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
+        echo "Creating bucket $${RUSTFS_DLT_STAGING_BUCKET}..."
+        mc mb rustfs/$${RUSTFS_DLT_STAGING_BUCKET} || true
+        echo "Bucket ready."
+    networks:
+      - backend_network
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    restart: "no"
 
   postgres:
     image: pgautoupgrade/pgautoupgrade:17-alpine
@@ -477,11 +497,11 @@ services:
       BEEFY_DB_NAME: ${BEEFY_DB_NAME:-beefy-db}
       BEEFY_DB_USER: ${BEEFY_DB_USER:-postgres}
       BEEFY_DB_PASSWORD: ${BEEFY_DB_PASSWORD}
-      # minio filesystem destination configuration
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_DLT_STAGING_BUCKET: ${MINIO_DLT_STAGING_BUCKET:-dlt-staging}
+      # RustFS (S3-compatible) filesystem destination configuration
+      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-http://rustfs:9000}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_DLT_STAGING_BUCKET: ${RUSTFS_DLT_STAGING_BUCKET:-dlt-staging}
     networks:
       - backend_network
     restart: on-failure
@@ -490,7 +510,7 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'scheduler.py' > /dev/null && exit 0 || exit 1"]
@@ -568,12 +588,12 @@ volumes:
       type: none
       o: bind
       device: ${STORAGE_DIR}/grafana
-  minio_data:
+  rustfs_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${STORAGE_DIR}/minio
+      device: ${STORAGE_DIR}/rustfs
   postgres_data:
     driver: local
     driver_opts:

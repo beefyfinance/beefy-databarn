@@ -42,7 +42,7 @@ flowchart TB
     %% Data Warehouse
     subgraph DW["Data Warehouse - ClickHouse"]
         CH[(ClickHouse)]
-        MINIO[MinIO]
+        RUSTFS[RustFS]
     end
     
     %% Analytics
@@ -69,7 +69,7 @@ flowchart TB
     
     %% External Data Flow
     CH -.->|External Tables<br/>Federation Query| BEEFY_DB
-    CH -.->|External Tables<br/>S3 Engine| MINIO
+    CH -.->|External Tables<br/>S3 Engine| RUSTFS
     PYTHON -->|Query API| BEEFY_API
     PYTHON -->|Ingest Data| CH
     
@@ -109,7 +109,7 @@ flowchart TB
     class TR gateway
     class BEEFY_DB,BEEFY_API external
     class PYTHON,DBT elt
-    class CH,MINIO warehouse
+    class CH,RUSTFS warehouse
     class SUP,SUP_W,CELERY,PG,REDIS_A analytics
     class PROM,GRAF,PG_OBS,REDIS_OBS,REDIS_C,PG_C observability
     class USR user
@@ -134,7 +134,7 @@ flowchart TB
 
 - **Prometheus + Grafana**: Monitoring stack that collects metrics from all services and provides dashboards for infrastructure health, query performance, and system resources.
 
-- **MinIO**: S3-compatible object storage for future data artifacts, backups, and pipeline outputs.
+- **RustFS**: S3-compatible object storage for data artifacts, backups, and pipeline outputs.
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
@@ -168,7 +168,7 @@ make dbt run        # Run dbt models
 
 2. Start infrastructure services:
    ```bash
-   make infra start      # Start ClickHouse, Superset, Grafana, Prometheus, MinIO
+   make infra start      # Start ClickHouse, Superset, Grafana, Prometheus, RustFS
    # ClickHouse automatically initializes on first startup
    ```
 
@@ -183,8 +183,8 @@ make dbt run        # Run dbt models
    - Superset: http://localhost:8088
    - Grafana: http://localhost:3000 (admin/changeme by default)
    - Prometheus: http://localhost:9090
-   - MinIO Console: http://localhost:9001 (admin/changeme by default)
-   - MinIO API: http://localhost:9002
+   - RustFS Console: http://localhost:9001 (admin/changeme by default, or rustfsadmin/rustfsadmin)
+   - RustFS API: http://localhost:9002
 
 **Other useful commands:**
 ```bash

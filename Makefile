@@ -350,7 +350,7 @@ _print-urls:
 	echo "  - ClickHouse: http://localhost:8123 ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
 	echo "  - Grafana: http://localhost:3000 ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
 	echo "  - Prometheus: http://localhost:9090 (no auth)" && \
-	echo "  - MinIO: http://localhost:9001 ($${MINIO_ACCESS_KEY:-admin}/$${MINIO_SECRET_KEY:-admin})"
+	echo "  - RustFS: http://localhost:9001 ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
 
 # Catch-all target to prevent "No rule to make target" errors
 # This allows arguments to be passed to targets without make complaining
