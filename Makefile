@@ -1,4 +1,5 @@
 .PHONY: help infra dbt dlt grafana clickhouse api deps-check setup dev
+.DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
 CURRENT_USER := $(shell whoami 2>/dev/null)
@@ -16,12 +17,12 @@ help: ## Show this help message
 	@echo ""
 	@echo "Usage: make <command> [subcommand]"
 	@echo ""
-	@$(MAKE) -s dlt help
-	@$(MAKE) -s infra help
-	@$(MAKE) -s dbt help
-	@$(MAKE) -s grafana help
-	@$(MAKE) -s clickhouse help
-	@$(MAKE) -s api help
+	@$(MAKE) -s --no-print-directory dlt
+	@$(MAKE) -s --no-print-directory infra
+	@$(MAKE) -s --no-print-directory dbt
+	@$(MAKE) -s --no-print-directory grafana
+	@$(MAKE) -s --no-print-directory clickhouse
+	@$(MAKE) -s --no-print-directory api
 	@echo "Dependencies:"
 	@echo "  make deps-check          Check for outdated dependencies"
 	@echo ""
@@ -176,9 +177,9 @@ dbt:
 			;; \
 	esac
 
-# dlt commands - using subcommands
+# dlt commands - using subcommands (infra/dlt/set_dlt_env.sh maps .env to DLT env vars)
 dlt:
-	@cd dlt && unset VIRTUAL_ENV && \
+	@cd dlt && unset VIRTUAL_ENV && . ../infra/dlt/set_dlt_env.sh && \
 	SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 	RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
@@ -207,17 +208,42 @@ dlt:
 				exit 1; \
 			fi \
 			;; \
+		info|show|failed-jobs|drop-pending-packages|sync|trace|schema|load-package|mcp) \
+			if [ -n "$$SOURCE" ]; then \
+				echo "Running: $(UV) dlt pipeline $$SOURCE $$SUBCMD"; \
+				$(UV) dlt pipeline -v $$SOURCE $$SUBCMD; \
+			else \
+				echo "Usage: make dlt <action> <pipeline>"; \
+				echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api"; \
+				exit 1; \
+			fi \
+			;; \
+		drop) \
+			if [ -n "$$SOURCE" ]; then \
+				echo "Running: $(UV) dlt pipeline $$SOURCE drop $$RESOURCE"; \
+				$(UV) dlt pipeline -v $$SOURCE drop $$RESOURCE; \
+			else \
+				echo "Usage: make dlt drop <pipeline> <resource>"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
+				exit 1; \
+			fi \
+			;; \
 		help|"") \
 			echo "dlt:"; \
 			echo "  make dlt run                    Run all dlt pipelines"; \
 			echo "  make dlt run <source> [resource]         Run a specific pipeline or resource"; \
 			echo "                                  Examples: beefy_db vaults, beefy_api tokens"; \
+			echo "  make dlt <action> <pipeline>    Run dlt pipeline command (uvx dlt pipeline ...)"; \
+			echo "                                  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run <source>|all [resource]|help]"; \
-			echo "  source can be a source name (e.g., beefy_db, beefy_api, github_files)"; \
-			echo "  resource can be a resource name (e.g., feebatch_harvests, vaults, tokens, ...)"; \
+			echo "Usage: make dlt [run <source> [resource]|loop <source> <resource>|<action> <pipeline>|help]"; \
+			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files"; \
+			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
+			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
 			exit 1 \
 			;; \
 	esac

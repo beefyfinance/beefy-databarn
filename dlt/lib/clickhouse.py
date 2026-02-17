@@ -1,4 +1,3 @@
-import dlt
 import clickhouse_connect
 from lib.config import get_clickhouse_credentials
 
@@ -13,7 +12,7 @@ async def get_clickhouse_client() -> clickhouse_connect.driver.asyncclient.Async
         credentials = get_clickhouse_credentials()
         _client_cache = await clickhouse_connect.get_async_client(
             host=credentials["host"],
-            port=8123, # must use http port for http client
+            port=credentials["http_port"],
             user=credentials["user"],
             password=credentials["password"],
             database=credentials["database"],

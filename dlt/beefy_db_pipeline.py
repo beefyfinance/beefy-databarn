@@ -1,7 +1,6 @@
 from __future__ import annotations
 import dlt
 from sources.beefy_db import beefy_db_source
-from lib.config import configure_env
 from lib.cli import run_pipeline_loop
 
 async def main():
@@ -20,6 +19,4 @@ async def main():
 
 if __name__=='__main__':
     import asyncio
-
-    configure_env()
     asyncio.run(main())

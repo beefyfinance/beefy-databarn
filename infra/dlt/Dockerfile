@@ -21,13 +21,13 @@ RUN uv sync --frozen
 # Copy dlt project files
 COPY dlt/ /app/dlt/
 
-# Copy infra scripts (scheduler is deployment-specific)
-COPY infra/dlt/scheduler.py /app/infra/dlt/scheduler.py
-RUN chmod +x /app/infra/dlt/scheduler.py
+COPY infra/dlt/scheduler.py infra/dlt/entrypoint.sh infra/dlt/set_dlt_env.sh /app/infra/dlt/
+RUN chmod +x /app/infra/dlt/scheduler.py /app/infra/dlt/entrypoint.sh /app/infra/dlt/set_dlt_env.sh
 
 # Set working directory to dlt project
 WORKDIR /app/dlt
 
+ENTRYPOINT ["/app/infra/dlt/entrypoint.sh"]
 # Run the Python scheduler (runs every 5 minutes)
 CMD ["uv", "run", "/app/infra/dlt/scheduler.py"]
 

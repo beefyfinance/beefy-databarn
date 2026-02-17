@@ -1,7 +1,6 @@
 from __future__ import annotations
 import dlt
 from sources.github_files import github_files_source
-from lib.config import configure_env
 from lib.cli import run_pipeline_loop
 
 async def main():
@@ -20,6 +19,4 @@ async def main():
 
 if __name__=='__main__':
     import asyncio
-
-    configure_env()
     asyncio.run(main())

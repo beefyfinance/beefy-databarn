@@ -3,6 +3,7 @@
 # Uses docker rollout plugin for no-downtime deployments
 
 .PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse run test client github_files tvls beefy_db beefy_api loop docker
+.DEFAULT_GOAL := help
 
 # Paths and common commands
 ROOT_DIR := $(abspath ../..)
@@ -29,12 +30,12 @@ DATA_DIRS := $(STORAGE_DIR)/clickhouse \
 help:
 	@echo "Available commands:"
 	@echo ""
-	@$(MAKE) -s build help
-	@$(MAKE) -s dbt help
-	@$(MAKE) -s dlt help
-	@$(MAKE) -s clickhouse help
-	@$(MAKE) -s infra help
-	@$(MAKE) -s docker help
+	@$(MAKE) -s --no-print-directory build
+	@$(MAKE) -s --no-print-directory dbt
+	@$(MAKE) -s --no-print-directory dlt
+	@$(MAKE) -s --no-print-directory clickhouse
+	@$(MAKE) -s --no-print-directory infra
+	@$(MAKE) -s --no-print-directory docker
 
 
 infra: ensure-dirs
