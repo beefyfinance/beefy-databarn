@@ -25,6 +25,16 @@
             <optimize_aggregation_in_order>1</optimize_aggregation_in_order>
             <load_marks_asynchronously>1</load_marks_asynchronously>
             <allow_asynchronous_read_from_io_pool_for_merge_tree>1</allow_asynchronous_read_from_io_pool_for_merge_tree>
+
+
+            <!-- connection timeouts -->
+            <connect_timeout>100</connect_timeout>
+            <connect_timeout_with_failover_ms>3000</connect_timeout_with_failover_ms>
+            <connect_timeout_with_failover_secure_ms>3000</connect_timeout_with_failover_secure_ms>
+            <receive_timeout>600</receive_timeout>
+            <send_timeout>600</send_timeout>
+            <tcp_keep_alive_timeout>600</tcp_keep_alive_timeout>
+            <hedged_connection_timeout_ms>300</hedged_connection_timeout_ms>
         </default>
     </profiles>
 
