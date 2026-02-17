@@ -33,6 +33,11 @@ else
 fi
 
 # --- Destination: ClickHouse ---
+# In prod these come from docker-compose (env_file: .env). Ensure .env has DLT_CLICKHOUSE_* set.
+: "${DLT_CLICKHOUSE_HOST:?DLT_CLICKHOUSE_HOST must be set (in .env at repo root for prod).}"
+: "${DLT_CLICKHOUSE_USER:?DLT_CLICKHOUSE_USER must be set}"
+: "${DLT_CLICKHOUSE_PASSWORD:?DLT_CLICKHOUSE_PASSWORD must be set (e.g. in .env at repo root for prod).}"
+: "${DLT_CLICKHOUSE_DB:?DLT_CLICKHOUSE_DB must be set}"
 export DESTINATION__CLICKHOUSE__CREDENTIALS__HOST="${DLT_CLICKHOUSE_HOST}"
 export DESTINATION__CLICKHOUSE__CREDENTIALS__PORT="${DLT_CLICKHOUSE_PORT:-9000}"
 export DESTINATION__CLICKHOUSE__CREDENTIALS__HTTP_PORT="${DLT_CLICKHOUSE_HTTP_PORT:-8123}"
@@ -43,6 +48,11 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}
 
 # --- Source: beefy_db (PostgreSQL) ---
 # Single connection string; DLT reads SOURCES__<source_name>__CREDENTIALS
+: "${BEEFY_DB_USER:?BEEFY_DB_USER must be set}"
+: "${BEEFY_DB_PASSWORD:?BEEFY_DB_PASSWORD must be set}"
+: "${BEEFY_DB_HOST:?BEEFY_DB_HOST must be set}"
+: "${BEEFY_DB_PORT:?BEEFY_DB_PORT must be set}"
+: "${BEEFY_DB_NAME:?BEEFY_DB_NAME must be set}"
 export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}"
 
 # --- Runtime / load / extract / normalize (optional; defaults can come from .dlt/config.toml) ---
