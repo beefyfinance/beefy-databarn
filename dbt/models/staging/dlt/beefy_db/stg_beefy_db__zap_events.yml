@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__zap_events
+    description: "Staging model for zap (cross-chain bridge) events from dlt beefy_db dataset"
+    columns:
+      - name: network_id
+        description: "Source chain ID where the zap occurred (references chain.network_id)"
+        data_type: Int64
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number when the zap transaction occurred"
+        data_type: Int64
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Event index within the transaction"
+        data_type: Int32
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: txn_timestamp
+        description: "Timestamp when the zap transaction occurred"
+        data_type: DateTime64(6, 'UTC')
+        codec: DoubleDelta, LZ4
+        tests:
+          - not_null
+      - name: txn_hash
+        description: "Transaction hash"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: caller_address
+        description: "Address that initiated the zap"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: recipient_address
+        description: "Address that received the zap on the target chain"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: target_chain_id
+        description: "Destination chain ID for the zap"
+        data_type: Int64
+        codec: Delta, LZ4
+        tests:
+          - not_null
+      - name: vault_id
+        description: "Vault identifier (Beefy key) when applicable"
+        data_type: String
+        codec: LZ4
+      - name: action
+        description: "Zap action type"
+        data_type: String
+        codec: LZ4
+      - name: total_usd
+        description: "Total USD value of the zap"
+        data_type: Decimal256(20)
+        codec: ZSTD(3)
+      - name: updated_at
+        description: "When the record was last updated (for ReplacingMergeTree)"
+        data_type: DateTime64(6, 'UTC')
+        codec: DoubleDelta, LZ4
+        tests:
+          - not_null
