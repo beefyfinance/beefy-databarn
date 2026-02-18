@@ -16,7 +16,15 @@ parser.add_argument('--username', type=str, required=True)
 parser.add_argument('--password', type=str, required=True)
 args = parser.parse_args()
 
-client = clickhouse_connect.get_client(host=args.host, port=args.port, username=args.username, password=args.password)
+client = clickhouse_connect.get_client(
+    host=args.host, 
+    port=args.port, 
+    secure = 'https',
+    verify = 'True',
+    username=args.username, 
+    password=args.password,
+    database='analytics',
+)
 
-result = client.query('SELECT 1')
+result = client.query('SELECT count(*) FROM analytics.zap_events')
 print(result.result_rows)
