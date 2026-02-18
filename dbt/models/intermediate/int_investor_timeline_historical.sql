@@ -2,6 +2,7 @@
   config(
     materialized='incremental',
     tags=['intermediate', 'investor', 'timeline'],
+    unique_key=['account_id', 'datetime', 'product_address', 'transaction_hash', 'log_index'],
     engine='ReplacingMergeTree(__rmt_version)',
     order_by=['account_id', 'datetime', 'product_address', 'transaction_hash', 'log_index'],
     on_schema_change='fail',
