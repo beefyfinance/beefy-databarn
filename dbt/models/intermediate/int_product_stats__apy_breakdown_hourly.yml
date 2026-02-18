@@ -30,6 +30,9 @@ models:
                 inclusive: true
       - name: total_apy
         description: "Total APY"
+        data_type: float64
+        constraints:
+          - type: not_null
         tests:
           - dbt_utils.accepted_range:
               arguments:

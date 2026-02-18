@@ -6,6 +6,9 @@ models:
     columns:
       - name: apy
         description: "APY percentage"
+        data_type: float64
+        constraints:
+          - type: not_null
         tests:
           - dbt_utils.accepted_range:
               arguments:
