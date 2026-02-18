@@ -7,15 +7,6 @@
   )
 }}
 
-WITH feebatch_revenue_hourly AS (
-  SELECT
-    toInt64(fh.chain_id) AS chain_id,
-    toStartOfHour(fh.txn_timestamp) AS date_hour,
-    {{ to_decimal('sum(fh.treasury_amt)') }} AS feebatch_revenue_usd
-  FROM {{ ref('stg_beefy_db__feebatch_harvests') }} fh
-  GROUP BY toInt64(fh.chain_id), toStartOfHour(fh.txn_timestamp)
-)
-
 SELECT
   c.chain_id as chain_id,
   c.chain_name as chain_name,
@@ -23,7 +14,6 @@ SELECT
   c.beefy_enabled as beefy_enabled,
   ps.date_hour as date_hour,
   {{ to_decimal('sum(ps.tvl_usd)') }} as tvl_usd,
-  {{ to_decimal('coalesce(any(fb.feebatch_revenue_usd), 0)') }} as feebatch_revenue_usd,
   {{ to_decimal('sum(if(ps.product_type = \'classic_vault\', ps.tvl_usd, 0))') }} as vault_tvl_usd,
   {{ to_decimal('sum(if(ps.product_type = \'clm_manager\', ps.tvl_usd, 0))') }} as clm_tvl_usd,
   -- Fee averages (separate columns for easy querying)
@@ -65,8 +55,6 @@ SELECT
 FROM {{ ref('product_stats') }} ps
 INNER JOIN {{ ref('chain') }} c
   ON ps.chain_id = c.chain_id
-LEFT JOIN feebatch_revenue_hourly fb
-  ON fb.chain_id = c.chain_id AND fb.date_hour = ps.date_hour
 GROUP BY
   c.chain_id,
   c.chain_name,
