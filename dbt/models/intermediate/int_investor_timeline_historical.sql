@@ -9,6 +9,8 @@
   )
 }}
 
+--TODO: use the envio inner history table and manually apply date filters instead of using the convenience view 
+
 {% if this %}
   {% set relation_exists = adapter.get_relation(this.database, this.schema, this.identifier) %}
   {% if relation_exists %}
