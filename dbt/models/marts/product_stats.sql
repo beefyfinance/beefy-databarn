@@ -59,6 +59,19 @@ SELECT
   hs.underlying_amount_compounded,
   hs.underlying_token_price_usd,
   hs.underlying_amount_compounded_usd,
+  hs.harvest_call_fee,
+  hs.harvest_call_fee_usd,
+  hs.gas_fee,
+  hs.gas_fee_usd,
+  hs.platform_fee,
+  hs.platform_fee_usd,
+  hs.strategist_fee,
+  hs.strategist_fee_usd,
+  hs.harvest_amount,
+  hs.harvest_amount_usd,
+  hs.avg_native_price,
+  hs.harvest_txn_count,
+  hs.harvest_vault_count
 FROM {{ ref('int_product_stats__unified_hourly') }} hs FINAL
 INNER JOIN {{ ref('product') }} p
   ON hs.chain_id = p.chain_id

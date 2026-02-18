@@ -6,25 +6,29 @@
   )
 }}
 
--- Staging as table + MV so int_yield_mv can fire on insert (trigger: dlt.beefy_db___harvests).
-SELECT
-  cast(t.chain_id as Int64) as network_id,
-  cast(t.block_number as Int64) as block_number,
-  cast(t.txn_idx as Int32) as txn_idx,
-  cast(t.event_idx as Int32) as event_idx,
-  cast(t.txn_timestamp as DateTime('UTC')) as txn_timestamp,
-  cast(lower({{ evm_transaction_hash('t.txn_hash') }}) as String) as txn_hash,
-  cast(t.vault_id as String) as vault_beefy_key,
-  toDecimal256(ifNull({{ to_decimal('t.call_fee') }}, 0), 20) as call_fee,
-  toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) as gas_fee,
-  toDecimal256(ifNull({{ to_decimal('t.platform_fee') }}, 0), 20) as platform_fee,
-  toDecimal256(ifNull({{ to_decimal('t.strategist_fee') }}, 0), 20) as strategist_fee,
-  toDecimal256(ifNull({{ to_decimal('t.harvest_amount') }}, 0), 20) as harvest_amount,
-  toDecimal256(ifNull({{ to_decimal('t.native_price') }}, 0), 20) as native_price,
-  toDecimal256(ifNull({{ to_decimal('t.want_price') }}, 0), 20) as want_price,
-  toBool(ifNull(t.is_cowllector, false)) as is_cowllector,
-  cast({{ evm_address('t.strategist_address') }} as Nullable(String)) as strategist_address
-FROM {{ source('dlt', 'beefy_db___harvests') }} t
+
+with source as (
+  SELECT
+    cast(t.chain_id as Int64) as network_id,
+    cast(t.block_number as Int64) as block_number,
+    cast(t.txn_idx as Int32) as txn_idx,
+    cast(t.event_idx as Int32) as event_idx,
+    cast(t.txn_timestamp as DateTime('UTC')) as txn_timestamp,
+    cast(lower({{ evm_transaction_hash('t.txn_hash') }}) as String) as txn_hash,
+    cast(t.vault_id as String) as vault_beefy_key,
+    toDecimal256(ifNull({{ to_decimal('t.call_fee') }}, 0), 20) as call_fee,
+    toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) as gas_fee,
+    toDecimal256(ifNull({{ to_decimal('t.platform_fee') }}, 0), 20) as platform_fee,
+    toDecimal256(ifNull({{ to_decimal('t.strategist_fee') }}, 0), 20) as strategist_fee,
+    toDecimal256(ifNull({{ to_decimal('t.harvest_amount') }}, 0), 20) as harvest_amount,
+    toDecimal256(ifNull({{ to_decimal('t.native_price') }}, 0), 20) as native_price,
+    toDecimal256(ifNull({{ to_decimal('t.want_price') }}, 0), 20) as want_price,
+    toBool(ifNull(t.is_cowllector, false)) as is_cowllector,
+    cast({{ evm_address('t.strategist_address') }} as Nullable(String)) as strategist_address
+  FROM {{ source('dlt', 'beefy_db___harvests') }} t
+)
+select * 
+from source t
 WHERE
   -- Filter out invalid records (ensure yield data quality)
   t.harvest_amount IS NOT NULL
@@ -37,7 +41,7 @@ WHERE
   -- https://etherscan.io/tx/0x31b8083e467ed217523655f9b26b71f154fd1358e633b275011123c268a88901
   -- next biggest harvest is bugged and shows as $32M
   AND toDecimal256(t.harvest_amount * t.want_price, 20) < 30_000_000.00
-  AND (t.network_id, lower(t.txn_hash)) NOT IN (
+  AND (t.network_id, t.txn_hash) NOT IN (
     -- armads: "this one doesnt even have any large transfers in the tx 😅, same for the other avax transactions"
     (43114 /* avax */, '0xfd904cb8742ea0caa10bc8a1475f487a2af885938997ff00dcbc195533961162'),
     (43114 /* avax */, '0xffe824f13634da2f10daedb3c3cc123fea419e1b03fb6d169e9a98c89a29100e'),

@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: harvests
+    description: "One row per harvest event, joined to product dimension only. No grouping. Includes computed USD columns (fee * native_price, harvest_amount * want_price)."
+    columns:
+      - name: txn_timestamp
+        description: "Transaction timestamp (UTC)"
+      - name: chain_id
+        description: "Chain ID (from product dimension)"
+      - name: product_address
+        description: "Product contract address (from product dimension)"
+      - name: beefy_key
+        description: "Beefy product identifier"
+      - name: product_type
+        description: "Type of product (classic_vault, clm_manager, etc.)"
+      - name: display_name
+        description: "Product display name"
+      - name: block_number
+        description: "Block number of the harvest transaction"
+      - name: txn_idx
+        description: "Transaction index within the block"
+      - name: event_idx
+        description: "Event index within the transaction"
+      - name: txn_hash
+        description: "Transaction hash"
+      - name: harvest_call_fee
+        description: "Call fee in native token"
+      - name: harvest_call_fee_usd
+        description: "Call fee in USD (call_fee * native_price)"
+      - name: gas_fee
+        description: "Gas fee in native token"
+      - name: gas_fee_usd
+        description: "Gas fee in USD"
+      - name: platform_fee
+        description: "Platform fee in native token"
+      - name: platform_fee_usd
+        description: "Platform fee in USD"
+      - name: strategist_fee
+        description: "Strategist fee in native token"
+      - name: strategist_fee_usd
+        description: "Strategist fee in USD"
+      - name: harvest_amount
+        description: "Harvest amount in want token"
+      - name: harvest_amount_usd
+        description: "Harvest amount in USD (harvest_amount * want_price)"
+      - name: avg_native_price
+        description: "Native token price in USD at harvest time"

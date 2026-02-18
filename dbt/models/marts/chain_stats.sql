@@ -51,7 +51,21 @@ SELECT
   {{ quantiles('ps.composable_pool_apr') }} as composable_pool_apr_quantiles,
   {{ quantiles('ps.merkl_apr') }} as merkl_apr_quantiles,
   {{ quantiles('ps.linea_ignition_apr') }} as linea_ignition_apr_quantiles,
-  sum(ps.underlying_amount_compounded_usd) as underlying_amount_compounded_usd
+  sum(ps.underlying_amount_compounded_usd) as underlying_amount_compounded_usd,
+  -- Harvest metrics (sums and avg)
+  sum(ps.harvest_call_fee) as harvest_call_fee,
+  sum(ps.harvest_call_fee_usd) as harvest_call_fee_usd,
+  sum(ps.gas_fee) as gas_fee,
+  sum(ps.gas_fee_usd) as gas_fee_usd,
+  sum(ps.platform_fee) as platform_fee,
+  sum(ps.platform_fee_usd) as platform_fee_usd,
+  sum(ps.strategist_fee) as strategist_fee,
+  sum(ps.strategist_fee_usd) as strategist_fee_usd,
+  sum(ps.harvest_amount) as harvest_amount,
+  sum(ps.harvest_amount_usd) as harvest_amount_usd,
+  avg(ps.avg_native_price) as avg_native_price,
+  sum(ps.harvest_txn_count) as harvest_txn_count,
+  sum(ps.harvest_vault_count) as harvest_vault_count
 FROM {{ ref('product_stats') }} ps
 INNER JOIN {{ ref('chain') }} c
   ON ps.chain_id = c.chain_id

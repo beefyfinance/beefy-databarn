@@ -210,3 +210,55 @@ models:
         description: "Underlying amount compounded in USD"
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
+      - name: harvest_call_fee
+        description: "Sum of harvest call fees in native token (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_call_fee_usd
+        description: "Sum of harvest call fees in USD (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: gas_fee
+        description: "Sum of gas fees in native token (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: gas_fee_usd
+        description: "Sum of gas fees in USD (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: platform_fee
+        description: "Sum of platform fees in native token (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: platform_fee_usd
+        description: "Sum of platform fees in USD (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: strategist_fee
+        description: "Sum of strategist fees in native token (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: strategist_fee_usd
+        description: "Sum of strategist fees in USD (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_amount
+        description: "Sum of harvest amounts in want token (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_amount_usd
+        description: "Sum of harvest amounts in USD (hourly)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: avg_native_price
+        description: "Average native token price in USD for the hour"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_txn_count
+        description: "Count of distinct harvest transactions in the hour"
+        data_type: Nullable(UInt64)
+        codec: ZSTD(3)
+      - name: harvest_vault_count
+        description: "1 if product had at least one harvest in the hour; sum at chain level = vaults with harvests"
+        data_type: Nullable(UInt8)
+        codec: ZSTD(3)

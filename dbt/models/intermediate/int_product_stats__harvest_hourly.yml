@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: int_product_stats__harvest_hourly
+    description: "Hourly harvest aggregations per product (fees, amounts, counts). Source: stg_beefy_db__harvests joined to product. One row per (chain_id, product_address, date_hour)."
+    columns:
+      - name: date_hour
+        description: "Start of hour (UTC) for the aggregation"
+      - name: harvest_call_fee
+        description: "Sum of call fees in native token"
+      - name: harvest_call_fee_usd
+        description: "Sum of call fees in USD (fee * native_price)"
+      - name: gas_fee
+        description: "Sum of gas fees in native token"
+      - name: gas_fee_usd
+        description: "Sum of gas fees in USD"
+      - name: platform_fee
+        description: "Sum of platform fees in native token"
+      - name: platform_fee_usd
+        description: "Sum of platform fees in USD"
+      - name: strategist_fee
+        description: "Sum of strategist fees in native token"
+      - name: strategist_fee_usd
+        description: "Sum of strategist fees in USD"
+      - name: harvest_amount
+        description: "Sum of harvest amounts in want token"
+      - name: harvest_amount_usd
+        description: "Sum of harvest amounts in USD (harvest_amount * want_price)"
+      - name: avg_native_price
+        description: "Average native token price in USD for the hour"
+      - name: harvest_txn_count
+        description: "Count of distinct harvest transactions in the hour"
+      - name: harvest_vault_count
+        description: "Always 1 per row; sum at chain level = number of vaults with at least one harvest"

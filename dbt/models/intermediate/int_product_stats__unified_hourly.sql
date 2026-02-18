@@ -17,7 +17,8 @@
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'apy') AS threshold_apy,
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'apy_breakdown') AS threshold_apy_breakdown,
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'lps_breakdown') AS threshold_lps_breakdown,
-      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'yield') AS threshold_yield
+      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'yield') AS threshold_yield,
+      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'harvest') AS threshold_harvest
   {% endset %}
   {% set threshold_result = run_query(threshold_sql) %}
   {% if threshold_result and threshold_result.rows | length > 0 %}
@@ -27,12 +28,14 @@
     {% set threshold_apy_breakdown = row[2] | string %}
     {% set threshold_lps_breakdown = row[3] | string %}
     {% set threshold_yield = row[4] | string %}
+    {% set threshold_harvest = row[5] | string %}
   {% else %}
     {% set threshold_tvl = '1900-01-01 00:00:00' %}
     {% set threshold_apy = '1900-01-01 00:00:00' %}
     {% set threshold_apy_breakdown = '1900-01-01 00:00:00' %}
     {% set threshold_lps_breakdown = '1900-01-01 00:00:00' %}
     {% set threshold_yield = '1900-01-01 00:00:00' %}
+    {% set threshold_harvest = '1900-01-01 00:00:00' %}
   {% endif %}
 {% endif %}
 
@@ -72,7 +75,20 @@ SELECT
   NULL AS underlying_price,
   NULL AS underlying_amount_compounded,
   NULL AS underlying_token_price_usd,
-  NULL AS underlying_amount_compounded_usd
+  NULL AS underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count
 FROM {{ ref('int_product_stats__tvl_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_tvl }}') and date_hour < now() + INTERVAL 1 DAY
@@ -111,7 +127,20 @@ SELECT
   NULL AS underlying_price,
   NULL AS underlying_amount_compounded,
   NULL AS underlying_token_price_usd,
-  NULL AS underlying_amount_compounded_usd
+  NULL AS underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count
 FROM {{ ref('int_product_stats__apy_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy }}') and date_hour < now() + INTERVAL 1 DAY
@@ -150,7 +179,20 @@ SELECT
   NULL AS underlying_price,
   NULL AS underlying_amount_compounded,
   NULL AS underlying_token_price_usd,
-  NULL AS underlying_amount_compounded_usd
+  NULL AS underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count
 FROM {{ ref('int_product_stats__apy_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -189,7 +231,20 @@ SELECT
   underlying_price,
   NULL AS underlying_amount_compounded,
   NULL AS underlying_token_price_usd,
-  NULL AS underlying_amount_compounded_usd
+  NULL AS underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count
 FROM {{ ref('int_product_stats__lps_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_lps_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -228,8 +283,73 @@ SELECT
   NULL AS underlying_price,
   underlying_amount_compounded,
   underlying_token_price_usd,
-  underlying_amount_compounded_usd
+  underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count
 FROM {{ ref('int_product_stats__yield_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_yield }}') and date_hour < now() + INTERVAL 1 DAY
+{% endif %}
+
+UNION ALL
+
+-- Harvest data (incremental: only hours we don't already have harvest for)
+SELECT
+  chain_id,
+  product_address,
+  date_hour,
+  'harvest' AS source,
+  NULL AS tvl_usd,
+  NULL AS apy,
+  NULL AS compoundings_per_year,
+  NULL AS beefy_performance_fee,
+  NULL AS lp_fee,
+  NULL AS total_apy,
+  NULL AS vault_apr,
+  NULL AS trading_apr,
+  NULL AS clm_apr,
+  NULL AS reward_pool_apr,
+  NULL AS reward_pool_trading_apr,
+  NULL AS vault_apy,
+  NULL AS liquid_staking_apr,
+  NULL AS composable_pool_apr,
+  NULL AS merkl_apr,
+  NULL AS linea_ignition_apr,
+  NULL AS lp_price,
+  [] AS breakdown_tokens,
+  [] AS breakdown_balances,
+  NULL AS total_supply,
+  NULL AS underlying_liquidity,
+  [] AS underlying_balances,
+  NULL AS underlying_price,
+  NULL AS underlying_amount_compounded,
+  NULL AS underlying_token_price_usd,
+  NULL AS underlying_amount_compounded_usd,
+  harvest_call_fee,
+  harvest_call_fee_usd,
+  gas_fee,
+  gas_fee_usd,
+  platform_fee,
+  platform_fee_usd,
+  strategist_fee,
+  strategist_fee_usd,
+  harvest_amount,
+  harvest_amount_usd,
+  avg_native_price,
+  harvest_txn_count,
+  harvest_vault_count
+FROM {{ ref('int_product_stats__harvest_hourly') }}
+{% if is_incremental() %}
+WHERE date_hour >= toDateTime('{{ threshold_harvest }}') and date_hour < now() + INTERVAL 1 DAY
 {% endif %}
