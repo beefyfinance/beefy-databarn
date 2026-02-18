@@ -21,14 +21,6 @@ WITH bifi_buyback_daily AS (
     0 as revenue_usd,
     sum(toDecimal256(bb.bifi_amount * bb.bifi_price, 20)) as bifi_buyback_usd
   FROM {{ ref('stg_beefy_db__bifi_buyback') }} bb
-  WHERE
-    -- Filter out invalid records (ensure revenue data quality)
-    bb.buyback_total IS NOT NULL
-    AND bb.txn_timestamp IS NOT NULL
-    AND bb.bifi_amount > 0
-    AND bb.bifi_price > 0
-    -- Filter out invalid timestamps that would convert to 1970-01-01
-    AND toDate(bb.txn_timestamp) > '1970-01-01'
   GROUP BY toDate(bb.txn_timestamp)
 ),
 
@@ -39,13 +31,6 @@ feebatch_revenue_daily AS (
     sum(toDecimal256(fh.treasury_amt, 20)) as revenue_usd,
     0 as bifi_buyback_usd
   FROM {{ ref('stg_beefy_db__feebatch_harvests') }} fh
-  WHERE
-    -- Filter out invalid records (ensure revenue data quality)
-    fh.treasury_amt IS NOT NULL
-    AND fh.txn_timestamp IS NOT NULL
-    AND fh.treasury_amt > 0
-    -- Filter out invalid timestamps that would convert to 1970-01-01
-    AND toDate(fh.txn_timestamp) > '1970-01-01'
   GROUP BY toDate(fh.txn_timestamp)
 ),
 
@@ -56,10 +41,6 @@ yield_daily AS (
     0 as revenue_usd,
     0 as bifi_buyback_usd
   FROM {{ ref('int_yield') }} ye
-  WHERE
-    -- Filter out invalid timestamps that would convert to 1970-01-01
-    ye.date_time IS NOT NULL
-    AND toDate(ye.date_time) > '1970-01-01'
   GROUP BY toDate(ye.date_time)
 ),
 

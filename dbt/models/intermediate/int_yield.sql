@@ -98,3 +98,7 @@ FROM cleaned_yield cy
 INNER JOIN {{ ref('product') }} p
   ON cy.network_id = p.chain_id
   AND cy.vault_beefy_key = p.beefy_key
+WHERE
+  -- Filter out invalid timestamps that would convert to 1970-01-01
+  cy.date_time IS NOT NULL
+  AND toDate(cy.date_time) > '1970-01-01'

@@ -67,6 +67,10 @@ models:
         description: "TVL attributed to CLM (Concentrated Liquidity Manager) assets in USD"
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
+      - name: feebatch_revenue_usd
+        description: "Revenue from feebatch harvests (treasury amounts) in USD for the hour"
+        data_type: Decimal(76, 20)
+        codec: ZSTD(3)
       - name: avg_beefy_performance_fee
         description: "Average Beefy performance fee across all products"
         data_type: Nullable(Float64)
