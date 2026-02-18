@@ -1,6 +1,7 @@
 {{
   config(
     materialized='table',
+    engine='MergeTree',
     tags=['marts', 'revenue', 'daily']
   )
 }}

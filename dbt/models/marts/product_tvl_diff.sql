@@ -1,6 +1,7 @@
 {{
   config(
     materialized='table',
+    engine='MergeTree',
     tags=['marts', 'tvl', 'stats'],
     order_by=['chain_id', 'product_address'],
   )

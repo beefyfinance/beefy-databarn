@@ -1,6 +1,7 @@
 {{
   config(
     materialized='table',
+    engine='MergeTree',
     tags=['data_quality', 'debug']
   )
 }}

@@ -1,6 +1,7 @@
 {{
   config(
     materialized='table',
+    engine='MergeTree',
     tags=['dimension', 'tokens'],
     order_by=['chain_id', 'representation_address'],
   )
