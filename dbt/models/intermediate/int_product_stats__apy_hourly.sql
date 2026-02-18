@@ -1,16 +1,29 @@
 {{
   config(
-    materialized='table',
-    engine='MergeTree',
+    materialized='incremental',
     tags=['intermediate', 'product_stats'],
+    unique_key=['chain_id', 'product_address', 'date_hour'],
     order_by=['date_hour', 'chain_id', 'product_address'],
+    engine='MergeTree',
     on_schema_change='append_new_columns',
+    incremental_strategy='delete+insert',
   )
 }}
 
+{% if is_incremental() %}
+  {% set threshold_sql %}
+    SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }}
+  {% endset %}
+  {% set threshold_result = run_query(threshold_sql) %}
+  {% if threshold_result and threshold_result.rows | length > 0 and threshold_result.rows[0][0] %}
+    {% set threshold = threshold_result.rows[0][0] | string %}
+  {% else %}
+    {% set threshold = '1900-01-01 00:00:00' %}
+  {% endif %}
+{% endif %}
 
 -- Materialized intermediate: Hourly APY aggregations
--- This reduces memory usage by materializing APY aggregations separately
+-- Incremental on date_hour; only loads hours we don't already have (with 1-day lookback for late data).
 -- Combines APY staging data with product information and aggregates to hourly
 
 WITH apy_with_product AS (
@@ -24,8 +37,12 @@ WITH apy_with_product AS (
     ON a.vault_id = vi.vault_id
   INNER JOIN {{ ref('product') }} p
     ON vi.beefy_key = p.beefy_key
-  WHERE 
+  WHERE
     a.apy between 0 and 1000000 -- no one product has an apy over 1M %
+    {% if is_incremental() %}
+    AND toStartOfHour(a.date_time) >= toDateTime('{{ threshold }}')
+    AND toStartOfHour(a.date_time) < now() + INTERVAL 1 DAY
+    {% endif %}
 )
 
 SELECT
