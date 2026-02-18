@@ -15,15 +15,10 @@ SELECT
   zt.parent_event_idx as parent_event_idx,
   zt.event_idx as event_idx,
   zt.zap_type as zap_type,
-  zt.token_id as token_id,
   zt.token_amount as token_amount,
   zt.usd_value as usd_value,
   zt.token_address as token_address,
-  t.representation_address as token_representation_address,
-  t.symbol as token_symbol,
-  t.name as token_name,
-  t.decimals as token_decimals,
-  t.is_native as token_is_native,
+  po.oracle_id as raw_token_symbol, -- todo: use the "token" dimension, but that can be either a token or a product
   ze.txn_timestamp as txn_timestamp,
   ze.txn_hash as txn_hash,
   ze.caller_address as caller_address,
@@ -36,9 +31,8 @@ SELECT
 FROM {{ ref('stg_beefy_db__zap_token_transfers') }} zt
 LEFT JOIN {{ ref('chain') }} c
   ON zt.network_id = c.chain_id
-LEFT JOIN {{ ref('token') }} t
-  ON zt.network_id = t.chain_id
-  AND {{ to_representation_evm_address('zt.token_address') }} = t.representation_address
+LEFT JOIN {{ ref('stg_beefy_db__price_oracles') }} po
+  ON toString(zt.token_id) = po.id
 LEFT JOIN {{ ref('stg_beefy_db__zap_events') }} ze
   ON zt.network_id = ze.network_id
   AND zt.block_number = ze.block_number

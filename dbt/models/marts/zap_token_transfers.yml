@@ -38,9 +38,6 @@ models:
         data_type: String
         tests:
           - not_null
-      - name: token_id
-        description: "Token identifier when applicable"
-        data_type: Int64
       - name: token_amount
         description: "Token amount (raw units)"
         data_type: Decimal256(20)
@@ -54,21 +51,11 @@ models:
         data_type: String
         tests:
           - not_null
-      - name: token_representation_address
-        description: "Normalized token address for joining to token dimension"
+      - name: raw_token_symbol
+        description: "Token symbol from price oracle"
         data_type: String
-      - name: token_symbol
-        description: "Token symbol from dimension (when matched)"
-        data_type: String
-      - name: token_name
-        description: "Token name from dimension (when matched)"
-        data_type: String
-      - name: token_decimals
-        description: "Token decimals from dimension (when matched)"
-        data_type: Nullable(Int32)
-      - name: token_is_native
-        description: "Whether the token is native from dimension (when matched)"
-        data_type: UInt8
+        tests:
+          - not_null
       - name: txn_timestamp
         description: "Timestamp of the parent zap transaction"
         data_type: DateTime('UTC')
