@@ -1,8 +1,11 @@
 {{
   config(
-    materialized='table',
+    materialized='incremental',
     tags=['marts', 'tvl', 'stats'],
+    unique_key=['chain_id', 'product_address', 'date_hour'],
     order_by=['date_hour', 'chain_id', 'product_address'],
+    on_schema_change='append_new_columns',
+    incremental_strategy='delete+insert',
   )
 }}
 
@@ -60,5 +63,5 @@ INNER JOIN {{ ref('product') }} p
   ON hs.chain_id = p.chain_id
   AND hs.product_address = p.product_address
 {% if is_incremental() %}
-  WHERE hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 15 DAY
+  WHERE hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
 {% endif %}

@@ -6,6 +6,7 @@
     order_by=['date_hour', 'chain_id', 'product_address'],
     engine='CoalescingMergeTree',
     on_schema_change='append_new_columns',
+    incremental_strategy='delete+insert',
   )
 }}
 
