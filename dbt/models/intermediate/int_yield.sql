@@ -1,12 +1,26 @@
 {{
   config(
-    materialized='table',
-    engine='MergeTree',
+    materialized='incremental',
     tags=['intermediate', 'yield'],
+    unique_key=['chain_id', 'product_address', 'date_time', 'tx_hash', 'event_idx'],
     order_by=['date_time', 'chain_id', 'product_address'],
+    engine='MergeTree',
     on_schema_change='sync_all_columns',
+    incremental_strategy='delete+insert',
   )
 }}
+
+{% if is_incremental() %}
+  {% set threshold_sql %}
+    SELECT max(date_time) - INTERVAL 1 DAY FROM {{ this }}
+  {% endset %}
+  {% set threshold_result = run_query(threshold_sql) %}
+  {% if threshold_result and threshold_result.rows | length > 0 and threshold_result.rows[0][0] %}
+    {% set threshold = threshold_result.rows[0][0] | string %}
+  {% else %}
+    {% set threshold = '1900-01-01 00:00:00' %}
+  {% endif %}
+{% endif %}
 
 -- Intermediate model: Clean and transform harvest events into yield structure
 -- This model maps harvest events to a yield model, where underlying_amount_compounded * underlying_token_price_usd represents yield
@@ -59,10 +73,16 @@ WITH cleaned_yield AS (
       (8453 /* base */, '0x2d27615057903b479a5c2ba5c2c7a85633563bf36074ac918c6b8c4eaf3f4cc0'),
       (8453 /* base */, '0xb19cb06de752f37fb548e91f23b0e7fbd94a27bcbb2952c10c431a57694519de'),
     )
+
+    {% if is_incremental() %}
+      AND t.txn_timestamp >= toDateTime('{{ threshold }}') AND t.txn_timestamp < now() + INTERVAL 1 DAY
+    {% endif %}
+
 )
 
 -- Output: Clean yield events ready for aggregation
 -- Each row represents a yield-generating harvest event
+-- Incremental on date_time; only loads new data (with 1-day lookback for late data).
 SELECT
   cy.date_time,
   p.chain_id,
