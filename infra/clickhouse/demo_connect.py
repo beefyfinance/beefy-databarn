@@ -6,8 +6,10 @@
 # ]
 # ///
 
-import clickhouse_connect
 import argparse
+import time
+
+import clickhouse_connect
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--host', type=str, required=True)
@@ -26,5 +28,7 @@ client = clickhouse_connect.get_client(
     database='analytics',
 )
 
+start = time.perf_counter()
 result = client.query('SELECT count(*) FROM analytics.zap_events')
-print(result.result_rows)
+elapsed = time.perf_counter() - start
+print(f"Query took {elapsed:.3f}s, result rows: {result.result_rows}")
