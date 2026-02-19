@@ -26,7 +26,6 @@ SELECT
   ze.target_chain_id as target_chain_id,
   ze.vault_id as vault_id,
   ze.action as zap_action,
-  ze.total_usd as zap_total_usd,
   zt.updated_at as updated_at
 FROM {{ ref('stg_beefy_db__zap_token_transfers') }} zt
 LEFT JOIN {{ ref('chain') }} c
@@ -38,3 +37,4 @@ LEFT JOIN {{ ref('stg_beefy_db__zap_events') }} ze
   AND zt.block_number = ze.block_number
   AND zt.txn_idx = ze.txn_idx
   AND zt.parent_event_idx = ze.event_idx
+WHERE zap_action <> 'swap' -- fron: the swap actions are not related to beefy

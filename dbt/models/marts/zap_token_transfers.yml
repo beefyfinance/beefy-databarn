@@ -77,9 +77,6 @@ models:
       - name: zap_action
         description: "Action type of the parent zap"
         data_type: String
-      - name: zap_total_usd
-        description: "Total USD value of the parent zap"
-        data_type: Decimal256(20)
       - name: updated_at
         description: "When the record was last updated"
         data_type: DateTime('UTC')
