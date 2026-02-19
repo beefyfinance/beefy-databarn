@@ -17,7 +17,7 @@ with source as (
     cast(lower({{ evm_transaction_hash('t.txn_hash') }}) as String) as txn_hash,
     cast(t.vault_id as String) as vault_beefy_key,
     toDecimal256(ifNull({{ to_decimal('t.call_fee') }}, 0), 20) as call_fee,
-    toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) / 1e18 as gas_fee,
+    toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0) / 1e18, 20) as gas_fee,
     toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) as raw_gas_fee,
     toDecimal256(ifNull({{ to_decimal('t.platform_fee') }}, 0), 20) as platform_fee,
     toDecimal256(ifNull({{ to_decimal('t.strategist_fee') }}, 0), 20) as strategist_fee,
