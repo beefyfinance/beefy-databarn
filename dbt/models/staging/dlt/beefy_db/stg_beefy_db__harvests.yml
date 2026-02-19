@@ -81,6 +81,16 @@ models:
               arguments:
                 min_value: 0
                 inclusive: true
+      - name: raw_gas_fee
+        description: "Gas fee for the harvest in raw units"
+        data_type: Decimal256(20)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              name: raw_gas_fee_range
+              arguments:
+                min_value: 0
+                inclusive: true
       - name: platform_fee
         description: "Platform fee for the harvest"
         data_type: Decimal256(20)
