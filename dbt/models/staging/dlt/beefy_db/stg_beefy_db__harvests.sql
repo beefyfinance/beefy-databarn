@@ -60,4 +60,10 @@ WHERE
     (43114 /* avax */, '0x091c7e4427dedf0c35bf327f2a7d88541667b322036d8935a8e7c276d7a66091'),
     (8453 /* base */, '0x2d27615057903b479a5c2ba5c2c7a85633563bf36074ac918c6b8c4eaf3f4cc0'),
     (8453 /* base */, '0xb19cb06de752f37fb548e91f23b0e7fbd94a27bcbb2952c10c431a57694519de'),
+    -- stcusd harvest price issue
+    (1 /* ethereum */, '0x89f2671d3eb48c92a84b166a45dff8c298fc6f695486eab1e5dfb0c8b4e70894'),
+    (1 /* ethereum */, '0x6204006c62510f6b268e799f506fef765187708478e9352bcef08eddcf785d50'),
+    (1 /* ethereum */, '0x3d8fdd022db3ed7737dd980e35accf9717b285e751bdde2a9469b7d099079ef7'),
+    (1 /* ethereum */, '0x38d21589995e4a397b711ef4f4c7dbe7220c45cb2c56bd3cc9d3022271678d48'),
+    (1 /* ethereum */, '0x1a19f3cfea8ec410ed88c9b249ab8550b22ca8d1969dbb31d8a395ce3ea776a3')
   )
