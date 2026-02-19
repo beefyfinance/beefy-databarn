@@ -19,4 +19,3 @@ SELECT
   toDecimal256(ifNull({{ to_decimal('t.total_usd') }}, 0), 20) as total_usd,
   cast(t.updated_at as DateTime('UTC')) as updated_at
 FROM {{ source('dlt', 'beefy_db___zap_events') }} t FINAL
-WHERE zap_action <> 'swap' -- fron: the swap actions are not related to beefy

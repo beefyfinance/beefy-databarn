@@ -31,3 +31,4 @@ LEFT JOIN {{ ref('chain') }} src
   ON z.network_id = src.chain_id
 LEFT JOIN {{ ref('chain') }} tgt
   ON z.target_chain_id = tgt.chain_id
+WHERE z.action <> 'swap' -- fron: the swap actions are not related to beefy

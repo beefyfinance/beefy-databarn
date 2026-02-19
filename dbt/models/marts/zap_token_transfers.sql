@@ -37,3 +37,4 @@ LEFT JOIN {{ ref('stg_beefy_db__zap_events') }} ze
   AND zt.block_number = ze.block_number
   AND zt.txn_idx = ze.txn_idx
   AND zt.parent_event_idx = ze.event_idx
+WHERE ze.action <> 'swap' -- fron: the swap actions are not related to beefy
