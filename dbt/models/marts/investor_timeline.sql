@@ -23,7 +23,7 @@
 {% set cutoff_date = cutoff_date_tbl.columns[0][0] %}
 {% endif %}
 
-SELECT DISTINCT ON (account_id, datetime, product_address, transaction_hash, log_index)
+SELECT 
   datetime,
   account_id,
   product_key,
@@ -49,7 +49,7 @@ SELECT DISTINCT ON (account_id, datetime, product_address, transaction_hash, log
   usd_balance_before,
   usd_balance_after,
   usd_balance_diff
-FROM {{ ref('int_investor_timeline_historical') }}
+FROM {{ ref('int_investor_timeline_historical') }} final
 WHERE datetime < toDateTime('{{ cutoff_date }}')
 
 UNION ALL

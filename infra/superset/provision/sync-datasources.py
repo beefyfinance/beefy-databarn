@@ -3,10 +3,10 @@
 Sync all Superset datasources (refresh dataset metadata from databases).
 Runs on every Superset restart when SUPERSET_ENV=production.
 """
-import os
 import sys
 
 sys.path.insert(0, "/app")
+
 
 def main():
     try:
@@ -27,25 +27,28 @@ def main():
                 from superset.datasets.models import Dataset as SqlaTable
             except ImportError:
                 print("Sync datasources: could not import Dataset model, skipping refresh")
-                return
+                sys.exit(0)
 
         datasets = db.session.query(SqlaTable).all()
+        total = len(datasets)
         synced = 0
         errors = 0
         for ds in datasets:
             try:
                 if hasattr(ds, "fetch_metadata"):
                     ds.fetch_metadata()
+                    db.session.commit()
                     synced += 1
                 elif hasattr(ds, "fetch_columns"):
                     ds.fetch_columns()
+                    db.session.commit()
                     synced += 1
             except Exception as e:
                 errors += 1
+                db.session.rollback()
                 print(f"  Warning: sync failed for dataset {getattr(ds, 'table_name', ds.id)}: {e}")
 
-        if synced or errors:
-            print(f"Sync datasources: refreshed {synced} dataset(s), {errors} error(s)")
+        print(f"Sync datasources: {total} dataset(s), refreshed {synced}, {errors} error(s)")
 
 
 if __name__ == "__main__":
