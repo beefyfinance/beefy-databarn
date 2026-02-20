@@ -40,5 +40,9 @@ python3 /usr/local/bin/provision/add-clickhouse-connection.py
 echo_step "5" "Starting" "Setting up Alpha role SQL Lab permissions"
 python3 /usr/local/bin/provision/setup-alpha-permissions.py
 
-echo_step "6" "Completed" "Superset initialization complete"
+# In production: sync all datasources (refresh dataset metadata) on every restart
+echo_step "6" "Starting" "Syncing datasources"
+python3 /usr/local/bin/provision/sync-datasources.py || true
+
+echo_step "7" "Completed" "Superset initialization complete"
 

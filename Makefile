@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse api deps-check setup dev
+.PHONY: help infra dbt dlt grafana clickhouse superset api deps-check setup dev
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -22,6 +22,7 @@ help: ## Show this help message
 	@$(MAKE) -s --no-print-directory dbt
 	@$(MAKE) -s --no-print-directory grafana
 	@$(MAKE) -s --no-print-directory clickhouse
+	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory api
 	@echo "Dependencies:"
 	@echo "  make deps-check          Check for outdated dependencies"
@@ -298,6 +299,36 @@ clickhouse:
 			;; \
 		*) \
 			echo "Usage: make [clickhouse|ch] [restart|client [user]|help]"; \
+			exit 1 \
+			;; \
+	esac
+
+# Superset commands - using subcommands
+superset:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		restart) \
+			echo "Restarting Superset..."; \
+			$(DC) restart superset; \
+			echo "✓ Superset restarted" \
+			;; \
+		logs) \
+			$(DC) logs -f superset \
+			;; \
+		sync|sync-datasources) \
+			echo "Syncing Superset datasources (refresh dataset metadata)..."; \
+			$(DC) exec superset python3 /usr/local/bin/provision/sync-datasources.py || true; \
+			echo "✓ Datasources sync completed" \
+			;; \
+		help|"") \
+			echo "Superset:"; \
+			echo "  make superset restart          Restart Superset (reload configs)"; \
+			echo "  make superset logs            View Superset logs"; \
+			echo "  make superset sync-datasources Refresh dataset metadata from databases"; \
+			echo "" \
+			;; \
+		*) \
+			echo "Usage: make superset [restart|logs|sync-datasources|help]"; \
 			exit 1 \
 			;; \
 	esac
