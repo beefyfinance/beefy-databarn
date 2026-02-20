@@ -2,10 +2,19 @@ version: 2
 
 models:
   - name: stg_beefy_api__clm_vaults
-    description: "Staging model for CLM vaults from dlt beefy_api dataset"
+    description: "Staging model for CLM vaults from dlt beefy_api dataset. True unique key is (chain, earned_token_address)."
+    config:
+      meta:
+        primary_key: ["chain", "earned_token_address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain
+              - earned_token_address
     columns:
       - name: id
-        description: "CLM vault identifier (primary key)"
+        description: "CLM vault identifier from API (may change when API is corrected)"
         tests:
           - not_null
           - unique
@@ -40,7 +49,9 @@ models:
       - name: earned_token
         description: "Earned token"
       - name: earned_token_address
-        description: "Earned token address"
+        description: "Earned token address (part of unique key with chain)"
+        tests:
+          - not_null
       - name: earn_contract_address
         description: "Earn contract address"
       - name: oracle
@@ -62,7 +73,9 @@ models:
       - name: is_gov_vault
         description: "Whether this is a governance vault"
       - name: chain
-        description: "Chain information"
+        description: "Chain identifier (part of unique key with earned_token_address)"
+        tests:
+          - not_null
       - name: strategy
         description: "Strategy information"
       - name: last_harvest

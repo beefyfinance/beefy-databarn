@@ -13,6 +13,8 @@ sources:
         description: "Token configurations from Beefy API"
       - name: beefy_api___clm_vaults
         description: "CLM vault configurations from Beefy API"
+      - name: beefy_api____dlt_loads
+        description: "DLT load metadata for beefy_api pipeline (load_id, inserted_at)"
       - name: beefy_api___cow_vaults
         description: "COW vault configurations from Beefy API"
       - name: beefy_api___gov_vaults

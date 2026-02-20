@@ -4,6 +4,17 @@
   )
 }}
 
+WITH loads_latest AS (
+  -- Keep only the latest load per (chain, earned_token_address) by inserted_at to avoid
+  -- duplicates when API entity ids are corrected and reloaded.
+  SELECT
+    t.chain,
+    cast({{ evm_address('t.earned_token_address') }} as String) AS earned_token_address,
+    argMax(l.inserted_at, l.load_id) AS inserted_at
+  FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
+  INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l ON t._dlt_load_id = l.load_id
+  GROUP BY t.chain, cast({{ evm_address('t.earned_token_address') }} as String)
+)
 SELECT
   t.assets,
   t.fee_tier,
@@ -39,4 +50,8 @@ SELECT
   toBool(t.earning_points) as earning_points,
   t.updated_at
 FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
+INNER JOIN loads_latest ll
+  ON ll.chain = t.chain
+  AND ll.earned_token_address = cast({{ evm_address('t.earned_token_address') }} as String)
+  AND t._dlt_load_id = ll.load_id
 

@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_beefy_api__dlt_loads
+    description: "DLT load metadata for the beefy_api pipeline. One row per load (inserted_at). Used to deduplicate API entities by keeping only the latest load per entity id."
+    columns:
+      - name: load_id
+        description: "Unique identifier for the load (links to _dlt_load_id on data tables)"
+      - name: schema_name
+        description: "Schema/dataset name for the load"
+      - name: status
+        description: "Load status (dlt status code)"
+      - name: inserted_at
+        description: "When the load was inserted (used to pick latest load per entity)"
+      - name: schema_version_hash
+        description: "Hash of the schema version at load time"
