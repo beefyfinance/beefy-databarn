@@ -10,7 +10,7 @@ WITH loads_latest AS (
   SELECT
     t.chain,
     cast({{ evm_address('t.earned_token_address') }} as String) AS earned_token_address,
-    argMax(l.inserted_at, l.load_id) AS inserted_at
+    argMax(l.inserted_at, l.load_id) AS load_id
   FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
   INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l ON t._dlt_load_id = l.load_id
   GROUP BY t.chain, cast({{ evm_address('t.earned_token_address') }} as String)
