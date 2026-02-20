@@ -191,16 +191,51 @@ dlt:
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Looping dlt source: $$SOURCE, resource: $$RESOURCE..."; \
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --loop; \
+			else \
+				echo "Usage: make dlt loop <source> <resource>"; \
+				exit 1; \
 			fi; \
 			echo "dlt loop completed successfully"; \
+		;; \
+		info|show|failed-jobs|drop-pending-packages|sync|trace|schema|load-package|mcp) \
+			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
+			if [ -n "$$SOURCE" ]; then \
+				echo "Running: dlt pipeline $$SOURCE $$SUBCMD..."; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD; \
+			else \
+				echo "Usage: make dlt <action> <pipeline>"; \
+				echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api"; \
+				exit 1; \
+			fi; \
+		;; \
+		drop) \
+			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
+			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
+			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
+				echo "Running: dlt pipeline $$SOURCE drop $$RESOURCE..."; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE drop $$RESOURCE; \
+			else \
+				echo "Usage: make dlt drop <pipeline> <resource>"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
+				exit 1; \
+			fi; \
 		;; \
 		help|"") \
 			echo "dlt:"; \
 			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
+			echo "  make dlt loop <source> <resource>          Loop dlt pipeline for a resource"; \
+			echo "  make dlt <action> <pipeline>               Run dlt pipeline command"; \
+			echo "      action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
+			echo "  make dlt drop <pipeline> <resource>        Drop a pipeline resource"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>|all] [resource]|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|<action> <pipeline>|drop <pipeline> <resource>|help]"; \
+			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files"; \
+			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
+			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
 			exit 1; \
 		;; \
 	esac
@@ -302,7 +337,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api logs restart ps:
+run test client github_files tvls beefy_db beefy_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop:
 	@:
 
 # Catch-all for any other resource/source names
