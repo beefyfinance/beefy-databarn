@@ -75,10 +75,6 @@ async def get_beefy_db_zap_events_resource() -> Any:
             "nullable": False,
             "codec": "ZSTD(3)",
         },
-        "swap_source": {
-            "data_type": "text",
-            "codec": "LZ4",
-        },
     }
 
     pk = [name for name, c in columns.items() if c.get("primary_key")]
