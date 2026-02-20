@@ -312,6 +312,11 @@ superset:
 			$(DC) restart superset; \
 			echo "✓ Superset restarted" \
 			;; \
+		build) \
+			echo "Building Superset image..."; \
+			$(DC) build superset; \
+			echo "✓ Superset image built" \
+			;; \
 		logs) \
 			$(DC) logs -f superset \
 			;; \
@@ -323,12 +328,13 @@ superset:
 		help|"") \
 			echo "Superset:"; \
 			echo "  make superset restart          Restart Superset (reload configs)"; \
+			echo "  make superset build            Build Superset image"; \
 			echo "  make superset logs            View Superset logs"; \
 			echo "  make superset sync-datasources Refresh dataset metadata from databases"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make superset [restart|logs|sync-datasources|help]"; \
+			echo "Usage: make superset [restart|build|logs|sync-datasources|help]"; \
 			exit 1 \
 			;; \
 	esac

@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse run test client github_files tvls beefy_db beefy_api loop docker
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset run test client github_files tvls beefy_db beefy_api loop docker
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -34,6 +34,7 @@ help:
 	@$(MAKE) -s --no-print-directory dbt
 	@$(MAKE) -s --no-print-directory dlt
 	@$(MAKE) -s --no-print-directory clickhouse
+	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
 
@@ -89,6 +90,42 @@ infra: ensure-dirs
 			echo "Usage: make infra [build [<svc>]|start|stop|restart|logs|ps|help]"; \
 			exit 1; \
 		;; \
+	esac
+
+# Superset commands - using subcommands
+superset:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		restart) \
+			echo "Restarting Superset..."; \
+			$(DC) restart superset; \
+			echo "✓ Superset restarted" \
+			;; \
+		build) \
+			echo "Building Superset image..."; \
+			$(DC) build superset; \
+			echo "✓ Superset image built" \
+			;; \
+		logs) \
+			$(DC) logs -f superset \
+			;; \
+		sync|sync-datasources) \
+			echo "Syncing Superset datasources (refresh dataset metadata)..."; \
+			$(DC) exec superset python3 /usr/local/bin/provision/sync-datasources.py || true; \
+			echo "✓ Datasources sync completed" \
+			;; \
+		help|"") \
+			echo "Superset:"; \
+			echo "  make superset restart          Restart Superset (reload configs)"; \
+			echo "  make superset build            Build Superset image"; \
+			echo "  make superset logs            View Superset logs"; \
+			echo "  make superset sync-datasources Refresh dataset metadata from databases"; \
+			echo "" \
+			;; \
+		*) \
+			echo "Usage: make superset [restart|build|logs|sync-datasources|help]"; \
+			exit 1 \
+			;; \
 	esac
 
 # Run dbt: make dbt run or make dbt test
