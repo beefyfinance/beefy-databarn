@@ -8,8 +8,9 @@
 -- Mart: Zap token transfers (inputs/outputs/refunds) with chain, token and parent zap event context
 SELECT
   zt.network_id as chain_id,
-  c.chain_name as chain_name,
-  c.beefy_key as chain_beefy_key,
+  c.chain_name as source_chain_name,
+  c.beefy_key as source_chain_beefy_key,
+  c.beefy_enabled as source_chain_beefy_enabled,
   zt.block_number as block_number,
   zt.txn_idx as txn_idx,
   zt.parent_event_idx as parent_event_idx,
@@ -25,7 +26,7 @@ SELECT
   ze.recipient_address as recipient_address,
   ze.target_chain_id as target_chain_id,
   ze.vault_id as vault_id,
-  ze.action as zap_action,
+  ze.action as action,
   zt.updated_at as updated_at
 FROM {{ ref('stg_beefy_db__zap_token_transfers') }} zt
 LEFT JOIN {{ ref('chain') }} c

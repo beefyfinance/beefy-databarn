@@ -8,7 +8,7 @@ models:
         enforced: true
       meta:
         primary_key:
-          ["chain_id", "block_number", "tx_idx", "event_idx", "tx_hash"]
+          ["chain_id", "block_number", "txn_idx", "event_idx", "txn_hash"]
     tests:
       - relationships_multi_key:
           name: relationships_product_address_product
@@ -36,12 +36,12 @@ models:
         data_type: Int64
         tests:
           - not_null
-      - name: date_time
-        description: "Timestamp of the harvest event"
+      - name: txn_timestamp
+        description: "Timestamp of the harvest transaction"
         data_type: DateTime('UTC')
         tests:
           - not_null
-      - name: tx_idx
+      - name: txn_idx
         description: "Transaction index within the block"
         data_type: Int32
         tests:
@@ -51,7 +51,7 @@ models:
         data_type: Int32
         tests:
           - not_null
-      - name: tx_hash
+      - name: txn_hash
         description: "Transaction hash of the harvest"
         data_type: String
         tests:

@@ -10,7 +10,7 @@
 
 WITH yield_with_product AS (
   SELECT
-    a.date_time,
+    a.txn_timestamp,
     a.chain_id,
     a.product_address,
     a.underlying_amount_compounded,
@@ -26,9 +26,9 @@ WITH yield_with_product AS (
 SELECT
   chain_id,
   product_address,
-  toStartOfHour(date_time) as date_hour,
-  argMax(underlying_amount_compounded, date_time) as underlying_amount_compounded,
-  argMax(underlying_token_price_usd, date_time) as underlying_token_price_usd,
-  argMax(underlying_amount_compounded_usd, date_time) as underlying_amount_compounded_usd
+  toStartOfHour(txn_timestamp) as date_hour,
+  argMax(underlying_amount_compounded, txn_timestamp) as underlying_amount_compounded,
+  argMax(underlying_token_price_usd, txn_timestamp) as underlying_token_price_usd,
+  argMax(underlying_amount_compounded_usd, txn_timestamp) as underlying_amount_compounded_usd
 FROM yield_with_product
-GROUP BY chain_id, product_address, toStartOfHour(date_time)
+GROUP BY chain_id, product_address, toStartOfHour(txn_timestamp)

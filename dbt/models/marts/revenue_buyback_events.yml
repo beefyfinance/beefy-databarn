@@ -20,13 +20,13 @@ models:
         description: "Block number where the buyback event occurred"
         tests:
           - not_null
-      - name: date_time
-        description: "Timestamp of the buyback event"
+      - name: txn_timestamp
+        description: "Timestamp of the buyback transaction"
         tests:
           - not_null
       - name: event_idx
         description: "Index of the event within the transaction"
-      - name: tx_hash
+      - name: txn_hash
         description: "Transaction hash of the buyback"
         tests:
           - not_null

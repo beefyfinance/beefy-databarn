@@ -36,12 +36,12 @@ feebatch_revenue_daily AS (
 
 yield_daily AS (
   SELECT
-    toDate(ye.date_time) as date_day,
+    toDate(ye.txn_timestamp) as date_day,
     sum(ye.underlying_amount_compounded_usd) as yield_usd,
     0 as revenue_usd,
     0 as bifi_buyback_usd
   FROM {{ ref('int_yield') }} ye
-  GROUP BY toDate(ye.date_time)
+  GROUP BY toDate(ye.txn_timestamp)
 ),
 
 all_rows as (

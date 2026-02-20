@@ -16,6 +16,7 @@ SELECT
   cast(t.target_chain_id as Int64) as target_chain_id,
   cast(t.vault_id as Nullable(String)) as vault_id,
   cast(t.action as Nullable(String)) as action,
+  cast(t.swap_source as Nullable(String)) as swap_source,
   toDecimal256(ifNull({{ to_decimal('t.total_usd') }}, 0), 20) as total_usd,
   cast(t.updated_at as DateTime('UTC')) as updated_at
 FROM {{ source('dlt', 'beefy_db___zap_events') }} t FINAL

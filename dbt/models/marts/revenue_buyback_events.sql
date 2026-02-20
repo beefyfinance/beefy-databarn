@@ -15,9 +15,9 @@ WITH cleaned_revenue AS (
     bb.id,
     bb.block_number,
     -- Standardize timestamp (handle timezone issues if any)
-    toDateTime(bb.txn_timestamp) as date_time,
+    toDateTime(bb.txn_timestamp) as txn_timestamp,
     bb.event_idx,
-    lower(bb.txn_hash) as tx_hash,
+    lower(bb.txn_hash) as txn_hash,
     bb.bifi_price as token_price_usd,
     bb.bifi_amount as buyback_amount,
     -- Ensure proper Decimal multiplication with explicit casting
@@ -34,10 +34,10 @@ WITH cleaned_revenue AS (
 
 SELECT
   cr.id,
-  cr.date_time,
+  cr.txn_timestamp,
   cr.block_number,
   cr.event_idx,
-  cr.tx_hash,
+  cr.txn_hash,
   t.chain_id,
   t.representation_address as token_representation_address,
   t.erc20_address as token_erc20_address,

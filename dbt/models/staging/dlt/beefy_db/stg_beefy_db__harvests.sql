@@ -65,5 +65,10 @@ WHERE
     (1 /* ethereum */, '0x6204006c62510f6b268e799f506fef765187708478e9352bcef08eddcf785d50'),
     (1 /* ethereum */, '0x3d8fdd022db3ed7737dd980e35accf9717b285e751bdde2a9469b7d099079ef7'),
     (1 /* ethereum */, '0x38d21589995e4a397b711ef4f4c7dbe7220c45cb2c56bd3cc9d3022271678d48'),
-    (1 /* ethereum */, '0x1a19f3cfea8ec410ed88c9b249ab8550b22ca8d1969dbb31d8a395ce3ea776a3')
+    (1 /* ethereum */, '0x1a19f3cfea8ec410ed88c9b249ab8550b22ca8d1969dbb31d8a395ce3ea776a3'),
+  )
+  and not (
+    t.vault_beefy_key = 'pendle-eqb-arb-ausdc-26jun25'
+    and t.txn_timestamp between '2024-12-18' and '2024-12-24'
+    and toDecimal256(t.harvest_amount * t.want_price, 20) > 10_000.00
   )

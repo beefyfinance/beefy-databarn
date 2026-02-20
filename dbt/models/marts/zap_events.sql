@@ -24,6 +24,7 @@ SELECT
   tgt.beefy_enabled as target_chain_beefy_enabled,
   z.vault_id,
   z.action,
+  z.swap_source,
   z.total_usd,
   z.updated_at
 FROM {{ ref('stg_beefy_db__zap_events') }} z

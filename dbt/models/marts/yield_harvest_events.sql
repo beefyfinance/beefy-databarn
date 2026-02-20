@@ -10,14 +10,14 @@
 -- Uses the int_yield intermediate model which contains all yield business logic
 
 SELECT
-  cy.date_time,
+  cy.txn_timestamp,
   cy.chain_id as chain_id,
   dc.chain_name,
   cy.product_address,
   cy.block_number,
-  cy.txn_idx as tx_idx,
+  cy.txn_idx,
   cy.event_idx,
-  cy.tx_hash,
+  cy.txn_hash,
   cy.underlying_amount_compounded,
   cy.underlying_token_price_usd,
   cy.underlying_amount_compounded_usd

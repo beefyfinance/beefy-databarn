@@ -2,8 +2,8 @@
   config(
     materialized='incremental',
     tags=['intermediate', 'yield'],
-    unique_key=['chain_id', 'product_address', 'date_time', 'tx_hash', 'event_idx'],
-    order_by=['date_time', 'chain_id', 'product_address'],
+    unique_key=['chain_id', 'product_address', 'txn_timestamp', 'txn_hash', 'event_idx'],
+    order_by=['txn_timestamp', 'chain_id', 'product_address'],
     engine='MergeTree',
     on_schema_change='sync_all_columns',
     incremental_strategy='delete+insert',
@@ -12,7 +12,7 @@
 
 {% if is_incremental() %}
   {% set threshold_sql %}
-    SELECT max(date_time) - INTERVAL 1 DAY FROM {{ this }}
+    SELECT max(txn_timestamp) - INTERVAL 1 DAY FROM {{ this }}
   {% endset %}
   {% set threshold_result = run_query(threshold_sql) %}
   {% if threshold_result and threshold_result.rows | length > 0 and threshold_result.rows[0][0] %}
@@ -24,13 +24,13 @@
 
 
 SELECT
-  h.txn_timestamp as date_time,
+  h.txn_timestamp as txn_timestamp,
   p.chain_id,
   p.product_address,
   h.block_number,
   h.txn_idx,
   h.event_idx,
-  h.txn_hash as tx_hash,
+  h.txn_hash as txn_hash,
   h.harvest_amount as underlying_amount_compounded,
   h.want_price as underlying_token_price_usd,
   toDecimal256(h.harvest_amount * h.want_price, 20) as underlying_amount_compounded_usd
