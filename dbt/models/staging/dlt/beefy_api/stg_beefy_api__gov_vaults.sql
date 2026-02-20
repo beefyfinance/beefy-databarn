@@ -4,6 +4,17 @@
   )
 }}
 
+WITH loads_latest AS (
+  -- Keep only the latest load per (chain, earn_contract_address) by inserted_at to avoid
+  -- duplicates when API entity ids are corrected and reloaded.
+  SELECT
+    {{ normalize_network_beefy_key('t.chain') }} AS chain,
+    cast({{ evm_address('t.earn_contract_address') }} as String) AS earn_contract_address,
+    argMax(l.load_id, l.inserted_at) AS load_id
+  FROM {{ source('dlt', 'beefy_api___gov_vaults') }} t
+  INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l ON t._dlt_load_id = l.load_id
+  GROUP BY {{ normalize_network_beefy_key('t.chain') }}, cast({{ evm_address('t.earn_contract_address') }} as String)
+)
 SELECT
   t.assets,
   t.risks,
@@ -43,4 +54,8 @@ SELECT
   t.updated_at,
   t.earning_points as earning_points
 FROM {{ source('dlt', 'beefy_api___gov_vaults') }} t
+INNER JOIN loads_latest ll
+  ON ll.chain = {{ normalize_network_beefy_key('t.chain') }}
+  AND ll.earn_contract_address = cast({{ evm_address('t.earn_contract_address') }} as String)
+  AND t._dlt_load_id = ll.load_id
 

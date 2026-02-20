@@ -2,7 +2,16 @@ version: 2
 
 models:
   - name: stg_beefy_api__gov_vaults
-    description: "Staging model for governance vaults from dlt beefy_api dataset"
+    description: "Staging model for governance vaults from dlt beefy_api dataset. True unique key is (chain, earn_contract_address)."
+    config:
+      meta:
+        primary_key: ["chain", "earn_contract_address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain
+              - earn_contract_address
     columns:
       - name: id
         description: "Governance vault identifier (primary key)"
@@ -42,7 +51,9 @@ models:
       - name: token_provider_id
         description: "Token provider ID"
       - name: earn_contract_address
-        description: "Earn contract address"
+        description: "Earn contract address (part of unique key with chain)"
+        tests:
+          - not_null
       - name: earned_token
         description: "Earned token"
       - name: oracle
@@ -62,7 +73,9 @@ models:
       - name: is_gov_vault
         description: "Whether this is a governance vault"
       - name: chain
-        description: "Chain information"
+        description: "Chain identifier (part of unique key with earn_contract_address)"
+        tests:
+          - not_null
       - name: total_supply
         description: "Total supply (stored as string to handle large numbers)"
       - name: last_harvest
