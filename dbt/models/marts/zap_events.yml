@@ -78,8 +78,8 @@ models:
         description: "Zap action type"
         data_type: String
       - name: swap_source
-        description: "Source of the swap when action is swap (e.g. dex or aggregator identifier)"
-        data_type: String
+        description: "Sources of the swap when action is swap (e.g. dex or aggregator identifiers)"
+        data_type: Array(String)
       - name: total_usd
         description: "Total USD value of the zap"
         data_type: Decimal256(20)

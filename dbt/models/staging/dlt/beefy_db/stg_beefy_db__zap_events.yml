@@ -67,8 +67,8 @@ models:
         data_type: String
         codec: LZ4
       - name: swap_source
-        description: "Source of the swap when action is swap (e.g. dex or aggregator identifier)"
-        data_type: String
+        description: "Sources of the swap when action is swap (e.g. dex or aggregator identifiers)"
+        data_type: Array(String)
         codec: LZ4
       - name: total_usd
         description: "Total USD value of the zap"
