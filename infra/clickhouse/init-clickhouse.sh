@@ -133,59 +133,90 @@ clickhouse-client \
     -------------------------
 
     -- dlt: RW on dlt.*
-    REVOKE ALL PRIVILEGES ON *.* FROM dlt;
+    REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*      FROM dlt;
+    REVOKE ALL PRIVILEGES ON dlt.*                     FROM dlt;
+    REVOKE ALL PRIVILEGES ON dbt.*                     FROM dlt;
+    REVOKE ALL PRIVILEGES ON analytics.*               FROM dlt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dlt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dlt.*                      TO dlt;
     GRANT ${READ_PERM}                ON dbt.*                      TO dlt; -- required to update incremental materialized views
     GRANT ${READ_PERM}                ON analytics.*                TO dlt; -- required to update incremental materialized views
 
     -- dbt: R on dlt.*, RW on dbt.* & analytics.*
-    REVOKE ALL PRIVILEGES ON *.* FROM dbt;
+    REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*     FROM dbt;
+    REVOKE ALL PRIVILEGES ON dlt.*                    FROM dbt;
+    REVOKE ALL PRIVILEGES ON envio.*                  FROM dbt;
+    REVOKE ALL PRIVILEGES ON envio_poc1.*             FROM dbt;
+    REVOKE ALL PRIVILEGES ON envio_poc2.*             FROM dbt;
+    REVOKE ALL PRIVILEGES ON envio_poc3.*             FROM dbt;
+    REVOKE ALL PRIVILEGES ON dbt.*                    FROM dbt;
+    REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dbt;
     GRANT ${READ_PERM}                ON dlt.*                      TO dbt;
     GRANT ${READ_PERM}                ON envio.*                    TO dbt;
-    GRANT ${READ_PERM}                ON envio_poc1.*                TO dbt;
-    GRANT ${READ_PERM}                ON envio_poc2.*                TO dbt;
-    GRANT ${READ_PERM}                ON envio_poc3.*                TO dbt;
+    GRANT ${READ_PERM}                ON envio_poc1.*               TO dbt;
+    GRANT ${READ_PERM}                ON envio_poc2.*               TO dbt;
+    GRANT ${READ_PERM}                ON envio_poc3.*               TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
 
     -- grafana: R on dlt.*, dbt.*, analytics.*
-    REVOKE ALL PRIVILEGES ON *.* FROM grafana;
-    GRANT ${READ_PERM} ON dlt.*       TO grafana;
-    GRANT ${READ_PERM} ON dbt.*       TO grafana;
-    GRANT ${READ_PERM} ON analytics.* TO grafana;
-    GRANT ${READ_PERM} ON envio.* TO grafana;
-    GRANT ${READ_PERM} ON envio_poc1.* TO grafana;
-    GRANT ${READ_PERM} ON envio_poc2.* TO grafana;
-    GRANT ${READ_PERM} ON envio_poc3.* TO grafana;
+    REVOKE ALL PRIVILEGES ON dlt.*           FROM grafana;
+    REVOKE ALL PRIVILEGES ON dbt.*           FROM grafana;
+    REVOKE ALL PRIVILEGES ON analytics.*     FROM grafana;
+    REVOKE ALL PRIVILEGES ON envio.*         FROM grafana;
+    REVOKE ALL PRIVILEGES ON envio_poc1.*    FROM grafana;
+    REVOKE ALL PRIVILEGES ON envio_poc2.*    FROM grafana;
+    REVOKE ALL PRIVILEGES ON envio_poc3.*    FROM grafana;
+    GRANT ${READ_PERM} ON dlt.*           TO grafana;
+    GRANT ${READ_PERM} ON dbt.*           TO grafana;
+    GRANT ${READ_PERM} ON analytics.*     TO grafana;
+    GRANT ${READ_PERM} ON envio.*         TO grafana;
+    GRANT ${READ_PERM} ON envio_poc1.*    TO grafana;
+    GRANT ${READ_PERM} ON envio_poc2.*    TO grafana;
+    GRANT ${READ_PERM} ON envio_poc3.*    TO grafana;
 
     -- superset: R on analytics.*
-    REVOKE ALL PRIVILEGES ON *.* FROM superset;
-    GRANT ${READ_PERM} ON dlt.*       TO superset;
-    GRANT ${READ_PERM} ON dbt.*       TO superset;
-    GRANT ${READ_PERM} ON analytics.* TO superset;
-    GRANT ${READ_PERM} ON envio.* TO superset;
+    REVOKE ALL PRIVILEGES ON dlt.*           FROM superset;
+    REVOKE ALL PRIVILEGES ON dbt.*           FROM superset;
+    REVOKE ALL PRIVILEGES ON analytics.*     FROM superset;
+    REVOKE ALL PRIVILEGES ON envio.*         FROM superset;
+    REVOKE ALL PRIVILEGES ON envio_poc1.*    FROM superset;
+    REVOKE ALL PRIVILEGES ON envio_poc2.*    FROM superset;
+    REVOKE ALL PRIVILEGES ON envio_poc3.*    FROM superset;
+    GRANT ${READ_PERM} ON dlt.*        TO superset;
+    GRANT ${READ_PERM} ON dbt.*        TO superset;
+    GRANT ${READ_PERM} ON analytics.*  TO superset;
+    GRANT ${READ_PERM} ON envio.*      TO superset;
     GRANT ${READ_PERM} ON envio_poc1.* TO superset;
     GRANT ${READ_PERM} ON envio_poc2.* TO superset;
     GRANT ${READ_PERM} ON envio_poc3.* TO superset;
 
     -- api: R on analytics.*
-    REVOKE ALL PRIVILEGES ON *.* FROM api;
-    GRANT ${READ_PERM} ON analytics.* TO api;
-    GRANT ${READ_PERM} ON dlt.* TO api;
-    GRANT ${READ_PERM} ON dbt.* TO api;
-    GRANT ${READ_PERM} ON envio.* TO api;
-    GRANT ${READ_PERM} ON envio_poc1.* TO api;
-    GRANT ${READ_PERM} ON envio_poc2.* TO api;
-    GRANT ${READ_PERM} ON envio_poc3.* TO api;
+    REVOKE ALL PRIVILEGES ON analytics.*    FROM api;
+    REVOKE ALL PRIVILEGES ON dlt.*          FROM api;
+    REVOKE ALL PRIVILEGES ON dbt.*          FROM api;
+    REVOKE ALL PRIVILEGES ON envio.*        FROM api;
+    REVOKE ALL PRIVILEGES ON envio_poc1.*   FROM api;
+    REVOKE ALL PRIVILEGES ON envio_poc2.*   FROM api;
+    REVOKE ALL PRIVILEGES ON envio_poc3.*   FROM api;
+    GRANT ${READ_PERM} ON analytics.*    TO api;
+    GRANT ${READ_PERM} ON dlt.*          TO api;
+    GRANT ${READ_PERM} ON dbt.*          TO api;
+    GRANT ${READ_PERM} ON envio.*        TO api;
+    GRANT ${READ_PERM} ON envio_poc1.*   TO api;
+    GRANT ${READ_PERM} ON envio_poc2.*   TO api;
+    GRANT ${READ_PERM} ON envio_poc3.*   TO api;
 
     -- envio-sync: R on analytics.*
-    REVOKE ALL PRIVILEGES ON *.* FROM envio;
-    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio.* TO envio;
-    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc1.* TO envio;
-    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc2.* TO envio;
-    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc3.* TO envio;
+    REVOKE ALL PRIVILEGES ON envio.*        FROM envio;
+    REVOKE ALL PRIVILEGES ON envio_poc1.*   FROM envio;
+    REVOKE ALL PRIVILEGES ON envio_poc2.*   FROM envio;
+    REVOKE ALL PRIVILEGES ON envio_poc3.*   FROM envio;
+    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio.*        TO envio;
+    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc1.*   TO envio;
+    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc2.*   TO envio;
+    GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc3.*   TO envio;
 
     -------------------------------------------
     -- Settings profiles (env-synced)
