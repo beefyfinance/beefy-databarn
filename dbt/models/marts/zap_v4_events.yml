@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: zap_v4_events
+    description: >
+      Zap V4 (CCTP) message-level event view derived from `stg_beefy_cctp_api__messages`,
+      enriched with source/target chain dimension attributes and convenience timestamp/amount fields.
+    columns:
+      - name: src_network_id
+        description: "Source chain id (chain id)."
+        tests: [not_null]
+      - name: source_chain_name
+        description: "Source chain name from the `chain` dimension."
+      - name: source_chain_beefy_key
+        description: "Source chain Beefy key from the `chain` dimension."
+      - name: src_tx_hash
+        description: "Source transaction hash."
+        tests: [not_null]
+      - name: src_log_index
+        description: "Source log index within the source transaction."
+        tests: [not_null]
+      - name: created_at
+        description: "Creation timestamp from the API."
+        tests: [not_null]
+      - name: updated_at
+        description: "Last update timestamp from the API."
+        tests: [not_null]
+      - name: src_block_number
+        description: "Source block number."
+      - name: src_block_hash
+        description: "Source block hash."
+      - name: src_block_timestamp_raw
+        description: "Source block timestamp string as provided by the API."
+      - name: src_block_datetime
+        description: "Parsed source block datetime in UTC (fallback to created_at)."
+        tests: [not_null]
+      - name: src_block_date
+        description: "UTC date derived from src_block_datetime."
+        tests: [not_null]
+      - name: src_message
+        description: "Raw source CCTP message payload."
+      - name: src_sender
+        description: "Source sender address."
+      - name: src_burn_token
+        description: "Token burned on source chain."
+      - name: src_burn_amount_usdc
+        description: "Burn amount normalized to USDC units (base / 1e6)."
+        tests: [not_null]
+      - name: attestation_message
+        description: "Attestation message payload."
+      - name: attestation
+        description: "Attestation payload."
+      - name: attestation_nonce
+        description: "Attestation nonce."
+      - name: attestation_version
+        description: "Attestation version."
+      - name: attestation_status
+        description: "Attestation status."
+      - name: lifecycle_state
+        description: "Lifecycle state."
+      - name: dst_network_id
+        description: "Destination chain id (chain id)."
+      - name: target_chain_name
+        description: "Destination chain name from the `chain` dimension."
+      - name: target_chain_beefy_key
+        description: "Destination chain Beefy key from the `chain` dimension."
+      - name: dst_receiver
+        description: "Destination receiver address."
+      - name: dst_recipient
+        description: "Destination recipient address."
+      - name: dst_tx_hash
+        description: "Destination transaction hash."
+      - name: dst_tx_caller
+        description: "Destination tx caller."
+      - name: dst_log_index
+        description: "Destination log index."
+      - name: dst_block_number
+        description: "Destination block number."
+      - name: dst_block_timestamp_raw
+        description: "Destination block timestamp string as provided by the API."
+      - name: dst_block_datetime
+        description: "Parsed destination block datetime in UTC (nullable)."
+      - name: dst_relay_attempts
+        description: "Number of relay attempts."
+      - name: dst_zap_success
+        description: "Whether destination zap succeeded."
+      - name: dst_amount_in_usdc
+        description: "Destination amount in normalized to USDC units (base / 1e6)."
+      - name: dst_refunded_amount_usdc
+        description: "Destination refunded amount normalized to USDC units (base / 1e6)."
+      - name: dst_recovered_amount_usdc
+        description: "Destination recovered amount normalized to USDC units (base / 1e6)."
+      - name: error_code
+        description: "Error code (if any)."
+      - name: error_message
+        description: "Error message (if any)."
+

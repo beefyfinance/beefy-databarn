@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset run test client github_files tvls beefy_db beefy_api loop docker
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -243,7 +243,7 @@ dlt:
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
 				echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				exit 1; \
 			fi; \
@@ -256,7 +256,7 @@ dlt:
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE drop --state-only $$RESOURCE; \
 			else \
 				echo "Usage: make dlt drop-state <pipeline> <resource>"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				exit 1; \
 			fi; \
@@ -269,7 +269,7 @@ dlt:
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				echo "  action: drop"; \
 				exit 1; \
@@ -285,7 +285,7 @@ dlt:
 			;; \
 		*) \
 			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|<action> <pipeline> <resource>|help]"; \
-			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files"; \
+			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
 			exit 1; \
@@ -389,7 +389,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop:
 	@:
 
 # Catch-all for any other resource/source names

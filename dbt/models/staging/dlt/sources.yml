@@ -75,3 +75,6 @@ sources:
         description: "Beefy platform configurations from GitHub files"
       - name: github_files___beefy_ui_chains
         description: "Beefy UI chain configurations from GitHub files"
+      # beefy_cctp_api tables
+      - name: beefy_cctp_api___messages
+        description: "CCTP relay messages from Beefy CCTP API"

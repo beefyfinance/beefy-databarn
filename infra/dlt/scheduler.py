@@ -67,6 +67,10 @@ async def github_files_pipeline():
     """Run the github_files pipeline."""
     await run_pipeline_script("github_files_pipeline.py")
 
+async def beefy_cctp_api_pipeline():
+    """Run the beefy_cctp_api pipeline."""
+    await run_pipeline_script("beefy_cctp_api_pipeline.py")
+
 async def main():
     """Main async function to run the scheduler."""
     logger.info("Starting DLT scheduler with 3 pipeline tasks...")
@@ -99,6 +103,16 @@ async def main():
         trigger=CronTrigger(minute="2/5"),
         id="beefy_db_pipeline",
         name="Beefy DB Pipeline",
+        max_instances=1,  # Prevent overlapping runs
+        coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    # Schedule beefy_cctp_api pipeline to run every 5 minutes at :03, :08, :13, etc.
+    scheduler.add_job(
+        beefy_cctp_api_pipeline,
+        trigger=CronTrigger(minute="3/5"),
+        id="beefy_cctp_api_pipeline",
+        name="Beefy CCTP API Pipeline",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
     )

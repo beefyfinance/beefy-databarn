@@ -216,7 +216,7 @@ dlt:
 			else \
 				echo "Usage: make dlt <action> <pipeline>"; \
 				echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 				exit 1; \
 			fi \
 			;; \
@@ -226,7 +226,7 @@ dlt:
 				$(UV) dlt pipeline -v $$SOURCE drop $$RESOURCE; \
 			else \
 				echo "Usage: make dlt drop <pipeline> <resource>"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				exit 1; \
 			fi \
@@ -242,7 +242,7 @@ dlt:
 			;; \
 		*) \
 			echo "Usage: make dlt [run <source> [resource]|loop <source> <resource>|<action> <pipeline>|help]"; \
-			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files"; \
+			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
 			exit 1 \

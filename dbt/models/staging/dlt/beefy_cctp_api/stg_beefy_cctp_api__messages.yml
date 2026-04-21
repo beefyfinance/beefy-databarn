@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: stg_beefy_cctp_api__messages
+    description: "CCTP relay messages from Beefy CCTP API, deduplicated to latest update per (src_network_id, src_tx_hash, src_log_index)."
+    columns:
+      - name: src_network_id
+        description: "Source network id (chain id)"
+      - name: src_tx_hash
+        description: "Source transaction hash"
+      - name: src_log_index
+        description: "Source log index within src_tx_hash"
+      - name: updated_at
+        description: "Last update timestamp from API"
+      - name: created_at
+        description: "Creation timestamp from API"
+
+      - name: src_block_number
+        description: "Source block number"
+      - name: src_block_hash
+        description: "Source block hash"
+      - name: src_block_timestamp
+        description: "Source block timestamp (as provided by API)"
+      - name: src_message
+        description: "Raw source CCTP message payload"
+      - name: src_sender
+        description: "Source sender address"
+      - name: src_burn_token
+        description: "Token burned on source chain"
+      - name: src_burn_amount_usdc
+        description: "Burn amount on source chain, normalized to USDC units (base / 1e6)."
+
+      - name: attestation_message
+        description: "Attestation message payload"
+      - name: attestation
+        description: "Attestation payload"
+      - name: attestation_nonce
+        description: "Attestation nonce"
+      - name: attestation_version
+        description: "Attestation version"
+      - name: attestation_status
+        description: "Attestation status"
+      - name: lifecycle_state
+        description: "Lifecycle state"
+
+      - name: dst_network_id
+        description: "Destination network id (chain id)"
+      - name: dst_receiver
+        description: "Destination receiver address"
+      - name: dst_recipient
+        description: "Destination recipient address"
+      - name: dst_tx_hash
+        description: "Destination transaction hash"
+      - name: dst_tx_caller
+        description: "Destination tx caller"
+      - name: dst_log_index
+        description: "Destination log index"
+      - name: dst_block_number
+        description: "Destination block number"
+      - name: dst_block_timestamp
+        description: "Destination block timestamp (as provided by API)"
+      - name: dst_relay_attempts
+        description: "Number of relay attempts"
+      - name: dst_zap_success
+        description: "Whether destination zap succeeded"
+      - name: dst_amount_in_usdc
+        description: "Destination amount in, normalized to USDC units (base / 1e6)."
+      - name: dst_refunded_amount_usdc
+        description: "Destination refunded amount, normalized to USDC units (base / 1e6)."
+      - name: dst_recovered_amount_usdc
+        description: "Destination recovered amount, normalized to USDC units (base / 1e6)."
+
+      - name: error_code
+        description: "Error code (if any)"
+      - name: error_message
+        description: "Error message (if any)"
+
