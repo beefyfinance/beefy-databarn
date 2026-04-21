@@ -252,7 +252,7 @@ dlt:
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
-				echo "Running: dlt pipeline $$SOURCE drop --state-only --dataset-name $$RESOURCE..."; \
+				echo "Running: dlt pipeline $$SOURCE drop --state-only $$RESOURCE..."; \
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE drop --state-only $$RESOURCE; \
 			else \
 				echo "Usage: make dlt drop-state <pipeline> <resource>"; \
@@ -265,7 +265,7 @@ dlt:
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
-				echo "Running: dlt pipeline $$SOURCE $$SUBCMD --dataset-name $$RESOURCE..."; \
+				echo "Running: dlt pipeline $$SOURCE $$SUBCMD $$RESOURCE..."; \
 				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
