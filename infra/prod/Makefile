@@ -236,27 +236,42 @@ dlt:
 		;; \
 		info|show|failed-jobs|drop-pending-packages|trace|schema|load-package|mcp) \
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
+			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ]; then \
 				echo "Running: dlt pipeline $$SOURCE $$SUBCMD..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
 			else \
-				echo "Usage: make dlt <action> <pipeline>"; \
+				echo "Usage: make dlt <action> <pipeline> <resource>"; \
 				echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp"; \
 				echo "  pipeline: e.g. beefy_db, beefy_api"; \
+				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				exit 1; \
 			fi; \
 		;; \
-		drop|sync) \
+		drop-state) \
+			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
+			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
+			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
+				echo "Running: dlt pipeline $$SOURCE drop --state-only --dataset-name $$RESOURCE..."; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE drop --state-only $$RESOURCE; \
+			else \
+				echo "Usage: make dlt drop-state <pipeline> <resource>"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
+				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
+				exit 1; \
+			fi; \
+		;; \
+		drop) \
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
 				echo "Running: dlt pipeline $$SOURCE $$SUBCMD --dataset-name $$RESOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD --dataset-name $$RESOURCE; \
+				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
 				echo "  pipeline: e.g. beefy_db, beefy_api, github_files"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
-				echo "  action: drop, sync"; \
+				echo "  action: drop"; \
 				exit 1; \
 			fi; \
 		;; \
@@ -264,17 +279,15 @@ dlt:
 			echo "dlt:"; \
 			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
 			echo "  make dlt loop <source> <resource>          Loop dlt pipeline for a resource"; \
-			echo "  make dlt <action> <pipeline>               Run dlt pipeline command"; \
-			echo "      action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp"; \
-			echo "  make dlt <action> <pipeline> <resource>        Run dlt pipeline command"; \
-			echo "      action: drop, sync"; \
+			echo "  make dlt <action> <pipeline> <resource>               Run dlt pipeline command"; \
+			echo "      action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|<action> <pipeline>|drop <pipeline> <resource>|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|<action> <pipeline> <resource>|help]"; \
 			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
-			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
+			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
 			exit 1; \
 		;; \
 	esac
