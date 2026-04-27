@@ -40,6 +40,12 @@ models:
               arguments:
                 to: ref('chain')
                 field: chain_id
+      - name: chain_name
+        description: "Chain name (from chain.chain_name)"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
       - name: product_type
         description: "Type of product"
         data_type: String

@@ -7,6 +7,7 @@
 
 SELECT
   ps.chain_id,
+  ps.chain_name,
   ps.product_type,
   ps.beefy_key,
   ps.product_address,
@@ -47,6 +48,7 @@ WHERE ps.date_hour >= now() - INTERVAL 15 DAY
 
 GROUP BY 
   ps.chain_id,
+  ps.chain_name,
   ps.product_type,
   ps.beefy_key, 
   ps.product_address, 

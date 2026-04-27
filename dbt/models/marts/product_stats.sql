@@ -25,10 +25,11 @@
 {% endif %}
 
 SELECT
-  hs.chain_id,
+  hs.chain_id as chain_id,
+  c.chain_name as chain_name,
   p.product_type,
-  p.beefy_key,
-  hs.product_address,
+  p.beefy_key as beefy_key,
+  hs.product_address as product_address,
   p.display_name,
   p.is_active,
   p.platform_id,
@@ -73,6 +74,8 @@ SELECT
   hs.harvest_txn_count,
   hs.harvest_vault_count
 FROM {{ ref('int_product_stats__unified_hourly') }} hs FINAL
+INNER JOIN {{ ref('chain') }} c
+  ON hs.chain_id = c.chain_id
 INNER JOIN {{ ref('product') }} p
   ON hs.chain_id = p.chain_id
   AND hs.product_address = p.product_address

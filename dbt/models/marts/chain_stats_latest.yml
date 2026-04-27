@@ -1,0 +1,186 @@
+version: 2
+
+models:
+  - name: chain_stats_latest
+    description: "Latest chain stats by chain_id. Contains the most recent snapshot for each chain from the chain_stats timeseries table."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+    columns:
+      - name: chain_id
+        description: "Chain ID (foreign key to chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: chain_name
+        description: "Human-readable chain name"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy-specific chain identifier (foreign key to chain.beefy_key)"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_enabled
+        description: "Whether the chain is currently enabled on Beefy"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: date_hour
+        description: "Date hour of the latest snapshot for this chain"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: tvl_usd
+        description: "Total value locked in USD across all product types (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: vault_tvl_usd
+        description: "TVL attributed to vault assets in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: clm_tvl_usd
+        description: "TVL attributed to CLM assets in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: avg_beefy_performance_fee
+        description: "Average Beefy performance fee across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_lp_fee
+        description: "Average LP fee across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_compoundings_per_year
+        description: "Average compoundings per year across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_apy
+        description: "Average APY across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_total_apy
+        description: "Average total APY across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_vault_apr
+        description: "Average vault APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_trading_apr
+        description: "Average trading APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_clm_apr
+        description: "Average CLM APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_reward_pool_apr
+        description: "Average reward pool APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_reward_pool_trading_apr
+        description: "Average reward pool trading APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_vault_apy
+        description: "Average vault APY across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_liquid_staking_apr
+        description: "Average liquid staking APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_composable_pool_apr
+        description: "Average composable pool APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_merkl_apr
+        description: "Average Merkl APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: avg_linea_ignition_apr
+        description: "Average Linea Ignition APR across all products (latest value)"
+        data_type: Nullable(Float64)
+      - name: beefy_performance_fee_quantiles
+        description: "Quantiles array for Beefy performance fee: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: lp_fee_quantiles
+        description: "Quantiles array for LP fee: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: compoundings_per_year_quantiles
+        description: "Quantiles array for compoundings per year: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: apy_quantiles
+        description: "Quantiles array for APY: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: total_apy_quantiles
+        description: "Quantiles array for total APY: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: vault_apr_quantiles
+        description: "Quantiles array for vault APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: trading_apr_quantiles
+        description: "Quantiles array for trading APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: clm_apr_quantiles
+        description: "Quantiles array for CLM APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: reward_pool_apr_quantiles
+        description: "Quantiles array for reward pool APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: reward_pool_trading_apr_quantiles
+        description: "Quantiles array for reward pool trading APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: vault_apy_quantiles
+        description: "Quantiles array for vault APY: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: liquid_staking_apr_quantiles
+        description: "Quantiles array for liquid staking APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: composable_pool_apr_quantiles
+        description: "Quantiles array for composable pool APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: merkl_apr_quantiles
+        description: "Quantiles array for Merkl APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: linea_ignition_apr_quantiles
+        description: "Quantiles array for Linea Ignition APR: [min, p25, p50, p75, max] (latest value)"
+        data_type: Array(Float64)
+      - name: underlying_amount_compounded_usd
+        description: "Total underlying amount compounded in USD across all products (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_call_fee
+        description: "Sum of harvest call fees in native token (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_call_fee_usd
+        description: "Sum of harvest call fees in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: gas_fee
+        description: "Sum of gas fees in native token (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: gas_fee_usd
+        description: "Sum of gas fees in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: platform_fee
+        description: "Sum of platform fees in native token (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: platform_fee_usd
+        description: "Sum of platform fees in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: strategist_fee
+        description: "Sum of strategist fees in native token (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: strategist_fee_usd
+        description: "Sum of strategist fees in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_amount
+        description: "Sum of harvest amounts in want token (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_amount_usd
+        description: "Sum of harvest amounts in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: avg_native_price
+        description: "Average native price across products with harvests (latest value)"
+        data_type: Nullable(Float64)
+      - name: harvest_txn_count
+        description: "Total count of distinct harvest transactions (latest value)"
+        data_type: Nullable(UInt64)
+      - name: harvest_vault_count
+        description: "Number of vaults with at least one harvest in the hour (latest value)"
+        data_type: Nullable(UInt64)
