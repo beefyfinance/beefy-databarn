@@ -7,13 +7,13 @@
 
 SELECT
   ps.chain_id,
-  ps.chain_name,
-  ps.product_type,
-  ps.beefy_key,
   ps.product_address,
-  ps.display_name,
-  ps.is_active,
-  ps.platform_id,
+  argMax(ps.product_type, ps.date_hour) as product_type,
+  argMax(ps.beefy_key, ps.date_hour) as beefy_key,
+  argMax(ps.display_name, ps.date_hour) as display_name,
+  argMax(ps.platform_id, ps.date_hour) as platform_id,
+  argMax(ps.chain_name, ps.date_hour) as chain_name,
+  argMax(ps.is_active, ps.date_hour) as is_active,
   argMax(ps.date_hour, ps.date_hour) as date_hour,
   argMax(ps.tvl_usd, ps.date_hour) as tvl_usd,
   argMax(ps.apy, ps.date_hour) as apy,
@@ -48,10 +48,4 @@ WHERE ps.date_hour >= now() - INTERVAL 15 DAY
 
 GROUP BY 
   ps.chain_id,
-  ps.chain_name,
-  ps.product_type,
-  ps.beefy_key, 
-  ps.product_address, 
-  ps.display_name, 
-  ps.is_active, 
-  ps.platform_id
+  ps.product_address
