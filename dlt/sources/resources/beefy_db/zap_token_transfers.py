@@ -3,6 +3,7 @@ import dlt
 from dlt.destinations.adapters import clickhouse_adapter
 from dlt.sources.sql_database import sql_table
 from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.sql_database import hex_encode_bytea_columns
 
 async def get_beefy_db_zap_token_transfers_resource() -> Any:
 
@@ -73,6 +74,7 @@ async def get_beefy_db_zap_token_transfers_resource() -> Any:
         chunk_size=BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
         reflection_level="full_with_precision",
+        query_adapter_callback=hex_encode_bytea_columns({"token_address"}),
         primary_key=pk,
         write_disposition="append",
         incremental=dlt.sources.incremental(
