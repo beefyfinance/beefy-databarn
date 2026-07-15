@@ -1,6 +1,6 @@
 from typing import Any
-from dlt.sources.sql_database import sql_table
 from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.sql_database import try_sql_table
 
 def get_beefy_db_other_tables_resources() -> list[Any]:
     
@@ -34,7 +34,7 @@ def get_beefy_db_other_tables_resources() -> list[Any]:
     resources = []
     for table_name, columns in tables.items():
         primary_key_columns = [column["name"] for column in columns if "primary_key" in column and column["primary_key"]]
-        resource = sql_table(
+        resource = try_sql_table(
             credentials=db_url,
             table=table_name,
             backend="sqlalchemy",
@@ -44,6 +44,8 @@ def get_beefy_db_other_tables_resources() -> list[Any]:
             primary_key=primary_key_columns,
             write_disposition={"disposition": "merge", "strategy": "delete-insert"},
         )
+        if resource is None:
+            continue
         resource.apply_hints(columns=columns)
         resources.append(resource)
 

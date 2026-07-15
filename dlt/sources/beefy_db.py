@@ -1,9 +1,12 @@
 # Apply ReplacingMergeTree support for ClickHouse (dlt PR #3366) before any adapter use
 import lib.dlt_clickhouse_replacing_merge_tree_patch  # noqa: F401
 
-import logging
-from typing import Any
+from typing import Any, Awaitable, Callable, Optional
+
 import dlt
+from sqlalchemy.exc import NoSuchTableError
+
+from lib.sql_database import log_missing_table
 from .resources.beefy_db.harvests import get_beefy_db_harvests_resource
 from .resources.beefy_db.prices import get_beefy_db_prices_resource
 from .resources.beefy_db.tvls import get_beefy_db_tvls_resource
@@ -13,21 +16,35 @@ from .resources.beefy_db.tables import get_beefy_db_other_tables_resources
 from .resources.beefy_db.zap_events import get_beefy_db_zap_events_resource
 from .resources.beefy_db.zap_token_transfers import get_beefy_db_zap_token_transfers_resource
 
-logger = logging.getLogger(__name__)
+
+async def _optional_resource(
+    name: str, factory: Callable[[], Awaitable[Any]]
+) -> Optional[Any]:
+    # Soft-skip missing Postgres tables so other resources still load.
+    # Omitting the resource keeps its dlt incremental state unchanged for the next run.
+    try:
+        return await factory()
+    except NoSuchTableError as e:
+        log_missing_table(name, e)
+        return None
+
 
 @dlt.source(name="beefy_db", parallelized=True)
 async def beefy_db_source() -> Any:
     """Expose Beefy DB resources for use by dlt pipelines."""
 
-    resources = [
-        await get_beefy_db_harvests_resource(),
-        await get_beefy_db_prices_resource(),
-        await get_beefy_db_tvls_resource(),
-        await get_beefy_db_apys_resource(),
-        await get_beefy_db_tvl_by_chain_resource(),
-        await get_beefy_db_zap_events_resource(),
-        await get_beefy_db_zap_token_transfers_resource(),
+    candidates = [
+        await _optional_resource("harvests", get_beefy_db_harvests_resource),
+        await _optional_resource("prices", get_beefy_db_prices_resource),
+        await _optional_resource("tvls", get_beefy_db_tvls_resource),
+        await _optional_resource("apys", get_beefy_db_apys_resource),
+        await _optional_resource("tvl_by_chain", get_beefy_db_tvl_by_chain_resource),
+        await _optional_resource("zap_events", get_beefy_db_zap_events_resource),
+        await _optional_resource(
+            "zap_token_transfers", get_beefy_db_zap_token_transfers_resource
+        ),
     ]
+    resources = [r for r in candidates if r is not None]
     resources.extend(get_beefy_db_other_tables_resources())
 
     return resources
