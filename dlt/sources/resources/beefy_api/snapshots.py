@@ -1,13 +1,14 @@
-
 from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict
+
 import dlt
-from lib.fetch import fetch_url_json_dict
 from lib.convert import get_int_like
+from lib.fetch import fetch_url_json_dict
 
 
-async def get_beefy_api_snapshots_resources() -> Any:
+async def get_beefy_api_apy_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/apy")
 
     @dlt.resource(
         name="apy",
@@ -18,7 +19,6 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_apy() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/apy")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for vault_id, vault_apy in payload.items():
@@ -29,6 +29,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                 "date_time": now,
             }
 
+    return beefy_apy()
+
+
+async def get_beefy_api_lps_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/lps")
+
     @dlt.resource(
         name="lps",
         primary_key=["etag", "vault_id"],
@@ -38,7 +44,6 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_lps() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/lps")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for vault_id, vault_lps in payload.items():
@@ -49,6 +54,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                 "date_time": now,
             }
 
+    return beefy_lps()
+
+
+async def get_beefy_api_prices_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/prices")
+
     @dlt.resource(
         name="prices",
         primary_key=["etag", "token_symbol"],
@@ -58,7 +69,6 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_prices() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/prices")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for token_symbol, price in payload.items():
@@ -68,6 +78,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                 "price": str(price),
                 "date_time": now,
             }
+
+    return beefy_prices()
+
+
+async def get_beefy_api_lps_breakdown_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/lps/breakdown")
 
     @dlt.resource(
         name="lps_breakdown",
@@ -81,18 +97,21 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_lps_breakdown() -> AsyncIterator[Dict[str, Any]]:
-        import json
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/lps/breakdown")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for vault_id, breakdown in payload.items():
-            # Process breakdown: stringify arrays/dicts as JSON, convert other values to strings
             yield {
                 "etag": etag_value,
                 "vault_id": str(vault_id),
                 "date_time": now,
                 **breakdown,
             }
+
+    return beefy_lps_breakdown()
+
+
+async def get_beefy_api_apy_breakdown_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/apy/breakdown")
 
     @dlt.resource(
         name="apy_breakdown",
@@ -111,11 +130,9 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_apy_breakdown() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/apy/breakdown")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for vault_id, breakdown in payload.items():
-            # stringify the breakdown
             breakdown = {k: str(v) for k, v in breakdown.items()}
             yield {
                 "etag": etag_value,
@@ -123,6 +140,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                 "date_time": now,
                 **breakdown,
             }
+
+    return beefy_apy_breakdown()
+
+
+async def get_beefy_api_tvl_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/tvl")
 
     @dlt.resource(
         name="tvl",
@@ -133,7 +156,6 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_tvl() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/tvl")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for network_id, vaults in payload.items():
@@ -146,6 +168,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                     "date_time": now,
                 }
 
+    return beefy_tvl()
+
+
+async def get_beefy_api_mootokenprices_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/mootokenprices")
+
     @dlt.resource(
         name="mootokenprices",
         primary_key=["etag", "chain_id", "moo_token_symbol"],
@@ -155,7 +183,6 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_mootokenprices() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/mootokenprices")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for chain_id, vaults in payload.items():
@@ -168,6 +195,12 @@ async def get_beefy_api_snapshots_resources() -> Any:
                     "date_time": now,
                 }
 
+    return beefy_mootokenprices()
+
+
+async def get_beefy_api_treasury_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/treasury")
+
     @dlt.resource(
         name="treasury",
         primary_key=["etag", "chain_id", "wallet_address", "token_address"],
@@ -179,14 +212,13 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_treasury() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/treasury")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for chain_id, wallets in payload.items():
             for wallet_address, wallet_data in wallets.items():
                 for token_address_or_native, token_data in wallet_data.get("balances", {}).items():
-                    token_data = { k: str(v) for k, v in token_data.items() if v is not None }
-                    token_data["usdValue"] = get_int_like(token_data, "usdValue")
+                    row = {k: str(v) for k, v in token_data.items() if v is not None}
+                    row["usdValue"] = get_int_like(row, "usdValue")
                     yield {
                         "etag": etag_value,
                         "chain_id": str(chain_id),
@@ -194,8 +226,14 @@ async def get_beefy_api_snapshots_resources() -> Any:
                         "wallet_name": wallet_data.get("name", ""),
                         "token_address": str(token_address_or_native),
                         "date_time": now,
-                        **token_data,
+                        **row,
                     }
+
+    return beefy_treasury()
+
+
+async def get_beefy_api_treasury_mm_resource() -> Any:
+    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/treasury/mm")
 
     @dlt.resource(
         name="treasury_mm",
@@ -208,22 +246,20 @@ async def get_beefy_api_snapshots_resources() -> Any:
         },
     )
     async def beefy_treasury_mm() -> AsyncIterator[Dict[str, Any]]:
-        payload, etag = await fetch_url_json_dict("https://api.beefy.finance/treasury/mm")
         now = datetime.now(timezone.utc)
         etag_value = etag or now.isoformat()
         for mm_id, exchanges in payload.items():
             for exchange_name, tokens in exchanges.items():
                 for token_symbol, token_data in tokens.items():
-                    # Normalize field names and stringify values
-                    token_data = {k: str(v) for k, v in token_data.items() if v is not None}
-                    token_data["usdValue"] = get_int_like(token_data, "usdValue")
+                    row = {k: str(v) for k, v in token_data.items() if v is not None}
+                    row["usdValue"] = get_int_like(row, "usdValue")
                     yield {
                         "etag": etag_value,
                         "mm_id": str(mm_id),
                         "exchange_name": str(exchange_name),
                         "token_symbol": str(token_symbol),
                         "date_time": now,
-                        **token_data,
+                        **row,
                     }
 
-    return [beefy_apy(), beefy_lps(), beefy_prices(), beefy_lps_breakdown(), beefy_apy_breakdown(), beefy_tvl(), beefy_mootokenprices(), beefy_treasury(), beefy_treasury_mm()]
+    return beefy_treasury_mm()
