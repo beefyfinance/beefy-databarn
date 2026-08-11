@@ -1,0 +1,226 @@
+version: 2
+
+models:
+  - name: zap_activity
+    description: >
+      One row per source zap transaction (src_chain_id, src_txn_hash).
+      Token legs are pivoted into parallel arrays for input, output, zap_fee
+      (source zap_type=beefy_fee), and refund, each with USD value arrays and
+      scalar USD rollups. Multi-event txns are merged (USD summed).
+      Net flow (signed_usd / flow_direction) uses action deposit=inflow,
+      withdrawal=outflow, else other.
+    config:
+      meta:
+        primary_key: ["src_chain_id", "src_txn_hash"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - src_chain_id
+              - src_txn_hash
+    columns:
+      - name: src_chain_id
+        description: "Source chain ID where the zap transaction occurred"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: src_chain_name
+        description: "Human-readable name of the source chain"
+        data_type: String
+      - name: src_chain_beefy_key
+        description: "Beefy key of the source chain"
+        data_type: String
+      - name: src_chain_beefy_enabled
+        description: "Whether the source chain is enabled in Beefy"
+        data_type: Bool
+      - name: src_txn_hash
+        description: "Source transaction hash"
+        data_type: String
+        tests:
+          - not_null
+      - name: src_block_number
+        description: "Block number of the source transaction"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: src_txn_idx
+        description: "Transaction index within the source block"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: src_txn_timestamp
+        description: "Timestamp of the source transaction"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: src_txn_date
+        description: "Calendar date of the source transaction (UTC)"
+        data_type: Date
+        tests:
+          - not_null
+      - name: dst_chain_id
+        description: "Destination chain ID; defaults to src_chain_id when not provided"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: dst_chain_name
+        description: "Human-readable name of the destination chain"
+        data_type: String
+      - name: dst_chain_beefy_key
+        description: "Beefy key of the destination chain"
+        data_type: String
+      - name: dst_chain_beefy_enabled
+        description: "Whether the destination chain is enabled in Beefy"
+        data_type: Bool
+      - name: is_same_chain_zap
+        description: "True when destination equals source (including when destination was not provided)"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: caller_address
+        description: "Address that initiated the zap"
+        data_type: String
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('account')
+                field: address
+      - name: caller_labels
+        description: "Account labels for the caller"
+        data_type: Array(String)
+        tests:
+          - not_null
+      - name: caller_is_contract
+        description: "Whether the caller address is a known contract"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: recipient_address
+        description: "Address that received the zap"
+        data_type: String
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('account')
+                field: address
+      - name: recipient_labels
+        description: "Account labels for the recipient"
+        data_type: Array(String)
+        tests:
+          - not_null
+      - name: recipient_is_contract
+        description: "Whether the recipient address is a known contract"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: vault_beefy_key
+        description: "Vault identifier (Beefy key) when applicable"
+        data_type: Nullable(String)
+      - name: action
+        description: "Dominant zap action (anyHeavy across events in the txn)"
+        data_type: Nullable(String)
+      - name: actions
+        description: "Distinct actions across zap events in the txn"
+        data_type: Array(Nullable(String))
+      - name: flow_direction
+        description: "inflow (deposit), outflow (withdrawal), or other"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['inflow', 'outflow', 'other']
+      - name: total_usd
+        description: "Sum of per-event total_usd for the txn"
+        data_type: Decimal256(20)
+      - name: signed_usd
+        description: "Sum of signed event USD (+deposit, -withdrawal, 0 otherwise)"
+        data_type: Decimal256(20)
+      - name: input_usd
+        description: "Sum of input-leg transfer USD values"
+        data_type: Decimal256(20)
+      - name: output_usd
+        description: "Sum of output-leg transfer USD values"
+        data_type: Decimal256(20)
+      - name: zap_fee_usd
+        description: "Sum of zap fee (zap_type=beefy_fee) transfer USD values"
+        data_type: Decimal256(20)
+      - name: refund_usd
+        description: "Sum of refund-leg transfer USD values"
+        data_type: Decimal256(20)
+      - name: input_token_addresses
+        description: "Input token addresses (parallel with other input_* arrays)"
+        data_type: Array(String)
+      - name: input_token_symbols
+        description: "Input token symbols / oracle ids"
+        data_type: Array(String)
+      - name: input_token_amounts
+        description: "Input token amounts"
+        data_type: Array(Decimal256(20))
+      - name: input_usd_values
+        description: "USD value per input transfer (parallel array)"
+        data_type: Array(Decimal256(20))
+      - name: output_token_addresses
+        description: "Output token addresses"
+        data_type: Array(String)
+      - name: output_token_symbols
+        description: "Output token symbols / oracle ids"
+        data_type: Array(String)
+      - name: output_token_amounts
+        description: "Output token amounts"
+        data_type: Array(Decimal256(20))
+      - name: output_usd_values
+        description: "USD value per output transfer (parallel array)"
+        data_type: Array(Decimal256(20))
+      - name: zap_fee_token_addresses
+        description: "Zap fee token addresses (from zap_type=beefy_fee)"
+        data_type: Array(String)
+      - name: zap_fee_token_symbols
+        description: "Zap fee token symbols / oracle ids"
+        data_type: Array(String)
+      - name: zap_fee_token_amounts
+        description: "Zap fee token amounts"
+        data_type: Array(Decimal256(20))
+      - name: zap_fee_usd_values
+        description: "USD value per zap fee transfer (parallel array)"
+        data_type: Array(Decimal256(20))
+      - name: refund_token_addresses
+        description: "Refund token addresses"
+        data_type: Array(String)
+      - name: refund_token_symbols
+        description: "Refund token symbols / oracle ids"
+        data_type: Array(String)
+      - name: refund_token_amounts
+        description: "Refund token amounts"
+        data_type: Array(Decimal256(20))
+      - name: refund_usd_values
+        description: "USD value per refund transfer (parallel array)"
+        data_type: Array(Decimal256(20))
+      - name: success
+        description: "Whether the parent transaction succeeded"
+        data_type: Bool
+      - name: gas_used
+        description: "Gas used by the parent transaction"
+        data_type: Int64
+      - name: native_price
+        description: "Native token USD price at transaction time"
+        data_type: Decimal256(20)
+      - name: from_address
+        description: "Parent transaction sender address"
+        data_type: String
+      - name: to_address
+        description: "Parent transaction recipient address"
+        data_type: String
+      - name: cctp_hash
+        description: "CCTP message hash when applicable"
+        data_type: Nullable(String)
+      - name: swap_source
+        description: "Swap source identifiers"
+        data_type: Array(String)
+      - name: event_count
+        description: "Number of distinct zap events merged into this txn row"
+        data_type: UInt64
+        tests:
+          - not_null

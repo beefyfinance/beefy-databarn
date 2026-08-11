@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__zap_failures
+    description: "Staging model for failed zap transaction attempts from dlt beefy_db dataset"
+    columns:
+      - name: network_id
+        description: "Network ID where the failed zap was attempted (references chain.network_id)"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number of the failed transaction"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: txn_hash
+        description: "Failed transaction hash"
+        data_type: String
+        tests:
+          - not_null
+      - name: from_address
+        description: "Address that initiated the failed zap"
+        data_type: String
+        tests:
+          - not_null
+      - name: input
+        description: "Transaction input calldata (hex-encoded)"
+        data_type: String
+        tests:
+          - not_null
+      - name: created_at
+        description: "When the record was created"
+        data_type: DateTime64(6, 'UTC')
+        tests:
+          - not_null

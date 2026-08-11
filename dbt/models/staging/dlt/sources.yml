@@ -66,10 +66,14 @@ sources:
         description: "Vault TVL time series from Beefy database"
       - name: beefy_db___tvl_by_chain
         description: "Chain-level TVL time series from Beefy database"
-      - name: beefy_db___zap_events
-        description: "Zap (cross-chain bridge) events from Beefy database"
-      - name: beefy_db___zap_token_transfers
-        description: "Zap token transfer rows (inputs/outputs/refunds per zap event) from Beefy database"
+      - name: beefy_db___zap_records
+        description: "Zap event records from Beefy database"
+      - name: beefy_db___zap_parent_transactions
+        description: "Parent transactions for zap events from Beefy database"
+      - name: beefy_db___zap_token_transfers_v2
+        description: "Zap token transfer rows v2 (inputs/outputs/refunds per zap event) from Beefy database"
+      - name: beefy_db___zap_failures
+        description: "Failed zap transaction attempts from Beefy database"
       # github_files tables
       - name: github_files___beefy_platforms
         description: "Beefy platform configurations from GitHub files"

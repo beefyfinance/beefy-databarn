@@ -13,8 +13,14 @@ from .resources.beefy_db.tvls import get_beefy_db_tvls_resource
 from .resources.beefy_db.apys import get_beefy_db_apys_resource
 from .resources.beefy_db.tvl_by_chain import get_beefy_db_tvl_by_chain_resource
 from .resources.beefy_db.tables import get_beefy_db_other_tables_resources
-from .resources.beefy_db.zap_events import get_beefy_db_zap_events_resource
-from .resources.beefy_db.zap_token_transfers import get_beefy_db_zap_token_transfers_resource
+from .resources.beefy_db.zap_records import get_beefy_db_zap_records_resource
+from .resources.beefy_db.zap_parent_transactions import (
+    get_beefy_db_zap_parent_transactions_resource,
+)
+from .resources.beefy_db.zap_token_transfers_v2 import (
+    get_beefy_db_zap_token_transfers_v2_resource,
+)
+from .resources.beefy_db.zap_failures import get_beefy_db_zap_failures_resource
 
 
 async def _optional_resource(
@@ -39,10 +45,16 @@ async def beefy_db_source() -> Any:
         await _optional_resource("tvls", get_beefy_db_tvls_resource),
         await _optional_resource("apys", get_beefy_db_apys_resource),
         await _optional_resource("tvl_by_chain", get_beefy_db_tvl_by_chain_resource),
-        await _optional_resource("zap_events", get_beefy_db_zap_events_resource),
+        await _optional_resource("zap_records", get_beefy_db_zap_records_resource),
         await _optional_resource(
-            "zap_token_transfers", get_beefy_db_zap_token_transfers_resource
+            "zap_parent_transactions",
+            get_beefy_db_zap_parent_transactions_resource,
         ),
+        await _optional_resource(
+            "zap_token_transfers_v2",
+            get_beefy_db_zap_token_transfers_v2_resource,
+        ),
+        await _optional_resource("zap_failures", get_beefy_db_zap_failures_resource),
     ]
     resources = [r for r in candidates if r is not None]
     resources.extend(get_beefy_db_other_tables_resources())

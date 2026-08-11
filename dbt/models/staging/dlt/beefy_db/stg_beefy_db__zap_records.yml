@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__zap_records
+    description: "Staging model for zap event records from dlt beefy_db dataset"
+    columns:
+      - name: network_id
+        description: "Network ID where the zap occurred (references chain.network_id)"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number of the zap transaction"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Event index within the transaction"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: txn_hash
+        description: "Transaction hash"
+        data_type: String
+        tests:
+          - not_null
+      - name: caller_address
+        description: "Address that initiated the zap"
+        data_type: String
+        tests:
+          - not_null
+      - name: recipient_address
+        description: "Address that received the zap"
+        data_type: String
+        tests:
+          - not_null
+      - name: source_network_id
+        description: "Source network ID when the zap is cross-chain"
+        data_type: Nullable(Int64)
+      - name: target_network_id
+        description: "Target network ID when the zap is cross-chain"
+        data_type: Nullable(Int64)
+      - name: vault_beefy_key
+        description: "Vault identifier (Beefy key) when applicable"
+        data_type: Nullable(String)
+      - name: action
+        description: "Zap action type (e.g. deposit, withdraw)"
+        data_type: Nullable(String)
+      - name: total_usd
+        description: "Total USD value of the zap"
+        data_type: Decimal256(20)
+      - name: cctp_hash
+        description: "CCTP message hash when applicable"
+        data_type: Nullable(String)
+      - name: swap_source
+        description: "Swap source identifiers"
+        data_type: Array(String)
+      - name: created_at
+        description: "When the record was created"
+        data_type: DateTime64(6, 'UTC')
+        tests:
+          - not_null
+      - name: updated_at
+        description: "When the record was last updated"
+        data_type: DateTime64(6, 'UTC')
+        tests:
+          - not_null

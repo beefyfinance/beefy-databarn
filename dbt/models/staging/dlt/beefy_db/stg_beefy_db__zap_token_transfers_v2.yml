@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__zap_token_transfers_v2
+    description: "Staging model for zap token transfers v2 from dlt beefy_db dataset"
+    columns:
+      - name: network_id
+        description: "Network ID where the transfer occurred (references chain.network_id)"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number of the transfer"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: txn_idx
+        description: "Transaction index within the block"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: parent_event_idx
+        description: "Parent zap record event index"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: event_idx
+        description: "Transfer event index within the transaction"
+        data_type: Int32
+        tests:
+          - not_null
+      - name: zap_type
+        description: "Transfer role within the zap (e.g. input, output, refund)"
+        data_type: String
+        tests:
+          - not_null
+      - name: token_id
+        description: "Price oracle token ID when priced"
+        data_type: Nullable(Int64)
+      - name: token_amount
+        description: "Token amount transferred"
+        data_type: Decimal256(20)
+        tests:
+          - not_null
+      - name: usd_value
+        description: "USD value of this token transfer"
+        data_type: Decimal256(20)
+      - name: token_address
+        description: "Token contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: created_at
+        description: "When the record was created"
+        data_type: DateTime64(6, 'UTC')
+        tests:
+          - not_null
+      - name: updated_at
+        description: "When the record was last updated"
+        data_type: DateTime64(6, 'UTC')
+        tests:
+          - not_null

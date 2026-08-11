@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: account
-    description: "Dimension table for account (address) reference data. Provides a unified reference for all addresses in the system with labels identifying their roles (products, strategies, tokens, smart contracts)."
+    description: "Dimension table for account (address) reference data. Provides a unified reference for all addresses in the system with labels identifying their roles (products, strategies, tokens, smart contracts). Also includes addresses observed in zap records, parent transactions, token transfers, and failures."
     config:
       contract:
         enforced: true
@@ -24,7 +24,7 @@ models:
           - not_null
           - unique
       - name: labels
-        description: "Array of labels identifying the address type(s). Possible values include: clm_manager, clm_strategy, classic_vault, classic_vault_strategy, classic_boost, reward_pool, token, smart_contract, zero_address. An address can have multiple labels."
+        description: "Array of labels identifying the address type(s). Possible values include: clm_manager, clm_strategy, classic_vault, classic_vault_strategy, classic_boost, reward_pool, token, erc20, smart_contract, zero_address. An address can have multiple labels. Zap participant EOAs typically have an empty labels array."
         data_type: Array(String)
         tests:
           - not_null

@@ -255,6 +255,11 @@ gf: grafana # alias for grafana
 grafana:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
+		stop) \
+			echo "Stopping Grafana..."; \
+			$(DC) stop grafana; \
+			echo "✓ Grafana stopped" \
+			;; \
 		restart) \
 			echo "Re-restarting Grafana (restarting service to reload configs)..."; \
 			$(DC) restart grafana; \
@@ -262,11 +267,12 @@ grafana:
 			;; \
 		help|"") \
 			echo "Grafana:"; \
+			echo "  make [grafana|gf] stop        Stop Grafana"; \
 			echo "  make [grafana|gf] restart     Re-restart Grafana (reload configs)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [grafana|gf] [restart|help]"; \
+			echo "Usage: make [grafana|gf] [stop|restart|help]"; \
 			exit 1 \
 			;; \
 	esac
@@ -277,6 +283,11 @@ clickhouse:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	USER="$(word 3,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
+		stop) \
+			echo "Stopping ClickHouse..."; \
+			$(DC) stop clickhouse; \
+			echo "✓ ClickHouse stopped" \
+			;; \
 		restart) \
 			echo "Restarting ClickHouse..."; \
 			$(DC) restart clickhouse; \
@@ -293,12 +304,13 @@ clickhouse:
 			;; \
 		help|"") \
 			echo "ClickHouse:"; \
+			echo "  make [clickhouse|ch] stop              Stop ClickHouse"; \
 			echo "  make [clickhouse|ch] restart          Re-restart ClickHouse (reload configs)"; \
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [restart|client [user]|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|help]"; \
 			exit 1 \
 			;; \
 	esac
@@ -307,6 +319,11 @@ clickhouse:
 superset:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
+		stop) \
+			echo "Stopping Superset..."; \
+			$(DC) stop superset; \
+			echo "✓ Superset stopped" \
+			;; \
 		restart) \
 			echo "Restarting Superset..."; \
 			$(DC) restart superset; \
@@ -327,6 +344,7 @@ superset:
 			;; \
 		help|"") \
 			echo "Superset:"; \
+			echo "  make superset stop             Stop Superset"; \
 			echo "  make superset restart          Restart Superset (reload configs)"; \
 			echo "  make superset build            Build Superset image"; \
 			echo "  make superset logs            View Superset logs"; \
@@ -334,7 +352,7 @@ superset:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make superset [restart|build|logs|sync-datasources|help]"; \
+			echo "Usage: make superset [stop|restart|build|logs|sync-datasources|help]"; \
 			exit 1 \
 			;; \
 	esac

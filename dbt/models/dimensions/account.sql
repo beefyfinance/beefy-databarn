@@ -202,6 +202,73 @@ activity_addresses AS (
     AND act.address != ''
 ),
 
+zap_addresses AS (
+  SELECT
+    network_id as chain_id,
+    caller_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM {{ ref('stg_beefy_db__zap_records') }}
+  WHERE caller_address IS NOT NULL
+    AND caller_address != ''
+
+  UNION ALL
+
+  SELECT
+    network_id as chain_id,
+    recipient_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM {{ ref('stg_beefy_db__zap_records') }}
+  WHERE recipient_address IS NOT NULL
+    AND recipient_address != ''
+
+  UNION ALL
+
+  SELECT
+    network_id as chain_id,
+    from_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM {{ ref('stg_beefy_db__zap_parent_transactions') }}
+  WHERE from_address IS NOT NULL
+    AND from_address != ''
+
+  UNION ALL
+
+  SELECT
+    network_id as chain_id,
+    to_address as address,
+    'smart_contract' as label,
+    true as is_contract
+  FROM {{ ref('stg_beefy_db__zap_parent_transactions') }}
+  WHERE to_address IS NOT NULL
+    AND to_address != ''
+
+  UNION ALL
+
+  SELECT
+    network_id as chain_id,
+    token_address as address,
+    'erc20' as label,
+    true as is_contract
+  FROM {{ ref('stg_beefy_db__zap_token_transfers_v2') }}
+  WHERE token_address IS NOT NULL
+    AND token_address != ''
+    AND token_address != '0x0000000000000000000000000000000000000000'
+
+  UNION ALL
+
+  SELECT
+    network_id as chain_id,
+    from_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM {{ ref('stg_beefy_db__zap_failures') }}
+  WHERE from_address IS NOT NULL
+    AND from_address != ''
+),
+
 all_addresses AS (
   SELECT chain_id, address, label, is_contract FROM product_addresses
   UNION ALL
@@ -216,6 +283,8 @@ all_addresses AS (
   SELECT chain_id, address, label, is_contract FROM special_addresses
   UNION ALL
   SELECT chain_id, address, label, is_contract FROM activity_addresses
+  UNION ALL
+  SELECT chain_id, address, label, is_contract FROM zap_addresses
 ),
 
 addresses_aggregated AS (

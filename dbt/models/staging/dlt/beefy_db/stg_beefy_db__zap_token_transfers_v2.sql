@@ -15,5 +15,6 @@ SELECT
   toDecimal256(ifNull({{ to_decimal('t.token_amount') }}, 0), 20) as token_amount,
   toDecimal256(ifNull({{ to_decimal('t.usd_value') }}, 0), 20) as usd_value,
   cast({{ evm_address('t.token_address') }} as String) as token_address,
+  cast(t.created_at as DateTime('UTC')) as created_at,
   cast(t.updated_at as DateTime('UTC')) as updated_at
-FROM {{ source('dlt', 'beefy_db___zap_token_transfers') }} t FINAL
+FROM {{ source('dlt', 'beefy_db___zap_token_transfers_v2') }} t

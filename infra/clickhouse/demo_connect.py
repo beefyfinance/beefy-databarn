@@ -29,6 +29,6 @@ client = clickhouse_connect.get_client(
 )
 
 start = time.perf_counter()
-result = client.query('SELECT count(*) FROM analytics.zap_events')
+result = client.query('SELECT count(*) FROM analytics.zap_activity')
 elapsed = time.perf_counter() - start
 print(f"Query took {elapsed:.3f}s, result rows: {result.result_rows}")
