@@ -20,7 +20,6 @@ from .resources.beefy_db.zap_parent_transactions import (
 from .resources.beefy_db.zap_token_transfers_v2 import (
     get_beefy_db_zap_token_transfers_v2_resource,
 )
-from .resources.beefy_db.zap_failures import get_beefy_db_zap_failures_resource
 
 
 async def _optional_resource(
@@ -54,7 +53,6 @@ async def beefy_db_source() -> Any:
             "zap_token_transfers_v2",
             get_beefy_db_zap_token_transfers_v2_resource,
         ),
-        await _optional_resource("zap_failures", get_beefy_db_zap_failures_resource),
     ]
     resources = [r for r in candidates if r is not None]
     resources.extend(get_beefy_db_other_tables_resources())

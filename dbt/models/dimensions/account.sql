@@ -256,17 +256,6 @@ zap_addresses AS (
   WHERE token_address IS NOT NULL
     AND token_address != ''
     AND token_address != '0x0000000000000000000000000000000000000000'
-
-  UNION ALL
-
-  SELECT
-    network_id as chain_id,
-    from_address as address,
-    CAST(NULL as Nullable(String)) as label,
-    false as is_contract
-  FROM {{ ref('stg_beefy_db__zap_failures') }}
-  WHERE from_address IS NOT NULL
-    AND from_address != ''
 ),
 
 all_addresses AS (
