@@ -3,7 +3,9 @@ version: 2
 models:
   - name: zap_activity
     description: >
-      One row per source zap transaction (src_chain_id, src_txn_hash).
+      One row per source Beefy vault zap transaction (src_chain_id, src_txn_hash).
+      Restricted to rows with vault_beefy_key set (Beefy product zaps); null-vault
+      Zap Router calls from other protocols are excluded.
       Token legs are pivoted into parallel arrays for input, output, zap_fee
       (source zap_type=beefy_fee), and refund, each with USD value arrays and
       scalar USD rollups. Multi-event txns are merged (USD summed).
@@ -116,8 +118,10 @@ models:
         tests:
           - not_null
       - name: vault_beefy_key
-        description: "Vault identifier (Beefy key) when applicable"
-        data_type: Nullable(String)
+        description: "Beefy vault key for the zap (required; non-Beefy router usage excluded)"
+        data_type: String
+        tests:
+          - not_null
       - name: action
         description: "Dominant zap action (anyHeavy across events in the txn)"
         data_type: Nullable(String)

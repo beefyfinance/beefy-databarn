@@ -10,6 +10,8 @@
 -- One row per source transaction (src_chain_id, src_txn_hash).
 -- Token legs (input / output / zap_fee / refund) are pivoted into parallel arrays.
 -- Multi-event txns are merged: USD summed, context via any/anyHeavy.
+-- Only Beefy vault zaps: vault_beefy_key is set by the indexer for Beefy product
+-- flows. Null-vault rows are third-party protocols calling the Zap Router.
 
 WITH base AS (
   SELECT
@@ -51,6 +53,7 @@ WITH base AS (
     AND r.event_idx = t.parent_event_idx
   LEFT JOIN {{ ref('stg_beefy_db__price_oracles') }} po
     ON toString(t.token_id) = po.id
+  WHERE r.vault_beefy_key is not null
 ),
 
 event_metrics AS (
