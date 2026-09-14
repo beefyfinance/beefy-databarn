@@ -1,3 +1,4 @@
+-- Developer sandbox database. Replace <user> and run as the ClickHouse default admin.
 
 CREATE DATABASE IF NOT EXISTS dev_<user>;
 GRANT SELECT, INSERT, ALTER, CREATE TABLE, DROP TABLE, TRUNCATE, OPTIMIZE

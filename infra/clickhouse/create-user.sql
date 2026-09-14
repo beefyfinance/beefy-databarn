@@ -1,4 +1,4 @@
--- docker exec -it beefy-databarn-clickhouse-1 clickhouse-client 
+-- docker exec -it beefy-databarn-clickhouse-1 clickhouse-client
 
 CREATE DATABASE IF NOT EXISTS <database>;
 

@@ -68,6 +68,9 @@ validate_ip_config API_CLICKHOUSE_ALLOWED_HOST
 validate_password ENVIO_CLICKHOUSE_PASSWORD
 validate_ip_config ENVIO_CLICKHOUSE_ALLOWED_HOST
 
+validate_password ZAPALYTICS_CLICKHOUSE_PASSWORD
+validate_ip_config ZAPALYTICS_CLICKHOUSE_ALLOWED_HOST
+
 echo "Initializing ClickHouse databases..."
 
 clickhouse-client \
@@ -82,12 +85,14 @@ clickhouse-client \
     CREATE DATABASE IF NOT EXISTS envio_poc1;
     CREATE DATABASE IF NOT EXISTS envio_poc2;
     CREATE DATABASE IF NOT EXISTS envio_poc3;
+    CREATE DATABASE IF NOT EXISTS zapalytics;
   "
 
 
 READ_PERM="SELECT"
 WRITE_PERM="INSERT, ALTER, CREATE TABLE, DROP TABLE, TRUNCATE, OPTIMIZE, CREATE DICTIONARY, DROP DICTIONARY"
 RESET_DB_PERM="DROP DATABASE, CREATE DATABASE"
+PROJECT_WRITE_PERM="SELECT, INSERT, CREATE TABLE"
 
 clickhouse-client \
   --user default \
@@ -128,6 +133,11 @@ clickhouse-client \
     ALTER USER envio IDENTIFIED WITH sha256_password BY '${ENVIO_CLICKHOUSE_PASSWORD}';
     ALTER USER envio HOST ${ENVIO_CLICKHOUSE_ALLOWED_HOST};
 
+    -- zapalytics (project ingest)
+    CREATE USER IF NOT EXISTS zapalytics IDENTIFIED WITH sha256_password BY '${ZAPALYTICS_CLICKHOUSE_PASSWORD}';
+    ALTER USER zapalytics IDENTIFIED WITH sha256_password BY '${ZAPALYTICS_CLICKHOUSE_PASSWORD}';
+    ALTER USER zapalytics HOST ${ZAPALYTICS_CLICKHOUSE_ALLOWED_HOST};
+
     -------------------------
     -- Grants (idempotent)
     -------------------------
@@ -137,10 +147,12 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON dlt.*                     FROM dlt;
     REVOKE ALL PRIVILEGES ON dbt.*                     FROM dlt;
     REVOKE ALL PRIVILEGES ON analytics.*               FROM dlt;
+    REVOKE ALL PRIVILEGES ON zapalytics.*              FROM dlt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dlt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dlt.*                      TO dlt;
     GRANT ${READ_PERM}                ON dbt.*                      TO dlt; -- required to update incremental materialized views
     GRANT ${READ_PERM}                ON analytics.*                TO dlt; -- required to update incremental materialized views
+    GRANT ${READ_PERM}                ON zapalytics.*               TO dlt;
 
     -- dbt: R on dlt.*, RW on dbt.* & analytics.*
     REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*     FROM dbt;
@@ -149,6 +161,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON envio_poc1.*             FROM dbt;
     REVOKE ALL PRIVILEGES ON envio_poc2.*             FROM dbt;
     REVOKE ALL PRIVILEGES ON envio_poc3.*             FROM dbt;
+    REVOKE ALL PRIVILEGES ON zapalytics.*             FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dbt;
@@ -157,6 +170,7 @@ clickhouse-client \
     GRANT ${READ_PERM}                ON envio_poc1.*               TO dbt;
     GRANT ${READ_PERM}                ON envio_poc2.*               TO dbt;
     GRANT ${READ_PERM}                ON envio_poc3.*               TO dbt;
+    GRANT ${READ_PERM}                ON zapalytics.*               TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
 
@@ -168,6 +182,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON envio_poc1.*    FROM grafana;
     REVOKE ALL PRIVILEGES ON envio_poc2.*    FROM grafana;
     REVOKE ALL PRIVILEGES ON envio_poc3.*    FROM grafana;
+    REVOKE ALL PRIVILEGES ON zapalytics.*    FROM grafana;
     GRANT ${READ_PERM} ON dlt.*           TO grafana;
     GRANT ${READ_PERM} ON dbt.*           TO grafana;
     GRANT ${READ_PERM} ON analytics.*     TO grafana;
@@ -175,6 +190,7 @@ clickhouse-client \
     GRANT ${READ_PERM} ON envio_poc1.*    TO grafana;
     GRANT ${READ_PERM} ON envio_poc2.*    TO grafana;
     GRANT ${READ_PERM} ON envio_poc3.*    TO grafana;
+    GRANT ${READ_PERM} ON zapalytics.*    TO grafana;
 
     -- superset: R on analytics.*
     REVOKE ALL PRIVILEGES ON dlt.*           FROM superset;
@@ -184,6 +200,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON envio_poc1.*    FROM superset;
     REVOKE ALL PRIVILEGES ON envio_poc2.*    FROM superset;
     REVOKE ALL PRIVILEGES ON envio_poc3.*    FROM superset;
+    REVOKE ALL PRIVILEGES ON zapalytics.*    FROM superset;
     GRANT ${READ_PERM} ON dlt.*        TO superset;
     GRANT ${READ_PERM} ON dbt.*        TO superset;
     GRANT ${READ_PERM} ON analytics.*  TO superset;
@@ -191,6 +208,7 @@ clickhouse-client \
     GRANT ${READ_PERM} ON envio_poc1.* TO superset;
     GRANT ${READ_PERM} ON envio_poc2.* TO superset;
     GRANT ${READ_PERM} ON envio_poc3.* TO superset;
+    GRANT ${READ_PERM} ON zapalytics.* TO superset;
 
     -- api: R on analytics.*
     REVOKE ALL PRIVILEGES ON analytics.*    FROM api;
@@ -200,6 +218,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON envio_poc1.*   FROM api;
     REVOKE ALL PRIVILEGES ON envio_poc2.*   FROM api;
     REVOKE ALL PRIVILEGES ON envio_poc3.*   FROM api;
+    REVOKE ALL PRIVILEGES ON zapalytics.*   FROM api;
     GRANT ${READ_PERM} ON analytics.*    TO api;
     GRANT ${READ_PERM} ON dlt.*          TO api;
     GRANT ${READ_PERM} ON dbt.*          TO api;
@@ -207,6 +226,7 @@ clickhouse-client \
     GRANT ${READ_PERM} ON envio_poc1.*   TO api;
     GRANT ${READ_PERM} ON envio_poc2.*   TO api;
     GRANT ${READ_PERM} ON envio_poc3.*   TO api;
+    GRANT ${READ_PERM} ON zapalytics.*   TO api;
 
     -- envio-sync: R on analytics.*
     REVOKE ALL PRIVILEGES ON envio.*        FROM envio;
@@ -217,6 +237,13 @@ clickhouse-client \
     GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc1.*   TO envio;
     GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc2.*   TO envio;
     GRANT ${READ_PERM}, ${WRITE_PERM}, ${RESET_DB_PERM} ON envio_poc3.*   TO envio;
+
+
+    -- zapalytics: SELECT on analytics.*, INSERT/CREATE TABLE on zapalytics.*
+    REVOKE ALL PRIVILEGES ON analytics.*             FROM zapalytics;
+    REVOKE ALL PRIVILEGES ON zapalytics.*            FROM zapalytics;
+    GRANT ${READ_PERM}            ON analytics.*    TO zapalytics;
+    GRANT ${PROJECT_WRITE_PERM}   ON zapalytics.*   TO zapalytics;
 
     -------------------------------------------
     -- Settings profiles (env-synced)
@@ -261,6 +288,35 @@ clickhouse-client \
             load_balancing = 'random'
         TO envio;
 
+    -- zapalytics: no lightweight deletes, capped write size
+    DROP SETTINGS PROFILE IF EXISTS project_profile;
+    CREATE SETTINGS PROFILE IF NOT EXISTS zapalytics_profile;
+    ALTER  SETTINGS PROFILE zapalytics_profile
+        SETTINGS
+            enable_lightweight_delete = 0
+                MIN 0
+                MAX 0,
+            max_memory_usage = ${ZAPALYTICS_MAX_MEMORY_USAGE:-1000000000}
+                MIN 0
+                MAX ${ZAPALYTICS_MAX_MEMORY_USAGE:-1000000000},
+            max_execution_time = ${ZAPALYTICS_MAX_EXECUTION_TIME:-30}
+                MIN 0
+                MAX ${ZAPALYTICS_MAX_EXECUTION_TIME:-30},
+            max_insert_threads = ${ZAPALYTICS_MAX_INSERT_THREADS:-1}
+                MIN 0
+                MAX ${ZAPALYTICS_MAX_INSERT_THREADS:-1},
+            max_insert_block_size = ${ZAPALYTICS_MAX_INSERT_BLOCK_SIZE:-8192}
+                MIN 1
+                MAX ${ZAPALYTICS_MAX_INSERT_BLOCK_SIZE:-8192},
+            max_partitions_per_insert_block = ${ZAPALYTICS_MAX_PARTITIONS_PER_INSERT_BLOCK:-10}
+                MIN 1
+                MAX ${ZAPALYTICS_MAX_PARTITIONS_PER_INSERT_BLOCK:-10},
+            max_result_rows = ${ZAPALYTICS_MAX_RESULT_ROWS:-100000},
+            max_rows_to_read = ${ZAPALYTICS_MAX_ROWS_TO_READ:-1000000},
+            use_uncompressed_cache = 0,
+            load_balancing = 'random'
+        TO zapalytics;
+
 
     -------------------------------------------
     -- Quotas (same as your XML quotas)
@@ -304,7 +360,20 @@ clickhouse-client \
             read_bytes     = 100000000000000,
             execution_time = 7200
         TO envio;
+
+    DROP QUOTA IF EXISTS project_quota;
+
+    CREATE QUOTA OR REPLACE zapalytics_quota
+        FOR INTERVAL 1 SECOND MAX
+            query_inserts = ${ZAPALYTICS_QUOTA_INSERTS_PER_SECOND:-5},
+            written_bytes  = ${ZAPALYTICS_QUOTA_WRITTEN_BYTES_PER_SECOND:-5242880},
+        FOR INTERVAL 1 HOUR MAX
+            query_inserts = ${ZAPALYTICS_QUOTA_INSERTS_PER_HOUR:-500},
+            written_bytes  = ${ZAPALYTICS_QUOTA_WRITTEN_BYTES_PER_HOUR:-104857600},
+        FOR INTERVAL 1 DAY MAX
+            written_bytes  = ${ZAPALYTICS_QUOTA_WRITTEN_BYTES_PER_DAY:-1073741824}
+        TO zapalytics;
 "
 
-echo "✓ Databases analytics, dbt & dlt initialized"
+echo "✓ Databases analytics, dbt, dlt, envio & zapalytics initialized"
 echo "✓ Users, grants, profiles, quotas reset & synced to env"

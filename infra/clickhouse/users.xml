@@ -38,11 +38,6 @@
         </default>
     </profiles>
 
-    <access_control_improvements>
-        <settings_constraints_replace_previous>true</settings_constraints_replace_previous>
-        <table_engines_require_grant>true</table_engines_require_grant>
-    </access_control_improvements>
-
     <users>
         <default>
             <password from_env="CLICKHOUSE_PASSWORD" replace="1">changeme</password>
