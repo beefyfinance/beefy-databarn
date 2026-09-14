@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: harvests
-    description: "One row per harvest event, joined to product dimension only. No grouping. Includes computed USD columns (fee * native_price, harvest_amount * want_price)."
+    description: "One row per harvest event, joined to product dimension only. No grouping. Includes computed USD columns (fee * native_price, harvest_amount * want_price). Fraxtal platform fees use frxETH price."
     columns:
       - name: txn_timestamp
         description: "Transaction timestamp (UTC)"
@@ -35,7 +35,7 @@ models:
       - name: platform_fee
         description: "Platform fee in native token"
       - name: platform_fee_usd
-        description: "Platform fee in USD"
+        description: "Platform fee in USD (platform_fee * native_price, or frxETH price on Fraxtal)"
       - name: strategist_fee
         description: "Strategist fee in native token"
       - name: strategist_fee_usd

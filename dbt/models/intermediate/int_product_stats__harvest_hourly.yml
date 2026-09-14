@@ -17,7 +17,7 @@ models:
       - name: platform_fee
         description: "Sum of platform fees in native token"
       - name: platform_fee_usd
-        description: "Sum of platform fees in USD"
+        description: "Sum of platform fees in USD (platform_fee * native_price, or frxETH price on Fraxtal)"
       - name: strategist_fee
         description: "Sum of strategist fees in native token"
       - name: strategist_fee_usd
