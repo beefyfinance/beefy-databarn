@@ -30,6 +30,13 @@ models:
         description: "Call fee in USD (call_fee * native_price)"
       - name: gas_fee
         description: "Gas fee in native token"
+        tests:
+          - max_empty_share:
+              name: gas_fee_max_empty_share
+              arguments:
+                max_share: 0.1
+                nulls: empty
+                zeros: empty
       - name: gas_fee_usd
         description: "Gas fee in USD"
       - name: platform_fee

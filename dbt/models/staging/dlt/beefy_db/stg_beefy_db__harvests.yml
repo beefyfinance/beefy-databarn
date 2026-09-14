@@ -72,7 +72,7 @@ models:
                 min_value: 0
                 inclusive: true
       - name: gas_fee
-        description: "Gas fee for the harvest"
+        description: "Gas fee for the harvest in native token units (not wei)"
         data_type: Decimal256(20)
         codec: ZSTD(3)
         tests:
@@ -81,6 +81,12 @@ models:
               arguments:
                 min_value: 0
                 inclusive: true
+          - max_empty_share:
+              name: gas_fee_max_empty_share
+              arguments:
+                max_share: 0.1
+                nulls: empty
+                zeros: empty
       - name: raw_gas_fee
         description: "Gas fee for the harvest in raw units"
         data_type: Decimal256(20)
