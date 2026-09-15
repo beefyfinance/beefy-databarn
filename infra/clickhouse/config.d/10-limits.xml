@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- from_env has no default body: vendor config.xml already defines some of these, and
+     from_env + default text on an existing key fails config preprocess. Compose always sets the env. -->
+<clickhouse>
+    <max_connections from_env="CLICKHOUSE_MAX_CONNECTIONS" replace="replace"/>
+    <keep_alive_timeout replace="replace">3</keep_alive_timeout>
+    <max_concurrent_queries from_env="CLICKHOUSE_MAX_CONCURRENT_QUERIES" replace="replace"/>
+    <uncompressed_cache_size from_env="CLICKHOUSE_UNCOMPRESSED_CACHE_SIZE" replace="replace"/>
+    <mark_cache_size from_env="CLICKHOUSE_MARK_CACHE_SIZE" replace="replace"/>
+</clickhouse>

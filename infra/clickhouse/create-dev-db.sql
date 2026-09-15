@@ -1,7 +1,8 @@
 -- Developer sandbox database. Replace <user> and run as the ClickHouse default admin.
+-- Same project write shape as zapalytics/envio (no DROP DATABASE).
 
 CREATE DATABASE IF NOT EXISTS dev_<user>;
-GRANT SELECT, INSERT, ALTER, CREATE TABLE, DROP TABLE, TRUNCATE, OPTIMIZE
+GRANT SELECT, INSERT, CREATE TABLE, ALTER, DROP TABLE, TRUNCATE, OPTIMIZE
     ON dev_<user>.* TO <user>;
 
 GRANT SELECT ON dev_<user>.* TO superset;

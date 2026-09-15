@@ -9,28 +9,11 @@ elif [ -f ../.env ]; then set -a; source ../.env; set +a
 elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi
 
 # --- Destination: filesystem ---
-# In prod use RustFS (S3-compatible); otherwise use local file storage (file://)
-if [ "${DLT_ENV:-}" = "production" ]; then
-  # RustFS / S3-compatible staging
-  rustfs_bucket="${RUSTFS_DLT_STAGING_BUCKET:?RUSTFS_DLT_STAGING_BUCKET must be set for production}"
-  rustfs_access="${RUSTFS_ACCESS_KEY:?RUSTFS_ACCESS_KEY must be set for production}"
-  rustfs_secret="${RUSTFS_SECRET_KEY:?RUSTFS_SECRET_KEY must be set for production}"
-  rustfs_endpoint="${RUSTFS_ENDPOINT:?RUSTFS_ENDPOINT must be set for production}"
-  export DESTINATION__FILESYSTEM__BUCKET_URL="s3://${rustfs_bucket}"
-  export DESTINATION__FILESYSTEM__CREDENTIALS__AWS_ACCESS_KEY_ID="${rustfs_access}"
-  export DESTINATION__FILESYSTEM__CREDENTIALS__AWS_SECRET_ACCESS_KEY="${rustfs_secret}"
-  export DESTINATION__FILESYSTEM__CREDENTIALS__ENDPOINT_URL="${rustfs_endpoint}"
-else
-  # Local file storage
-  storage_dir="${STORAGE_DIR:?STORAGE_DIR must be set for non-production environments}"
-  dst_dir="${storage_dir}/dlt"
-  mkdir -p "${dst_dir}"
-  export DESTINATION__FILESYSTEM__BUCKET_URL="file://${dst_dir}"
-  # Unset S3 credentials so dlt uses local filesystem only
-  unset DESTINATION__FILESYSTEM__CREDENTIALS__AWS_ACCESS_KEY_ID
-  unset DESTINATION__FILESYSTEM__CREDENTIALS__AWS_SECRET_ACCESS_KEY
-  unset DESTINATION__FILESYSTEM__CREDENTIALS__ENDPOINT_URL
-fi
+# Always local file staging. ClickHouse backups use RustFS/S3; dlt does not.
+storage_dir="${STORAGE_DIR:?STORAGE_DIR must be set when /var/dlt is not mounted}"
+dst_dir="${storage_dir}/dlt"
+mkdir -p "${dst_dir}"
+export DESTINATION__FILESYSTEM__BUCKET_URL="file://${dst_dir}"
 
 # --- Destination: ClickHouse ---
 # In prod these come from docker-compose (env_file: .env). Ensure .env has DLT_CLICKHOUSE_* set.

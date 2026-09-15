@@ -5,7 +5,7 @@ description = "Beefy Databarn - DBT data transformation"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "apscheduler>=3.10.0",
-    "dbt-clickhouse>=1.9.6",
+    "dbt-clickhouse>=1.10.2",
     "dbt-core>=1.10.15",
     "psycopg2-binary>=2.9.11",
 ]

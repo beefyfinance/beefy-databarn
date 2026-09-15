@@ -314,13 +314,37 @@ clickhouse:
 			echo "Opening ClickHouse client..."; \
 			$(DC) exec clickhouse clickhouse-client; \
 		;; \
+		backup) \
+			MODE="$(word 3,$(MAKECMDGOALS))"; \
+			if [ "$$MODE" = "full" ] || [ "$$MODE" = "incremental" ]; then \
+				echo "Running one-shot $$MODE backup..."; \
+				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once $$MODE; \
+			else \
+				echo "Running one-shot backup (auto full/incremental)..."; \
+				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once auto; \
+			fi; \
+		;; \
+		backup-status) \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
+		;; \
+		restore) \
+			if [ -z "$(BACKUP)" ]; then \
+				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
+				exit 1; \
+			fi; \
+			echo "Restoring from Disk('backups', '$(BACKUP)/')..."; \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)"; \
+		;; \
 		help|"") \
 			echo "clickhouse:"; \
 			echo "  make clickhouse client   Open ClickHouse client"; \
+			echo "  make clickhouse backup [full|incremental]  One-shot backup to S3"; \
+			echo "  make clickhouse backup-status    Show recent backups"; \
+			echo "  make clickhouse restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make clickhouse [client|help]"; \
+			echo "Usage: make clickhouse [client|backup [full|incremental]|backup-status|restore|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -389,7 +413,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status restore:
 	@:
 
 # Catch-all for any other resource/source names

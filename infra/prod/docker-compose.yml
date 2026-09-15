@@ -1,5 +1,7 @@
 name: beefy-databarn
 
+x-clickhouse-image: &clickhouse-image clickhouse/clickhouse-server:25.10
+
 services:
   traefik:
     image: traefik:v3.6
@@ -32,10 +34,10 @@ services:
     restart: unless-stopped
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.10
+    image: *clickhouse-image
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - ../clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ../clickhouse/config.d:/etc/clickhouse-server/config.d:ro
       - ../clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
       - ../clickhouse/users.d:/etc/clickhouse-server/users.d:ro
       - ../clickhouse/init-clickhouse.sh:/docker-entrypoint-initdb.d/init-clickhouse.sh:ro
@@ -59,6 +61,11 @@ services:
       CLICKHOUSE_UNCOMPRESSED_CACHE_SIZE: ${CLICKHOUSE_UNCOMPRESSED_CACHE_SIZE:-10737418240}
       CLICKHOUSE_MARK_CACHE_SIZE: ${CLICKHOUSE_MARK_CACHE_SIZE:-10737418240}
       CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS: ${CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS:-1}
+      CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
+      CLICKHOUSE_BACKUP_ALLOWED_HOST: IP '172.19.1.0/24'
+      CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT:-http://rustfs:9000/clickhouse-backups/}
+      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
+      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
@@ -71,6 +78,18 @@ services:
       API_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       ENVIO_CLICKHOUSE_PASSWORD: ${ENVIO_CLICKHOUSE_PASSWORD}
       ENVIO_CLICKHOUSE_ALLOWED_HOST: IP '172.19.0.0/24' # external
+      ENVIO_MAX_MEMORY_USAGE: ${ENVIO_MAX_MEMORY_USAGE:-4000000000}
+      ENVIO_MAX_EXECUTION_TIME: ${ENVIO_MAX_EXECUTION_TIME:-120}
+      ENVIO_MAX_INSERT_THREADS: ${ENVIO_MAX_INSERT_THREADS:-4}
+      ENVIO_MAX_INSERT_BLOCK_SIZE: ${ENVIO_MAX_INSERT_BLOCK_SIZE:-65536}
+      ENVIO_MAX_PARTITIONS_PER_INSERT_BLOCK: ${ENVIO_MAX_PARTITIONS_PER_INSERT_BLOCK:-100}
+      ENVIO_MAX_RESULT_ROWS: ${ENVIO_MAX_RESULT_ROWS:-100000}
+      ENVIO_MAX_ROWS_TO_READ: ${ENVIO_MAX_ROWS_TO_READ:-1000000}
+      ENVIO_QUOTA_INSERTS_PER_SECOND: ${ENVIO_QUOTA_INSERTS_PER_SECOND:-200}
+      ENVIO_QUOTA_WRITTEN_BYTES_PER_SECOND: ${ENVIO_QUOTA_WRITTEN_BYTES_PER_SECOND:-52428800}
+      ENVIO_QUOTA_INSERTS_PER_HOUR: ${ENVIO_QUOTA_INSERTS_PER_HOUR:-500000}
+      ENVIO_QUOTA_WRITTEN_BYTES_PER_HOUR: ${ENVIO_QUOTA_WRITTEN_BYTES_PER_HOUR:-10737418240}
+      ENVIO_QUOTA_WRITTEN_BYTES_PER_DAY: ${ENVIO_QUOTA_WRITTEN_BYTES_PER_DAY:-107374182400}
       ZAPALYTICS_CLICKHOUSE_PASSWORD: ${ZAPALYTICS_CLICKHOUSE_PASSWORD}
       ZAPALYTICS_CLICKHOUSE_ALLOWED_HOST: IP '172.19.0.0/24' # external
       ZAPALYTICS_MAX_MEMORY_USAGE: ${ZAPALYTICS_MAX_MEMORY_USAGE:-1000000000}
@@ -116,6 +135,44 @@ services:
       interval: 1s
       timeout: 20s
       retries: 10
+    logging:
+      driver: "local"
+      options:
+        max-size: "1G"
+        max-file: "3"
+
+  clickhouse-backup:
+    image: beefy-databarn-clickhouse-backup:25.10
+    build:
+      context: ..
+      dockerfile: clickhouse/Dockerfile.backup
+      args:
+        CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:25.10
+    entrypoint: ["/bin/bash", "/opt/backup-loop.sh"]
+    command: ["daemon"]
+    volumes:
+      - ../clickhouse/backup-loop.sh:/opt/backup-loop.sh:ro
+    environment:
+      CLICKHOUSE_BACKUP_CH_HOST: clickhouse
+      CLICKHOUSE_BACKUP_CH_USER: backup
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
+      CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:-http://rustfs:9000}
+      CLICKHOUSE_BACKUP_S3_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
+      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
+      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+    networks:
+      - backend_network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false"
     logging:
       driver: "local"
       options:
@@ -225,7 +282,7 @@ services:
     restart: unless-stopped
 
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.0-alpha.83
     volumes:
       - rustfs_data:/data
     environment:
@@ -256,15 +313,15 @@ services:
     environment:
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_DLT_STAGING_BUCKET: ${RUSTFS_DLT_STAGING_BUCKET:-dlt-staging}
+      RUSTFS_CLICKHOUSE_BACKUP_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -e
         echo "Configuring mc alias for RustFS..."
         mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
-        echo "Creating bucket $${RUSTFS_DLT_STAGING_BUCKET}..."
-        mc mb rustfs/$${RUSTFS_DLT_STAGING_BUCKET} || true
+        echo "Creating bucket $${RUSTFS_CLICKHOUSE_BACKUP_BUCKET}..."
+        mc mb rustfs/$${RUSTFS_CLICKHOUSE_BACKUP_BUCKET} || true
         echo "Bucket ready."
     networks:
       - backend_network
@@ -508,11 +565,6 @@ services:
       BEEFY_DB_NAME: ${BEEFY_DB_NAME:-beefy-db}
       BEEFY_DB_USER: ${BEEFY_DB_USER:-postgres}
       BEEFY_DB_PASSWORD: ${BEEFY_DB_PASSWORD}
-      # RustFS (S3-compatible) filesystem destination configuration
-      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-http://rustfs:9000}
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_DLT_STAGING_BUCKET: ${RUSTFS_DLT_STAGING_BUCKET:-dlt-staging}
     networks:
       - backend_network
     restart: on-failure
@@ -520,8 +572,6 @@ services:
       - "traefik.enable=false"
     depends_on:
       clickhouse:
-        condition: service_healthy
-      rustfs:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'scheduler.py' > /dev/null && exit 0 || exit 1"]

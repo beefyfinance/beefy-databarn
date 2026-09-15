@@ -302,15 +302,39 @@ clickhouse:
 				$(DC) exec clickhouse clickhouse-client; \
 			fi \
 			;; \
+		backup) \
+			MODE="$(word 3,$(MAKECMDGOALS))"; \
+			if [ "$$MODE" = "full" ] || [ "$$MODE" = "incremental" ]; then \
+				echo "Running one-shot $$MODE backup..."; \
+				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once $$MODE; \
+			else \
+				echo "Running one-shot backup (auto full/incremental)..."; \
+				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once auto; \
+			fi \
+			;; \
+		backup-status) \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status \
+			;; \
+		restore) \
+			if [ -z "$(BACKUP)" ]; then \
+				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
+				exit 1; \
+			fi; \
+			echo "Restoring from Disk('backups', '$(BACKUP)/')..."; \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)" \
+			;; \
 		help|"") \
 			echo "ClickHouse:"; \
 			echo "  make [clickhouse|ch] stop              Stop ClickHouse"; \
 			echo "  make [clickhouse|ch] restart          Re-restart ClickHouse (reload configs)"; \
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
+			echo "  make [clickhouse|ch] backup [full|incremental]  One-shot backup to S3"; \
+			echo "  make [clickhouse|ch] backup-status    Show recent backups and S3 prefixes"; \
+			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|restore|help]"; \
 			exit 1 \
 			;; \
 	esac

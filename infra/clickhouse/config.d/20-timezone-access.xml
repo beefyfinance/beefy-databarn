@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <path replace="replace">/var/lib/clickhouse/</path>
+    <tmp_path replace="replace">/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path replace="replace">/var/lib/clickhouse/user_files/</user_files_path>
+    <format_schema_path replace="replace">/var/lib/clickhouse/format_schemas/</format_schema_path>
+    <default_profile replace="replace">default</default_profile>
+    <default_database replace="replace">default</default_database>
+    <timezone replace="replace">UTC</timezone>
+    <access_control_improvements>
+        <settings_constraints_replace_previous>true</settings_constraints_replace_previous>
+    </access_control_improvements>
+    <mlock_executable replace="replace">true</mlock_executable>
+    <builtin_dictionaries_reload_interval replace="replace">3600</builtin_dictionaries_reload_interval>
+    <max_session_timeout replace="replace">3600</max_session_timeout>
+    <default_session_timeout replace="replace">60</default_session_timeout>
+</clickhouse>

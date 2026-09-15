@@ -69,7 +69,7 @@ flowchart TB
     
     %% External Data Flow
     CH -.->|External Tables<br/>Federation Query| BEEFY_DB
-    CH -.->|External Tables<br/>S3 Engine| RUSTFS
+    CH -.->|Native BACKUP/RESTORE| RUSTFS
     PYTHON -->|Query API| BEEFY_API
     PYTHON -->|Ingest Data| CH
     
@@ -134,7 +134,7 @@ flowchart TB
 
 - **Prometheus + Grafana**: Monitoring stack that collects metrics from all services and provides dashboards for infrastructure health, query performance, and system resources.
 
-- **RustFS**: S3-compatible object storage for data artifacts, backups, and pipeline outputs.
+- **RustFS**: S3-compatible object storage used as the ClickHouse `BACKUP`/`RESTORE` disk (swap `.env` to remote S3 later). dlt staging stays on local `file://`.
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
@@ -191,7 +191,9 @@ make dbt run        # Run dbt models
 make help             # Show all available commands
 make infra logs       # View infrastructure logs
 make infra ps         # Check service status
-make infra stop       # Stop all services
+make [clickhouse|ch] backup [full|incremental]  # One-shot backup to RustFS/S3
+make [clickhouse|ch] backup-status
+make [clickhouse|ch] restore BACKUP=inc-YYYY-MM-DD-HH
 ```
 
 ### Production Deployment (Docker Swarm)

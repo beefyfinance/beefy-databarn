@@ -78,7 +78,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "apscheduler", specifier = ">=3.10.0" },
-    { name = "dbt-clickhouse", specifier = ">=1.9.6" },
+    { name = "dbt-clickhouse", specifier = ">=1.10.2" },
     { name = "dbt-core", specifier = ">=1.10.15" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
@@ -237,7 +237,7 @@ wheels = [
 
 [[package]]
 name = "dbt-adapters"
-version = "1.16.7"
+version = "1.22.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agate" },
@@ -248,25 +248,24 @@ dependencies = [
     { name = "pytz" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/48/96586bc87cf9641f03d531764ee0c098ee991c687355bbbd6da6df9e262e/dbt_adapters-1.16.7.tar.gz", hash = "sha256:2376c4e913f451da786cef8e5e545d5ccd87f93697bcd14988722baa06f48b80", size = 130798, upload-time = "2025-09-11T14:21:12.959Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/f6/a74ae2c203b5a475a2d8866a2ccf7deb253e0f1cbaee86b6faf1562503e2/dbt_adapters-1.22.10.tar.gz", hash = "sha256:28fca9f9c2f310706ce02c8f7b0f297edca14d6bd97ad7928aac55af4ce2972f", size = 138306, upload-time = "2026-03-30T16:57:29.106Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/04/3a2db52db9c0e44e43080ef244f473eb78c975733663dbb5242d6627c994/dbt_adapters-1.16.7-py3-none-any.whl", hash = "sha256:a4f0bf69633f0b326b7a6d39d1b70857f9964db15b506e16ef50d05e8dc696db", size = 167666, upload-time = "2025-09-11T14:21:11.329Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/9b/7913d4780962e323956d10c21328af5fcf85d00ab273eb7e808d8ec19336/dbt_adapters-1.22.10-py3-none-any.whl", hash = "sha256:9217a2f8dd35425cafc9093dae70ea12b4b8fc414e3abce8a44d44d5c2fff563", size = 173738, upload-time = "2026-03-30T16:57:27.636Z" },
 ]
 
 [[package]]
 name = "dbt-clickhouse"
-version = "1.9.6"
+version = "1.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "clickhouse-connect" },
     { name = "clickhouse-driver" },
     { name = "dbt-adapters" },
     { name = "dbt-core" },
-    { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/f8/175cff0ff0c1ca4ee7c912c6cfe6944e3e2ce1d72c640fd38ef76a787092/dbt_clickhouse-1.9.6.tar.gz", hash = "sha256:6fb0ad01fe3e122182548a44f59b26610b409f6e93138a235b5c62191fdf722e", size = 48000, upload-time = "2025-11-03T11:31:52.043Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/77/5adc9a10173a5f9aac24126c28591a35414c1ea00197102394219cbc3a6b/dbt_clickhouse-1.10.2.tar.gz", hash = "sha256:1a2b04a44d74ce6ed84ee125dcc79217f070643e0f81eb3a649e88e04e72599f", size = 58122, upload-time = "2026-08-13T18:13:56.948Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/46/3bc1df4d34546b993d1358797c849a5c8e0430e13e75e0e8b0a67fdef8d9/dbt_clickhouse-1.9.6-py2.py3-none-any.whl", hash = "sha256:384b2de46767009adf2f3349fbce826f7f86c15cb439c334959e07b9e40d6d27", size = 62113, upload-time = "2025-11-03T11:31:50.757Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/76/a65ac160bba50c428f735f16b8c38a1c3f04eeed32bc676c5960eea3fffb/dbt_clickhouse-1.10.2-py3-none-any.whl", hash = "sha256:0cc03dcc25ac25467d0aab29c740ed96771082172bbfee8478bdbc550567cf8a", size = 73308, upload-time = "2026-08-13T18:13:55.778Z" },
 ]
 
 [[package]]
@@ -939,15 +938,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/85/ef/3109b6584f8c4b0d2490747c916df833c127ecfa82be04d9a40a376f2090/rpds_py-0.29.0-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:7f437026dbbc3f08c99cc41a5b2570c6e1a1ddbe48ab19a9b814254128d4ea7a", size = 557361, upload-time = "2025-11-16T14:49:21.574Z" },
     { url = "https://files.pythonhosted.org/packages/ff/3b/61586475e82d57f01da2c16edb9115a618afe00ce86fe1b58936880b15af/rpds_py-0.29.0-cp313-cp313t-win32.whl", hash = "sha256:6e97846e9800a5d0fe7be4d008f0c93d0feeb2700da7b1f7528dabafb31dfadb", size = 211227, upload-time = "2025-11-16T14:49:23.03Z" },
     { url = "https://files.pythonhosted.org/packages/3b/3a/12dc43f13594a54ea0c9d7e9d43002116557330e3ad45bc56097ddf266e2/rpds_py-0.29.0-cp313-cp313t-win_amd64.whl", hash = "sha256:f49196aec7c4b406495f60e6f947ad71f317a765f956d74bbd83996b9edc0352", size = 225248, upload-time = "2025-11-16T14:49:24.841Z" },
-]
-
-[[package]]
-name = "setuptools"
-version = "80.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
 ]
 
 [[package]]

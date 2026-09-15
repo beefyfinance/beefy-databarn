@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- Bind-mounting this directory hides the image docker_related_config.xml; keep listen-all. -->
+<clickhouse>
+    <http_port replace="replace">8123</http_port>
+    <tcp_port replace="replace">9000</tcp_port>
+    <listen_host replace="replace">0.0.0.0</listen_host>
+    <listen_try replace="replace">1</listen_try>
+    <logger>
+        <level replace="replace">information</level>
+        <log replace="replace">/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog replace="replace">/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <console replace="replace">1</console>
+        <size replace="replace">1000M</size>
+        <count replace="replace">10</count>
+    </logger>
+</clickhouse>
