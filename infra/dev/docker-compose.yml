@@ -16,7 +16,6 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - ../clickhouse/config.d:/etc/clickhouse-server/config.d:ro
       - ../clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
-      - ../clickhouse/users.d:/etc/clickhouse-server/users.d:ro
       - ../clickhouse/init-clickhouse.sh:/docker-entrypoint-initdb.d/init-clickhouse.sh:ro
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
