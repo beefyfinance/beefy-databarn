@@ -2,6 +2,17 @@
 <clickhouse>
     <path replace="replace">/var/lib/clickhouse/</path>
     <tmp_path replace="replace">/var/lib/clickhouse/tmp/</tmp_path>
+    <!-- Must match the pre-config.d path. Image default is /var/lib/clickhouse/access/,
+         which hides every SQL user created under the old config.xml. -->
+    <access_control_path replace="replace">/var/lib/clickhouse/access_control/</access_control_path>
+    <user_directories replace="replace">
+        <users_xml>
+            <path>/etc/clickhouse-server/users.xml</path>
+        </users_xml>
+        <local_directory>
+            <path>/var/lib/clickhouse/access_control/</path>
+        </local_directory>
+    </user_directories>
     <user_files_path replace="replace">/var/lib/clickhouse/user_files/</user_files_path>
     <format_schema_path replace="replace">/var/lib/clickhouse/format_schemas/</format_schema_path>
     <default_profile replace="replace">default</default_profile>

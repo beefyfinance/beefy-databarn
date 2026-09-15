@@ -317,7 +317,17 @@ clickhouse-client \
             load_balancing = 'random'
         TO zapalytics;
 
-    DROP SETTINGS PROFILE IF EXISTS external_profile;
+    -- Human / Play users (create-user.sql). Do not DROP and do not `TO envio`
+    -- (that would unassign existing people). Limits only; assignments stay.
+    CREATE SETTINGS PROFILE IF NOT EXISTS external_profile;
+    ALTER SETTINGS PROFILE external_profile
+        SETTINGS
+            max_execution_time = ${CLICKHOUSE_EXTERNAL_MAX_EXECUTION_TIME:-20},
+            max_memory_usage = ${CLICKHOUSE_EXTERNAL_MAX_MEMORY_USAGE:-10000000000},
+            max_result_rows = ${CLICKHOUSE_EXTERNAL_MAX_RESULT_ROWS:-100000},
+            max_rows_to_read = ${CLICKHOUSE_EXTERNAL_MAX_ROWS_TO_READ:-1000000},
+            use_uncompressed_cache = 0,
+            load_balancing = 'random';
 
 
     -------------------------------------------
@@ -351,7 +361,27 @@ clickhouse-client \
         TO grafana, superset, api;
 
     DROP QUOTA IF EXISTS project_quota;
-    DROP QUOTA IF EXISTS external_quota;
+
+    CREATE QUOTA IF NOT EXISTS external_quota
+        FOR INTERVAL 1 SECOND MAX
+            queries        = 5000,
+            query_selects  = 5000,
+            errors         = 1000,
+            result_rows    = 10000000000,
+            result_bytes   = 10000000000000,
+            read_rows      = 100000000000,
+            read_bytes     = 100000000000000,
+            execution_time = 7200;
+    ALTER QUOTA external_quota
+        FOR INTERVAL 1 SECOND MAX
+            queries        = 5000,
+            query_selects  = 5000,
+            errors         = 1000,
+            result_rows    = 10000000000,
+            result_bytes   = 10000000000000,
+            read_rows      = 100000000000,
+            read_bytes     = 100000000000000,
+            execution_time = 7200;
 
     CREATE QUOTA OR REPLACE envio_quota
         FOR INTERVAL 1 SECOND MAX
