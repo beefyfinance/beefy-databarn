@@ -327,6 +327,11 @@ clickhouse:
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
 		;; \
+		backup-restart) \
+			echo "Recreating clickhouse-backup..."; \
+			$(DC) up -d --force-recreate clickhouse-backup; \
+			echo "✓ clickhouse-backup recreated"; \
+		;; \
 		restore) \
 			if [ -z "$(BACKUP)" ]; then \
 				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
@@ -340,11 +345,12 @@ clickhouse:
 			echo "  make clickhouse client   Open ClickHouse client"; \
 			echo "  make clickhouse backup [full|incremental]  One-shot backup to S3"; \
 			echo "  make clickhouse backup-status    Show recent backups"; \
+			echo "  make clickhouse backup-restart   Recreate backup sidecar (reload loop script/env)"; \
 			echo "  make clickhouse restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make clickhouse [client|backup [full|incremental]|backup-status|restore|help]"; \
+			echo "Usage: make clickhouse [client|backup [full|incremental]|backup-status|backup-restart|restore|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -413,7 +419,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status restore:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore:
 	@:
 
 # Catch-all for any other resource/source names
