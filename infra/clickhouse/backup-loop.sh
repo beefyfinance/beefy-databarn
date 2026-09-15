@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# ClickHouse BACKUP/RESTORE loop: daily full, hourly incremental, 7-day prune.
+# ClickHouse BACKUP/RESTORE loop: daily full, hourly incremental.
+# Disk: ~100GB per full, host fits ~3. Keep 2 completed fulls so a third can exist
+# while the next full is writing; keep incrementals only for the newest full day.
 # Uses BACKUP TO S3() (self-contained prefixes) so a new instance can RESTORE without local disk metadata.
 # Usage:
 #   backup-loop.sh                  # daemon (run once, then every hour)
@@ -9,7 +11,8 @@
 set -euo pipefail
 
 BACKUP_DATABASES=(dlt envio zapalytics dev_fron dev_chebin)
-RETENTION_DAYS="${CLICKHOUSE_BACKUP_RETENTION_DAYS:-7}"
+KEEP_FULLS="${CLICKHOUSE_BACKUP_KEEP_FULLS:-2}"
+KEEP_INCREMENTAL_DAYS="${CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS:-1}"
 FULL_HOUR="${CLICKHOUSE_BACKUP_FULL_HOUR:-0}" # UTC hour for the daily full
 CH_HOST="${CLICKHOUSE_BACKUP_CH_HOST:-clickhouse}"
 CH_USER="${CLICKHOUSE_BACKUP_CH_USER:-backup}"
@@ -163,45 +166,41 @@ decide_mode() {
 }
 
 prune_old_backups() {
-  local cutoff prefix date_part
-  cutoff="$(date -u -d "-${RETENTION_DAYS} days" +%Y-%m-%d 2>/dev/null || date -u -v-"${RETENTION_DAYS}"d +%Y-%m-%d)"
-  echo "Pruning backup prefixes older than ${cutoff} (keep ${RETENTION_DAYS} days; keep fulls still referenced by incrementals)"
+  local prefix date_part inc_cutoff i
+  local -a fulls=() incs=()
 
-  local -a inc_dates=()
-  while IFS= read -r prefix; do
-    [[ -z "$prefix" ]] && continue
-    if [[ "$prefix" == inc-* ]]; then
-      date_part="$(echo "$prefix" | sed -E 's/^inc-([0-9]{4}-[0-9]{2}-[0-9]{2})-.*/\1/')"
-      if [[ "$date_part" < "$cutoff" ]]; then
-        echo "Removing old incremental ${prefix}"
-        mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${prefix}" || true
-      else
-        inc_dates+=("$date_part")
-      fi
-    fi
-  done < <(list_backup_prefixes)
+  echo "Pruning: keep ${KEEP_FULLS} newest fulls, incrementals for ${KEEP_INCREMENTAL_DAYS} newest day(s)"
 
   while IFS= read -r prefix; do
     [[ -z "$prefix" ]] && continue
-    if [[ "$prefix" == full-* ]]; then
-      date_part="${prefix#full-}"
-      if [[ "$date_part" < "$cutoff" ]]; then
-        local referenced=0 d
-        for d in "${inc_dates[@]+"${inc_dates[@]}"}"; do
-          if [[ "$d" == "$date_part" ]]; then
-            referenced=1
-            break
-          fi
-        done
-        if [[ "$referenced" -eq 1 ]]; then
-          echo "Keeping full ${prefix} (incrementals still reference it)"
-        else
-          echo "Removing old full ${prefix}"
-          mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${prefix}" || true
-        fi
-      fi
-    fi
+    case "$prefix" in
+      full-*) fulls+=("$prefix") ;;
+      inc-*) incs+=("$prefix") ;;
+    esac
   done < <(list_backup_prefixes)
+
+  if ((${#fulls[@]} > 0)); then
+    IFS=$'\n' fulls=($(printf '%s\n' "${fulls[@]}" | sort -r))
+    unset IFS
+  fi
+
+  # Drop incrementals first so a full is never kept only because an old inc still points at it.
+  inc_cutoff="$(date -u -d "-$((KEEP_INCREMENTAL_DAYS - 1)) days" +%Y-%m-%d 2>/dev/null \
+    || date -u -v-"$((KEEP_INCREMENTAL_DAYS - 1))"d +%Y-%m-%d)"
+  for prefix in "${incs[@]+"${incs[@]}"}"; do
+    date_part="$(echo "$prefix" | sed -E 's/^inc-([0-9]{4}-[0-9]{2}-[0-9]{2})-.*/\1/')"
+    if [[ "$date_part" < "$inc_cutoff" ]]; then
+      echo "Removing old incremental ${prefix}"
+      mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${prefix}" || true
+    fi
+  done
+
+  if ((${#fulls[@]} > KEEP_FULLS)); then
+    for ((i = KEEP_FULLS; i < ${#fulls[@]}; i++)); do
+      echo "Removing old full ${fulls[i]}"
+      mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${fulls[i]}" || true
+    done
+  fi
 }
 
 show_status() {
@@ -253,7 +252,7 @@ case "$cmd" in
     ;;
   daemon)
     wait_for_clickhouse
-    echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, retain ${RETENTION_DAYS} days)"
+    echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, keep ${KEEP_FULLS} fulls + ${KEEP_INCREMENTAL_DAYS}d incrementals)"
     run_backup "$(decide_mode)" || echo "Initial backup failed; will retry next hour" >&2
     prune_old_backups || echo "Initial prune failed; will retry next hour" >&2
     while true; do
