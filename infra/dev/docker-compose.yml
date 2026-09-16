@@ -134,7 +134,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:12.2
+    image: grafana/grafana:13.2.1
     ports:
       - "3000:3000"
     volumes:
