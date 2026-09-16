@@ -29,7 +29,7 @@ SELECT
   t.add_liquidity_url,
   t.remove_liquidity_url,
   {{ normalize_network_beefy_key('t.network') }} as network,
-  toBool(t.is_gov_vault) as is_gov_vault,
+  toBool(ifNull(t.is_gov_vault, false)) as is_gov_vault,
   {{ evm_address('t.strategy') }} as strategy,
   t.price_per_full_share,
   t.last_harvest,

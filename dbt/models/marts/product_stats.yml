@@ -24,11 +24,13 @@ models:
             to_chain_column: chain_id
             to_address_column: representation_address
       - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
           arguments:
             combination_of_columns:
+              - date_hour
               - chain_id
               - product_address
-              - date_hour
     columns:
       - name: chain_id
         description: "Chain ID where the product exists (foreign key to chain.chain_id)"

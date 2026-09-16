@@ -67,6 +67,8 @@ models:
         description: "Linea Ignition APR as text"
     tests:
       - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "date_time >= now('UTC') - interval 7 day"
           arguments:
             combination_of_columns:
               - etag

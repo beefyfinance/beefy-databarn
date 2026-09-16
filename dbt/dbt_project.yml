@@ -4,6 +4,10 @@ config-version: 2
 
 profile: "beefy_databarn"
 
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: ["beefy_databarn", "dbt_utils"]
+
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]

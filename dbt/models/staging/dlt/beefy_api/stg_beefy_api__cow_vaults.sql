@@ -28,7 +28,7 @@ SELECT
   t.network,
   t.type,
   t.fee_tier,
-  toBool(t.is_gov_vault) as is_gov_vault,
+  toBool(ifNull(t.is_gov_vault, false)) as is_gov_vault,
   t.chain,
   t.strategy,
   t.last_harvest,

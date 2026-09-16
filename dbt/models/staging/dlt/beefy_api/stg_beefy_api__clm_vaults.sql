@@ -44,7 +44,7 @@ SELECT
   t.strategy_type_id,
   {{ normalize_network_beefy_key('t.network') }} as network,
   t.type,
-  toBool(t.is_gov_vault) as is_gov_vault,
+  toBool(ifNull(t.is_gov_vault, false)) as is_gov_vault,
   t.chain,
   {{ evm_address('t.strategy') }} as strategy,
   t.last_harvest,

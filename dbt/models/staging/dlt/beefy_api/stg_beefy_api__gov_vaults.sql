@@ -44,7 +44,7 @@ SELECT
   cast(t.platform_id as String) as platform_id,
   t.strategy_type_id,
   {{ normalize_network_beefy_key('t.network') }} as network,
-  toBool(t.is_gov_vault) as is_gov_vault,
+  toBool(ifNull(t.is_gov_vault, false)) as is_gov_vault,
   {{ normalize_network_beefy_key('t.chain') }} as chain,
   t.total_supply,
   t.last_harvest,

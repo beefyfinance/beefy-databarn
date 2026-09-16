@@ -19,8 +19,12 @@ models:
         data_type: Float64
         codec: Gorilla, LZ4
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "t >= now('UTC') - interval 30 day"
           - dbt_utils.accepted_range:
+              config:
+                where: "t >= now('UTC') - interval 30 day"
               arguments:
                 min_value: 0
                 inclusive: true

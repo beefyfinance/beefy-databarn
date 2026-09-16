@@ -9,4 +9,3 @@ SELECT
   cast(t.t as DateTime('UTC')) as t,
   {{ to_decimal('t.val') }} as val
 FROM {{ source('dlt', 'beefy_db___prices') }} t FINAL
-

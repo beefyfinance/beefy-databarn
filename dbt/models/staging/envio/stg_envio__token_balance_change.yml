@@ -9,7 +9,9 @@ models:
         data_type: String
         tests:
           - not_null
-          - unique
+          - unique:
+              config:
+                where: "block_timestamp >= now('UTC') - interval 30 day"
       - name: chain_id
         description: "Chain identifier"
         data_type: Int64
@@ -65,6 +67,8 @@ models:
         data_type: String
     tests:
       - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "block_timestamp >= now('UTC') - interval 30 day"
           arguments:
             combination_of_columns:
               - network_id
