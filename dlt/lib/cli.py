@@ -4,12 +4,13 @@ import lib.dlt_clickhouse_get_stored_state_patch  # noqa: F401
 import lib.snapshot_incremental  # noqa: F401
 
 from dataclasses import dataclass
+import argparse
 import sys
 from typing import Any, Optional
 
 import logging
 
-import dlt
+from lib.reimport import prepare_reimport
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +19,43 @@ class CliArgs:
     show_list: bool = False
     only_resource: Optional[str] = None
     loop: bool = False
+    reimport: Optional[str] = None
 
 
 def _parse_args() -> CliArgs:
-    """Parse command line arguments."""
-    # first arg is either a resource name or no args at all
-    if len(sys.argv) == 1:
-        return CliArgs()
-    else:
-        only_resource = sys.argv[1]
-        show_list = False
-        loop = False
-        if len(sys.argv) == 3:
-            if sys.argv[2] == "--list":
-                show_list = True
-            if sys.argv[2] == "--loop":
-                loop = True
-        return CliArgs(only_resource=only_resource, show_list=show_list, loop=loop)
+    parser = argparse.ArgumentParser(
+        description="Run a dlt pipeline",
+        epilog=(
+            "examples:\n"
+            "  %(prog)s harvests --loop\n"
+            "  %(prog)s harvests --reimport 3m\n"
+            "  %(prog)s harvests --reimport 2026-06-16\n"
+            "  %(prog)s harvests --reimport\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("resource", nargs="?", help="Resource to run (default: all)")
+    parser.add_argument("--list", action="store_true", help="List resources and exit")
+    parser.add_argument("--loop", action="store_true", help="Repeat until the incremental load is empty")
+    parser.add_argument(
+        "--reimport",
+        nargs="?",
+        const="full",
+        metavar="SINCE",
+        help=(
+            "Rewind incremental state and re-append. Never truncates. "
+            "SINCE is YYYY-MM-DD, 90d, or 3m; omit for full history. Implies --loop."
+        ),
+    )
+    parsed = parser.parse_args()
+    if parsed.reimport is not None and not parsed.resource:
+        parser.error("--reimport requires a resource name")
+    return CliArgs(
+        show_list=parsed.list,
+        only_resource=parsed.resource,
+        loop=parsed.loop or parsed.reimport is not None,
+        reimport=parsed.reimport,
+    )
 
 
 def _apply_args_to_source(source: Any, args: CliArgs) -> Any:
@@ -42,9 +63,7 @@ def _apply_args_to_source(source: Any, args: CliArgs) -> Any:
         print(source.resources.keys())
         sys.exit(0)
 
-    """Apply command line arguments to a source."""
     if args.only_resource:
-        # make sure the resource exists
         if args.only_resource not in source.resources.keys():
             raise ValueError(f"Resource {args.only_resource} not found in source {source.name}")
         source = source.with_resources(args.only_resource)
@@ -55,23 +74,30 @@ def _apply_args_to_source(source: Any, args: CliArgs) -> Any:
 def _should_loop(source: Any, args: CliArgs, previous_load_info: Any) -> bool:
     "loop the source if there is only one incremental resource and the user has requested it"
 
-    if args.loop and args.only_resource:
-        if len(source.selected_resources.keys()) == 1:
-            if source.selected_resources[args.only_resource].incremental:
-                if previous_load_info.is_empty:
-                    logger.info("%s loop completed (reached end of data)", source.name)
-                    return False
-                return True
+    if not args.loop or not args.only_resource:
+        return False
+    if len(source.selected_resources.keys()) != 1:
+        return False
+    resource = source.selected_resources[args.only_resource]
+    if args.reimport is None and not resource.incremental:
+        return False
+    if previous_load_info.is_empty:
+        print(f"{args.only_resource} loop completed (reached end of data)")
+        return False
+    return True
 
-    return False
 
-
-
-async def run_pipeline_loop(pipeline: dlt.Pipeline, source_config: Any) -> Any:
+async def run_pipeline_loop(pipeline: Any, source_config: Any) -> Any:
     args = _parse_args()
 
-    
+    if args.reimport is not None:
+        prepare_reimport(pipeline, source_config, args.only_resource, args.reimport)
+
+    iteration = 0
     while True:
+        iteration += 1
+        if args.loop:
+            print(f"Pipeline iteration {iteration}")
         source = _apply_args_to_source(source_config, args)
         load_info = pipeline.run(source)
         print(load_info)

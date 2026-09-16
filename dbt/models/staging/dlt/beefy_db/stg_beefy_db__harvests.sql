@@ -26,7 +26,7 @@ with source as (
     toDecimal256(ifNull({{ to_decimal('t.want_price') }}, 0), 20) as want_price,
     toBool(ifNull(t.is_cowllector, false)) as is_cowllector,
     cast({{ evm_address('t.strategist_address') }} as Nullable(String)) as strategist_address
-  FROM {{ source('dlt', 'beefy_db___harvests') }} t
+  FROM {{ source('dlt', 'beefy_db___harvests') }} t FINAL
 )
 select * 
 from source t

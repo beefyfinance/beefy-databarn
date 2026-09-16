@@ -186,6 +186,7 @@ dlt:
 	SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 	RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
+	SINCE="$(word 5,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
 		run) \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
@@ -208,6 +209,21 @@ dlt:
 				$(UV) ./$${SOURCE}_pipeline.py $$RESOURCE --loop; \
 			else \
 				echo "Usage: make dlt loop <source> <resource>"; \
+				exit 1; \
+			fi \
+			;; \
+		reimport) \
+			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
+				if [ -n "$$SINCE" ]; then \
+					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE since $$SINCE..."; \
+					$(UV) ./$${SOURCE}_pipeline.py $$RESOURCE --reimport $$SINCE --loop; \
+				else \
+					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE (full history)..."; \
+					$(UV) ./$${SOURCE}_pipeline.py $$RESOURCE --reimport --loop; \
+				fi; \
+			else \
+				echo "Usage: make dlt reimport <source> <resource> [<since>]"; \
+				echo "  since: YYYY-MM-DD, 90d, 3m, or omit for full history"; \
 				exit 1; \
 			fi \
 			;; \
@@ -238,12 +254,16 @@ dlt:
 			echo "  make dlt run                    Run all dlt pipelines"; \
 			echo "  make dlt run <source> [resource]         Run a specific pipeline or resource"; \
 			echo "                                  Examples: beefy_db vaults, beefy_api tokens"; \
+			echo "  make dlt loop <source> <resource>    Loop until an incremental resource is caught up"; \
+			echo "  make dlt reimport <source> <resource> [<since>]"; \
+			echo "                                  Rewind cursor and re-append (loops, never truncates)."; \
+			echo "                                  since: YYYY-MM-DD, 90d, 3m; omit for full history"; \
 			echo "  make dlt <action> <pipeline>    Run dlt pipeline command (uvx dlt pipeline ...)"; \
 			echo "                                  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run <source> [resource]|loop <source> <resource>|<action> <pipeline>|help]"; \
+			echo "Usage: make dlt [run <source> [resource]|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
 			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \

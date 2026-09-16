@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -279,6 +279,24 @@ dlt:
 			fi; \
 			echo "dlt loop completed successfully"; \
 		;; \
+		reimport) \
+			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
+			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
+			SINCE="$(word 5,$(MAKECMDGOALS))" && \
+			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
+				if [ -n "$$SINCE" ]; then \
+					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE since $$SINCE..."; \
+					$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport $$SINCE --loop; \
+				else \
+					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE (full history)..."; \
+					$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport --loop; \
+				fi; \
+			else \
+				echo "Usage: make dlt reimport <source> <resource> [<since>]"; \
+				echo "  since: YYYY-MM-DD, 90d, 3m, or omit for full history"; \
+				exit 1; \
+			fi; \
+		;; \
 		info|show|failed-jobs|drop-pending-packages|trace|schema|load-package|mcp) \
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
@@ -324,12 +342,15 @@ dlt:
 			echo "dlt:"; \
 			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
 			echo "  make dlt loop <source> <resource>          Loop dlt pipeline for a resource"; \
+			echo "  make dlt reimport <source> <resource> [<since>]"; \
+			echo "      Rewind cursor and re-append (loops, never truncates)."; \
+			echo "      since: YYYY-MM-DD, 90d, 3m; omit for full history"; \
 			echo "  make dlt <action> <pipeline> <resource>               Run dlt pipeline command"; \
 			echo "      action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|<action> <pipeline> <resource>|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
 			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
@@ -468,7 +489,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport backup full incremental backup-status backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names
