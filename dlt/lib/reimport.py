@@ -84,8 +84,28 @@ def parse_since(value: str) -> Optional[datetime]:
     )
 
 
+def _get_incremental(resource: Any) -> Any:
+    """Return the real Incremental, not the empty IncrementalResourceWrapper.
+
+    sql_table binds Incremental as ``explicit_args['incremental']``. The
+    wrapper on ``resource.incremental`` has ``_incremental is None`` until
+    extract bind, so cursor_path is missing there.
+    """
+    wrapper = getattr(resource, "incremental", None)
+    inner = getattr(wrapper, "_incremental", None) if wrapper is not None else None
+    if inner is not None:
+        return inner
+    args = getattr(resource, "explicit_args", None) or {}
+    bound = args.get("incremental") if isinstance(args, dict) else None
+    if bound is not None:
+        return bound
+    if wrapper is not None and getattr(wrapper, "cursor_path", None):
+        return wrapper
+    return wrapper
+
+
 def _cursor_column(resource: Any) -> str:
-    incremental = resource.incremental
+    incremental = _get_incremental(resource)
     if not incremental:
         raise ValueError(
             f"Resource {resource.name} is not incremental; --reimport only works on incremental resources"
@@ -99,19 +119,16 @@ def _cursor_column(resource: Any) -> str:
 
 
 def _rewind_incremental(resource: Any, since: datetime) -> None:
-    incremental = resource.incremental
-    new_inc = dlt.sources.incremental(
-        incremental.cursor_path,
-        initial_value=since,
-        primary_key=incremental.primary_key,
-        last_value_func=incremental.last_value_func,
-        row_order=getattr(incremental, "row_order", "asc"),
-    )
-    threshold = incremental.__dict__.get("duplicate_cursor_warning_threshold")
-    if threshold is not None:
-        new_inc.duplicate_cursor_warning_threshold = threshold
-    resource.apply_hints(incremental=new_inc)
-    resource.incremental.initial_value = since
+    incremental = _get_incremental(resource)
+    if incremental is None:
+        raise ValueError(f"Resource {resource.name} is not incremental")
+    incremental.initial_value = since
+    if hasattr(incremental, "start_value"):
+        incremental.start_value = since
+    wrapper = getattr(resource, "incremental", None)
+    setter = getattr(wrapper, "set_incremental", None)
+    if callable(setter):
+        setter(incremental)
 
 
 def _drop_resource_state(pipeline: dlt.Pipeline, resource_name: str) -> None:
