@@ -74,6 +74,16 @@ async def get_beefy_db_tvl_by_chain_resource() -> Any:
             "chain_ids": chain_ids,
         })
 
+    incremental = dlt.sources.incremental(
+        "t",
+        initial_value=None,
+        primary_key=["chain_id", "t"],
+        last_value_func=max,
+        row_order="asc",
+    )
+    # one timestamp is shared across many chains
+    incremental.duplicate_cursor_warning_threshold = 10_000
+
     tvl_by_chain = sql_table(
         credentials=get_beefy_db_url(),
         table=RESOURCE_NAME,
@@ -83,14 +93,8 @@ async def get_beefy_db_tvl_by_chain_resource() -> Any:
         reflection_level="full_with_precision",
         query_adapter_callback=tvl_by_chain_query_adapter_callback,
         primary_key=["chain_id", "t"],
-        write_disposition="append", 
-        incremental=dlt.sources.incremental(
-            "t", 
-            initial_value=None,
-            primary_key=["chain_id", "t"],
-            last_value_func=max,
-            row_order="asc" 
-        ),
+        write_disposition="append",
+        incremental=incremental,
     )
     tvl_by_chain.apply_hints(
         columns=[
@@ -98,7 +102,7 @@ async def get_beefy_db_tvl_by_chain_resource() -> Any:
             {"name": "chain_id", "nullable": False },
             {"name": "t", "nullable": False },
 
-            # make sure metrics have enough precision, Decimal256(20) -> Decimal(76, 20)
+            # ClickHouse Decimal(76, 20). Arrow may warn converting Postgres float8.
             {"name": "total", "data_type": "decimal", "scale": 20, "precision": 76},
             {"name": "vault", "data_type": "decimal", "scale": 20, "precision": 76},
             {"name": "gov", "data_type": "decimal", "scale": 20, "precision": 76},

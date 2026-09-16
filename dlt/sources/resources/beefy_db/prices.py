@@ -71,6 +71,16 @@ async def get_beefy_db_prices_resource() -> Any:
             "oracle_ids": oracle_ids,
         })
 
+    incremental = dlt.sources.incremental(
+        "t",
+        initial_value=None,
+        primary_key=["oracle_id", "t"],
+        last_value_func=max,
+        row_order="asc",
+    )
+    # one timestamp is shared across many oracle series
+    incremental.duplicate_cursor_warning_threshold = 10_000
+
     prices = sql_table(
         credentials=get_beefy_db_url(),
         table=RESOURCE_NAME,
@@ -80,14 +90,8 @@ async def get_beefy_db_prices_resource() -> Any:
         reflection_level="full_with_precision",
         query_adapter_callback=prices_query_adapter_callback,
         primary_key=["oracle_id", "t"],
-        write_disposition="append", 
-        incremental=dlt.sources.incremental(
-            "t", 
-            initial_value=None,
-            primary_key=["oracle_id", "t"],
-            last_value_func=max,
-            row_order="asc" 
-        ),
+        write_disposition="append",
+        incremental=incremental,
     )
     prices.apply_hints(
         columns=[
@@ -95,7 +99,7 @@ async def get_beefy_db_prices_resource() -> Any:
             {"name": "oracle_id", "nullable": False },
             {"name": "t", "nullable": False },
 
-            # make sure metrics have enough precision, Decimal256(20) -> Decimal(76, 20)
+            # ClickHouse Decimal(76, 20). Arrow may warn converting Postgres float8.
             {"name": "val", "data_type": "decimal", "scale": 20, "precision": 76},
         ]
     )

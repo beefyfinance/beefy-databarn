@@ -29,6 +29,19 @@ def try_sql_table(*, table: str, **kwargs: Any) -> Optional[Any]:
         return None
 
 
+def compose_query_adapters(
+    *adapters: Callable[..., Any],
+) -> Callable[..., Any]:
+    """Apply query adapters left-to-right, each seeing the previous rewrite."""
+
+    def query_adapter_callback(query, table, incremental=None, engine=None):
+        for adapter in adapters:
+            query = adapter(query, table, incremental=incremental, engine=engine)
+        return query
+
+    return query_adapter_callback
+
+
 def hex_encode_bytea_columns(
     column_names: Set[str],
 ) -> Callable[..., Any]:
@@ -49,6 +62,31 @@ def hex_encode_bytea_columns(
                             sa.func.encode(table.c[col.name], "hex")
                         )
                     ).label(col.name)
+                )
+            else:
+                columns.append(col)
+        return query.with_only_columns(*columns)
+
+    return query_adapter_callback
+
+
+def postgres_array_as_json_text(
+    column_names: Set[str],
+) -> Callable[..., Any]:
+    """Serialize Postgres arrays to JSON text (``["a","b"]``) in SQL.
+
+    Avoids Arrow nested→JSON fallbacks. Downstream dbt ``to_str_list`` already
+    JSONExtracts these strings.
+    """
+
+    def query_adapter_callback(query, table, incremental=None, engine=None):
+        columns = []
+        for col in query.selected_columns:
+            if col.name in column_names:
+                columns.append(
+                    sa.cast(sa.func.array_to_json(table.c[col.name]), sa.Text).label(
+                        col.name
+                    )
                 )
             else:
                 columns.append(col)

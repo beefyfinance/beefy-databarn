@@ -110,7 +110,8 @@ async def get_beefy_db_harvests_resource() -> Any:
             {"name": "block_number", "nullable": False },
             {"name": "txn_idx", "nullable": False },
             {"name": "event_idx", "nullable": False },
-            # make sure metrics have enough precision, Decimal256(20) -> Decimal(76, 20)
+            # ClickHouse Decimal(76, 20) / Decimal256. Arrow may warn and fall back
+            # while converting Postgres numeric; destination type stays Decimal.
             {"name": "call_fee", "data_type": "decimal", "scale": 20, "precision": 76 },
             {"name": "gas_fee", "data_type": "decimal", "scale": 20, "precision": 76 },
             {"name": "platform_fee", "data_type": "decimal", "scale": 20, "precision": 76 },

@@ -71,6 +71,16 @@ async def get_beefy_db_apys_resource() -> Any:
             "vault_ids": vault_ids,
         })
 
+    incremental = dlt.sources.incremental(
+        "t",
+        initial_value=None,
+        primary_key=["vault_id", "t"],
+        last_value_func=max,
+        row_order="asc",
+    )
+    # one timestamp is shared across many vaults
+    incremental.duplicate_cursor_warning_threshold = 10_000
+
     apys = sql_table(
         credentials=get_beefy_db_url(),
         table=RESOURCE_NAME,
@@ -80,14 +90,8 @@ async def get_beefy_db_apys_resource() -> Any:
         reflection_level="full_with_precision",
         query_adapter_callback=apys_query_adapter_callback,
         primary_key=["vault_id", "t"],
-        write_disposition="append", 
-        incremental=dlt.sources.incremental(
-            "t", 
-            initial_value=None,
-            primary_key=["vault_id", "t"],
-            last_value_func=max,
-            row_order="asc" 
-        ),
+        write_disposition="append",
+        incremental=incremental,
     )
     apys.apply_hints(
         columns=[
@@ -95,7 +99,7 @@ async def get_beefy_db_apys_resource() -> Any:
             {"name": "vault_id", "nullable": False },
             {"name": "t", "nullable": False },
 
-            # make sure metrics have enough precision, Decimal256(20) -> Decimal(76, 20)
+            # keep val as float64 because some values are too large for Decimal(76, 20)
             {"name": "val", "data_type": "double"},
         ]
     )
