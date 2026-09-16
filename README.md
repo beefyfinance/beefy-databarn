@@ -198,6 +198,20 @@ make [clickhouse|ch] restore BACKUP=inc-YYYY-MM-DD-HH
 # Retention: 2 fulls (~100GB each) + today's hourly incrementals; override with CLICKHOUSE_BACKUP_KEEP_FULLS
 ```
 
+### ClickHouse 25.10 → 26.8 cutover (prod)
+
+On the host as `databarn`. Nothing is deleted; leftover dirs are only moved aside.
+
+```bash
+cd infra/prod
+make clickhouse preflight
+make clickhouse migrate CONFIRM=1
+```
+
+If migrate dies, run the same command again. If 26.8 is wrong: `make clickhouse rollback CONFIRM=1`.
+
+Full runbook: [`infra/clickhouse/MIGRATE.md`](infra/clickhouse/MIGRATE.md)
+
 ### Production Deployment (Docker Swarm)
 
 1. Follow steps 1-2 from Local Development Setup

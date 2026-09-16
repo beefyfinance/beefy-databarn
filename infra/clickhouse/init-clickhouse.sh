@@ -79,8 +79,7 @@ echo "Initializing ClickHouse databases..."
 clickhouse-client \
   --user default \
   --password "$CLICKHOUSE_PASSWORD" \
-  --multiquery \
-  --query "
+  --multiquery <<SQL
     CREATE DATABASE IF NOT EXISTS analytics;
     CREATE DATABASE IF NOT EXISTS dbt;
     CREATE DATABASE IF NOT EXISTS dlt;
@@ -89,7 +88,7 @@ clickhouse-client \
     DROP DATABASE IF EXISTS envio_poc1;
     DROP DATABASE IF EXISTS envio_poc2;
     DROP DATABASE IF EXISTS envio_poc3;
-  "
+SQL
 
 
 READ_PERM="SELECT"
@@ -100,8 +99,7 @@ PROJECT_WRITE_PERM="SELECT, INSERT, CREATE TABLE"
 clickhouse-client \
   --user default \
   --password "$CLICKHOUSE_PASSWORD" \
-  --multiquery \
-  --query "
+  --multiquery <<SQL
     -------------------------
     -- Users (idempotent)
     -------------------------
@@ -404,7 +402,7 @@ clickhouse-client \
         FOR INTERVAL 1 DAY MAX
             written_bytes  = ${ZAPALYTICS_QUOTA_WRITTEN_BYTES_PER_DAY:-1073741824}
         TO zapalytics;
-"
+SQL
 
 echo "✓ Databases analytics, dbt, dlt, envio & zapalytics initialized"
 echo "✓ Users, grants, profiles, quotas reset & synced to env"

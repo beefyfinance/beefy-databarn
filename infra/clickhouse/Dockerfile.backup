@@ -1,4 +1,4 @@
-ARG CLICKHOUSE_IMAGE=clickhouse/clickhouse-server:25.10
+ARG CLICKHOUSE_IMAGE=clickhouse/clickhouse-server:26.8.4
 FROM minio/mc:latest AS mc
 FROM ${CLICKHOUSE_IMAGE}
 COPY --from=mc /usr/bin/mc /usr/local/bin/mc
