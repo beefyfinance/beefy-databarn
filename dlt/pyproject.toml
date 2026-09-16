@@ -5,13 +5,13 @@ description = "Beefy Databarn - DLT data loading pipelines"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "apscheduler>=3.11.1",
-    "dlt==1.25.0",
-    "dlt[clickhouse,filesystem,sql_database,s3]==1.25.0",
+    "dlt==1.30.0",
+    "dlt[clickhouse,filesystem,sql_database,s3]==1.30.0",
     "httpx>=0.27.0",
     "numpy>=2.3.5",
-    "pandas>=2.3.3",
+    "pandas>=2.3.3,<3",
     "pyarrow>=22.0.0",
-    "clickhouse-connect>=0.10.0",
+    "clickhouse-connect>=0.10.0,<1",
     "psutil>=7.1.3",
     "psycopg2-binary>=2.9.0",
     "json5>=0.12.1",
@@ -29,6 +29,6 @@ package = false
 
 [dependency-groups]
 dev = [
-    "dlt[workspace]==1.25.0",
+    "dlt[hub]==1.30.0",
 ]
 

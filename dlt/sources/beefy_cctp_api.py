@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-# Apply ReplacingMergeTree support for ClickHouse (dlt PR #3366) before any adapter use
-import lib.dlt_clickhouse_replacing_merge_tree_patch  # noqa: F401
-
 from typing import Any
 
 import dlt
