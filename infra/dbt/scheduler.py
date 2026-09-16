@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
 Scheduler for dbt models using APScheduler.
-Runs dbt models every 30 minutes and regenerates docs daily (tests live in the catalog).
+Runs dbt models every 30 minutes, tests once per day, and regenerates docs daily (tests live in the catalog).
 """
 import logging
 import subprocess
 import sys
 import os
+import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+import alerts
+from run_tests import run_dbt_tests
 
 # Configure logging
 logging.basicConfig(
@@ -54,9 +57,11 @@ def run_dbt():
             )
             if deps_result.returncode != 0:
                 logger.error("Error running 'dbt deps'")
+                alerts.alert_deps_failed("dbt_run", deps_result.returncode)
                 return
         
         # Run dbt under lock so manual "make dbt run" and scheduler don't clash
+        started = time.time()
         result = subprocess.run(
             ["/app/run_dbt_with_lock.sh", "run", "--show-all-deprecations"],
             cwd=dbt_dir,
@@ -66,13 +71,15 @@ def run_dbt():
             logger.info("dbt run completed successfully")
         else:
             logger.error("dbt run failed")
+            alerts.alert_run_failed(started, result.returncode)
             
     except Exception as e:
         logger.error(f"Error running dbt: {e}", exc_info=True)
+        alerts.alert_run_exception(e)
 
 
 if __name__ == "__main__":
-    logger.info("Starting dbt scheduler (models every 30 minutes, docs daily)...")
+    logger.info("Starting dbt scheduler (models every 30 minutes, tests daily at 06:00 UTC, docs daily)...")
     publish_docs()
 
     scheduler = BlockingScheduler()
@@ -85,6 +92,15 @@ if __name__ == "__main__":
         name="dbt Run",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    scheduler.add_job(
+        run_dbt_tests,
+        trigger=CronTrigger(hour=6, minute=0),
+        id="dbt_test",
+        name="dbt Test",
+        max_instances=1,
+        coalesce=True,
     )
 
     # Docs include tests; refresh daily after a scheduled run slot
@@ -102,4 +118,3 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler stopped")
         scheduler.shutdown()
-

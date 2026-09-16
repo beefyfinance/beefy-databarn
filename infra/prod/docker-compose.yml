@@ -522,6 +522,7 @@ services:
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_DB: ${DBT_CLICKHOUSE_DB:-analytics}
       DBT_ENVIO_BALANCES_DB: ${DBT_ENVIO_BALANCES_DB:-envio}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
       DOCGLOW_NO_TELEMETRY: "1"
     networks:
       - backend_network
@@ -600,6 +601,7 @@ services:
       BEEFY_DB_NAME: ${BEEFY_DB_NAME:-beefy-db}
       BEEFY_DB_USER: ${BEEFY_DB_USER:-postgres}
       BEEFY_DB_PASSWORD: ${BEEFY_DB_PASSWORD}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
     networks:
       - backend_network
     restart: on-failure

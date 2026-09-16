@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
 Scheduler for DLT pipelines using APScheduler.
-Runs three separate DLT pipelines on different schedules.
+Runs four separate DLT pipelines on different schedules.
 """
 from __future__ import annotations
 import logging
 import asyncio
-import subprocess
 from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+
+import alerts
 
 # Configure logging
 logging.basicConfig(
@@ -24,6 +25,7 @@ TASK_TIMEOUT = 60 * 30  # 30 minutes timeout max
 # Path to the dlt directory (assuming scheduler runs from /app/infra/dlt, dlt code is in /app/dlt)
 DLT_DIR = Path("/app/dlt")
 
+
 async def run_pipeline_script(script_name: str):
     """Run a pipeline script using uv run."""
     process = None
@@ -37,14 +39,22 @@ async def run_pipeline_script(script_name: str):
             stdout=None,  # Output directly to console
             stderr=None,  # Errors directly to console
         )
-        
+
         async with asyncio.timeout(TASK_TIMEOUT):
             await process.wait()
-        
+
         if process.returncode == 0:
             logger.info(f"{script_name} pipeline run completed successfully")
-        else:
-            logger.error(f"{script_name} pipeline failed with return code {process.returncode}")
+            return
+
+        logger.error(f"{script_name} pipeline failed with return code {process.returncode}")
+        alerts.alert_job_failed(script_name, process.returncode)
+    except TimeoutError:
+        logger.error(f"{script_name} timed out after {TASK_TIMEOUT}s")
+        alerts.alert_job_timeout(script_name, TASK_TIMEOUT)
+    except Exception as e:
+        logger.error(f"Error running {script_name}: {e}", exc_info=True)
+        alerts.alert_job_error(script_name, e)
     finally:
         # Kill process if it's still running (timeout or other error)
         if process and process.returncode is None:
@@ -73,8 +83,8 @@ async def beefy_cctp_api_pipeline():
 
 async def main():
     """Main async function to run the scheduler."""
-    logger.info("Starting DLT scheduler with 3 pipeline tasks...")
-    
+    logger.info("Starting DLT scheduler with 4 pipeline tasks...")
+
     scheduler = AsyncIOScheduler()
 
     # Schedule beefy_api pipeline to run every 5 minutes at :00, :05, :10, etc.
@@ -118,7 +128,7 @@ async def main():
     )
 
     scheduler.start()
-    
+
     # Keep the event loop running
     try:
         await asyncio.Event().wait()
@@ -128,5 +138,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
-
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Scheduler stopped")
+    except Exception as e:
+        logger.error(f"dlt scheduler crashed: {e}", exc_info=True)
+        alerts.alert_scheduler_crash(e)
+        raise

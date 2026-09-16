@@ -30,7 +30,10 @@ RUN uv run dbt deps
 # Create logs directory
 RUN mkdir -p /app/dbt/logs
 
-# Copy infra scripts (scheduler + lock wrapper + docs publish)
+# Copy infra scripts (scheduler + lock wrapper + docs publish + Discord helper)
+COPY infra/discord_webhook.py /app/infra/dbt/discord_webhook.py
+COPY infra/dbt/alerts.py /app/infra/dbt/alerts.py
+COPY infra/dbt/run_tests.py /app/infra/dbt/run_tests.py
 COPY infra/dbt/scheduler.py /app/infra/dbt/scheduler.py
 COPY infra/dbt/run_dbt_with_lock.sh /app/run_dbt_with_lock.sh
 COPY infra/dbt/publish_docs.sh /app/publish_docs.sh
