@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+import lib.dlt_clickhouse_get_stored_state_patch  # noqa: F401
+
 from dataclasses import dataclass
 import sys
-from typing import Optional
+from typing import Any, Optional
 
 import logging
 logger = logging.getLogger(__name__)
