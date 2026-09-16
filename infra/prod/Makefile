@@ -335,29 +335,6 @@ clickhouse:
 		version) \
 			$(DC) exec clickhouse clickhouse-client --query "SELECT version()"; \
 		;; \
-		preflight) \
-			echo "=== ClickHouse version ==="; \
-			$(DC) exec clickhouse clickhouse-client --query "SELECT version()"; \
-			echo "=== AVX2 (required by 26.8) ==="; \
-			if [ "$$(uname -s)" != "Linux" ]; then echo "avx2: skipped (not Linux)"; \
-			elif grep -q avx2 /proc/cpuinfo; then echo "avx2: yes"; \
-			else echo "avx2: NO — 26.8 will not start"; exit 1; fi; \
-			echo "=== SQL users ==="; \
-			$(DC) exec clickhouse clickhouse-client --query "SELECT count() AS users FROM system.users FORMAT PrettyCompact"; \
-			echo "=== databases ==="; \
-			$(DC) exec clickhouse clickhouse-client --query "SELECT database, count() AS tables FROM system.tables WHERE database NOT IN ('system','INFORMATION_SCHEMA','information_schema') GROUP BY database ORDER BY database FORMAT PrettyCompact"; \
-			echo "=== backups ==="; \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
-			echo "=== disk ==="; \
-			df -h $(STORAGE_DIR); \
-			$(ROOT_DIR)/infra/clickhouse/upgrade.sh status; \
-		;; \
-		migrate) \
-			BACKUP="$(BACKUP)" CONFIRM="$(CONFIRM)" $(ROOT_DIR)/infra/clickhouse/upgrade.sh migrate; \
-		;; \
-		rollback) \
-			CONFIRM="$(CONFIRM)" $(ROOT_DIR)/infra/clickhouse/upgrade.sh rollback; \
-		;; \
 		restore) \
 			if [ -z "$(BACKUP)" ]; then \
 				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
@@ -370,10 +347,6 @@ clickhouse:
 			echo "clickhouse:"; \
 			echo "  make clickhouse client   Open ClickHouse client"; \
 			echo "  make clickhouse version  Show server version"; \
-			echo "  make clickhouse preflight  AVX2, version, users, backups, disk, migrate dirs"; \
-			echo "  make clickhouse migrate CONFIRM=1  Cut over to 26.8 (safe to re-run)"; \
-			echo "  make clickhouse rollback CONFIRM=1  Back to 25.10 (safe any time, including mid-migrate)"; \
-			echo "  Runbook: infra/clickhouse/MIGRATE.md"; \
 			echo "  make clickhouse backup [full|incremental]  One-shot backup to S3"; \
 			echo "  make clickhouse backup-status    Show recent backups"; \
 			echo "  make clickhouse backup-restart   Recreate backup sidecar (reload loop script/env)"; \
@@ -381,7 +354,7 @@ clickhouse:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make clickhouse [client|version|preflight|migrate|rollback|backup [full|incremental]|backup-status|backup-restart|restore|help]"; \
+			echo "Usage: make clickhouse [client|version|backup [full|incremental]|backup-status|backup-restart|restore|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -450,7 +423,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version preflight migrate rollback:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version:
 	@:
 
 # Catch-all for any other resource/source names

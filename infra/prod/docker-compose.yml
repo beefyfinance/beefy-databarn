@@ -1,6 +1,6 @@
 name: beefy-databarn
 
-x-clickhouse-image: &clickhouse-image clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.10}
+x-clickhouse-image: &clickhouse-image clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.4}
 
 services:
   traefik:
@@ -141,13 +141,13 @@ services:
         max-file: "3"
 
   clickhouse-backup:
-    image: beefy-databarn-clickhouse-backup:${CLICKHOUSE_VERSION:-25.10}
+    image: beefy-databarn-clickhouse-backup:${CLICKHOUSE_VERSION:-26.8.4}
     pull_policy: build
     build:
       context: ..
       dockerfile: clickhouse/Dockerfile.backup
       args:
-        CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.10}
+        CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.4}
     entrypoint: ["/bin/bash", "/opt/backup-loop.sh"]
     command: ["daemon"]
     volumes:
@@ -638,7 +638,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${STORAGE_DIR}/${CLICKHOUSE_DIR:-clickhouse}
+      device: ${STORAGE_DIR}/clickhouse
   prometheus_data:
     driver: local
     driver_opts:
