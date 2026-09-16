@@ -29,5 +29,5 @@ LEFT JOIN {{ ref('chain') }} chain_dim
   ON vaults.network = chain_dim.beefy_key
 LEFT JOIN {{ ref('stg_envio__reward_pool') }} envio
   ON chain_dim.chain_id = envio.network_id
-  AND vaults.earn_contract_address = envio.address
+  AND toNullable(vaults.earn_contract_address) = envio.address
 WHERE vaults.version = 2

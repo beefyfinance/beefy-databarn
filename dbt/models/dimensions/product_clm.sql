@@ -63,8 +63,8 @@ LEFT JOIN {{ ref('chain') }} chain_dim
   ON vaults.network = chain_dim.beefy_key
 LEFT JOIN {{ ref('stg_envio__clm_manager') }} envio
   ON chain_dim.chain_id = envio.network_id
-  AND vaults.earn_contract_address = envio.address
+  AND toNullable(vaults.earn_contract_address) = envio.address
 LEFT JOIN strategies_agg
   ON chain_dim.chain_id = strategies_agg.network_id
-  AND vaults.earn_contract_address = strategies_agg.vault_address
+  AND toNullable(vaults.earn_contract_address) = strategies_agg.vault_address
 WHERE NOT vaults.is_gov_vault

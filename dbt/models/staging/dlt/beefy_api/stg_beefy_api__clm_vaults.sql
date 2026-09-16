@@ -7,13 +7,16 @@
 WITH loads_latest AS (
   -- Keep only the latest load per (chain, earned_token_address) by inserted_at to avoid
   -- duplicates when API entity ids are corrected and reloaded.
+  -- Join keys stay Nullable(String) (ClickHouse common supertype of String and Nullable(String)).
+  -- Aliases must not reuse source column names: JOIN streams reject same-name columns
+  -- with different nullability (code 352).
   SELECT
-    t.chain,
-    cast({{ evm_address('t.earned_token_address') }} as String) AS earned_token_address,
+    t.chain AS chain_key,
+    CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String)) AS earned_token_address_key,
     argMax(l.load_id, l.inserted_at) AS load_id
   FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
   INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l ON t._dlt_load_id = l.load_id
-  GROUP BY t.chain, cast({{ evm_address('t.earned_token_address') }} as String)
+  GROUP BY t.chain, CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))
 )
 SELECT
   t.assets,
@@ -51,7 +54,7 @@ SELECT
   t.updated_at
 FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
 INNER JOIN loads_latest ll
-  ON ll.chain = t.chain
-  AND ll.earned_token_address = cast({{ evm_address('t.earned_token_address') }} as String)
+  ON ll.chain_key = t.chain
+  AND ll.earned_token_address_key = CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))
   AND t._dlt_load_id = ll.load_id
 
