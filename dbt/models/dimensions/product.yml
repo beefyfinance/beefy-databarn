@@ -8,6 +8,23 @@ models:
         enforced: true
       meta:
         primary_key: ["chain_id", "product_address"]
+    tests:
+      - stg_api_ids_in_product:
+          name: stg_clm_vaults_in_product
+          config:
+            severity: warn
+            store_failures: true
+          arguments:
+            from_model: ref('stg_beefy_api__clm_vaults')
+            where_clause: "ifNull(is_gov_vault, false) = false"
+      - stg_api_ids_in_product:
+          name: stg_classic_vaults_in_product
+          config:
+            severity: warn
+            store_failures: true
+          arguments:
+            from_model: ref('stg_beefy_api__vaults')
+            where_clause: "ifNull(is_gov_vault, false) = false"
     columns:
       - name: chain_id
         description: "Chain ID where the product exists"
