@@ -395,8 +395,8 @@ superset:
 			echo "✓ Superset stopped" \
 			;; \
 		restart) \
-			echo "Restarting Superset..."; \
-			$(DC) restart superset; \
+			echo "Restarting Superset (rebuild image)..."; \
+			$(DC) up -d --force-recreate --build --no-deps superset; \
 			echo "✓ Superset restarted" \
 			;; \
 		build) \

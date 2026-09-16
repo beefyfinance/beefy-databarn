@@ -98,6 +98,9 @@ FEATURE_FLAGS = {"ALERT_REPORTS": True}
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 SQLLAB_CTAS_NO_LIMIT = False
 
+# Superset 6.0 moved List Roles to the frontend; required for FAB 5.
+FAB_ADD_SECURITY_API = True
+
 # Authentication Configuration
 if SUPERSET_ENV == "production":
     # Production: GitHub OAuth authentication

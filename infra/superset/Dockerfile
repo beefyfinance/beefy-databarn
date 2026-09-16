@@ -1,5 +1,5 @@
 
-FROM apache/superset:5.0.0
+FROM apache/superset:6.1.0
 
 USER root
 

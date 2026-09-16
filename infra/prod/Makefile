@@ -136,8 +136,8 @@ superset:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
 		restart) \
-			echo "Restarting Superset..."; \
-			$(DC) restart superset; \
+			echo "Restarting Superset (rebuild image)..."; \
+			$(DC) up -d --force-recreate --build --no-deps superset; \
 			echo "✓ Superset restarted" \
 			;; \
 		build) \
