@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scheduler for dbt models using APScheduler.
-Runs dbt models every 30 minutes.
+Runs dbt models every 30 minutes and regenerates docs daily (tests live in the catalog).
 """
 import logging
 import subprocess
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def publish_docs():
-    """Generate Docglow static docs once at startup. Failure must not block dbt run."""
+    """Generate Docglow static docs. Failure must not block dbt run."""
     try:
         logger.info("Generating dbt docs (Docglow)...")
         result = subprocess.run(["/app/publish_docs.sh"], cwd="/app/dbt")
@@ -72,7 +72,7 @@ def run_dbt():
 
 
 if __name__ == "__main__":
-    logger.info("Starting dbt scheduler (runs every 30 minutes)...")
+    logger.info("Starting dbt scheduler (models every 30 minutes, docs daily)...")
     publish_docs()
 
     scheduler = BlockingScheduler()
@@ -85,6 +85,16 @@ if __name__ == "__main__":
         name="dbt Run",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    # Docs include tests; refresh daily after a scheduled run slot
+    scheduler.add_job(
+        publish_docs,
+        trigger=CronTrigger(hour=4, minute=15),
+        id="dbt_docs",
+        name="dbt Docs",
+        max_instances=1,
+        coalesce=True,
     )
     
     try:
