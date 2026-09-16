@@ -82,6 +82,7 @@ clickhouse-client \
   --multiquery <<SQL
     CREATE DATABASE IF NOT EXISTS analytics;
     CREATE DATABASE IF NOT EXISTS dbt;
+    CREATE DATABASE IF NOT EXISTS dbt_test__audit;
     CREATE DATABASE IF NOT EXISTS dlt;
     CREATE DATABASE IF NOT EXISTS envio;
     CREATE DATABASE IF NOT EXISTS zapalytics;
@@ -164,19 +165,22 @@ clickhouse-client \
     GRANT ${READ_PERM}                ON zapalytics.*               TO dlt;
     GRANT ${READ_PERM}                ON envio.*                    TO dlt;
 
-    -- dbt: R on dlt.*, RW on dbt.* & analytics.*
+    -- dbt: R on dlt.*, RW on dbt.* & analytics.*, RW+CREATE DATABASE on
+    -- dbt_test__audit.* (dbt store_failures always issues CREATE DATABASE)
     REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*     FROM dbt;
     REVOKE ALL PRIVILEGES ON dlt.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON envio.*                  FROM dbt;
     REVOKE ALL PRIVILEGES ON zapalytics.*             FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
+    REVOKE ALL PRIVILEGES ON dbt_test__audit.*        FROM dbt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dbt;
     GRANT ${READ_PERM}                ON dlt.*                      TO dbt;
     GRANT ${READ_PERM}                ON envio.*                    TO dbt;
     GRANT ${READ_PERM}                ON zapalytics.*               TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
+    GRANT ${READ_PERM}, ${WRITE_PERM}, CREATE DATABASE ON dbt_test__audit.* TO dbt;
 
     -- grafana: R on warehouse + project DBs
     REVOKE ALL PRIVILEGES ON dlt.*           FROM grafana;
@@ -404,5 +408,5 @@ clickhouse-client \
         TO zapalytics;
 SQL
 
-echo "✓ Databases analytics, dbt, dlt, envio & zapalytics initialized"
+echo "✓ Databases analytics, dbt, dbt_test__audit, dlt, envio & zapalytics initialized"
 echo "✓ Users, grants, profiles, quotas reset & synced to env"

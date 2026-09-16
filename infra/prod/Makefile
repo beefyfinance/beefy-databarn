@@ -188,7 +188,7 @@ dbt:
 			else \
 				echo "Refreshing all dbt models (full-refresh)..."; \
 				$(DC) exec dbt /app/run_dbt_with_lock.sh run --full-refresh; \
-			fi; \
+			fi && \
 			echo "dbt refresh completed successfully"; \
 		;; \
 		run) \
@@ -200,7 +200,7 @@ dbt:
 			else \
 				echo "Running all dbt models..."; \
 				$(DC) exec dbt /app/run_dbt_with_lock.sh run; \
-			fi; \
+			fi && \
 			echo "dbt run completed successfully"; \
 		;; \
 		test) \
@@ -212,7 +212,7 @@ dbt:
 			else \
 				echo "Testing all dbt models..."; \
 				$(DC) exec dbt /app/run_dbt_with_lock.sh test; \
-			fi; \
+			fi && \
 			echo "dbt test completed successfully"; \
 		;; \
 		docs) \
