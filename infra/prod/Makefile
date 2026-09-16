@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -34,6 +34,7 @@ help:
 	@$(MAKE) -s --no-print-directory dbt
 	@$(MAKE) -s --no-print-directory dlt
 	@$(MAKE) -s --no-print-directory clickhouse
+	@$(MAKE) -s --no-print-directory grafana
 	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
@@ -90,6 +91,43 @@ infra: ensure-dirs
 			echo "Usage: make infra [build [<svc>]|start|stop|restart|logs|ps|help]"; \
 			exit 1; \
 		;; \
+	esac
+
+# Grafana commands - using subcommands (published image; restart recreates to pick up tag/config)
+gf: grafana
+grafana:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		start|up) \
+			echo "Starting Grafana..."; \
+			$(DC) up -d grafana; \
+			echo "✓ Grafana started"; \
+		;; \
+		restart) \
+			echo "Recreating Grafana..."; \
+			$(DC) up -d --force-recreate --no-deps grafana; \
+			echo "✓ Grafana recreated"; \
+		;; \
+		logs) \
+			echo "Showing Grafana logs..."; \
+			$(DC) logs -f grafana; \
+		;; \
+		ps) \
+			echo "Showing Grafana service status..."; \
+			$(DC) ps grafana; \
+		;; \
+		help|"") \
+			echo "Grafana:"; \
+			echo "  make [grafana|gf] start     Start Grafana"; \
+			echo "  make [grafana|gf] restart   Recreate Grafana (new image tag / grafana.ini)"; \
+			echo "  make [grafana|gf] logs      View Grafana logs"; \
+			echo "  make [grafana|gf] ps        Show Grafana status"; \
+			echo "" \
+			;; \
+		*) \
+			echo "Usage: make [grafana|gf] [start|restart|logs|ps|help]"; \
+			exit 1 \
+			;; \
 	esac
 
 # Superset commands - using subcommands
@@ -423,7 +461,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version:
 	@:
 
 # Catch-all for any other resource/source names

@@ -255,24 +255,38 @@ gf: grafana # alias for grafana
 grafana:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
+		start|up) \
+			echo "Starting Grafana..."; \
+			$(DC) up -d grafana; \
+			echo "✓ Grafana started" \
+			;; \
 		stop) \
 			echo "Stopping Grafana..."; \
 			$(DC) stop grafana; \
 			echo "✓ Grafana stopped" \
 			;; \
 		restart) \
-			echo "Re-restarting Grafana (restarting service to reload configs)..."; \
+			echo "Restarting Grafana (reload configs)..."; \
 			$(DC) restart grafana; \
-			echo "✓ Grafana re-restarted" \
+			echo "✓ Grafana restarted" \
+			;; \
+		logs) \
+			$(DC) logs -f grafana \
+			;; \
+		ps) \
+			$(DC) ps grafana \
 			;; \
 		help|"") \
 			echo "Grafana:"; \
-			echo "  make [grafana|gf] stop        Stop Grafana"; \
-			echo "  make [grafana|gf] restart     Re-restart Grafana (reload configs)"; \
+			echo "  make [grafana|gf] start        Start Grafana"; \
+			echo "  make [grafana|gf] stop         Stop Grafana"; \
+			echo "  make [grafana|gf] restart      Restart Grafana (reload configs)"; \
+			echo "  make [grafana|gf] logs         View Grafana logs"; \
+			echo "  make [grafana|gf] ps           Show Grafana status"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [grafana|gf] [stop|restart|help]"; \
+			echo "Usage: make [grafana|gf] [start|stop|restart|logs|ps|help]"; \
 			exit 1 \
 			;; \
 	esac
