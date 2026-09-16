@@ -1,0 +1,72 @@
+version: 1
+title: Beefy Databarn
+theme: dark
+column_lineage: true
+enable_erd: true
+slim: false
+
+ai:
+  enabled: false
+
+telemetry:
+  enabled: false
+
+profiling:
+  enabled: false
+
+lineage_layers:
+  layers:
+    - name: source
+      rank: 0
+      color: "#14532d"
+    - name: staging
+      rank: 1
+      color: "#1e3a5f"
+    - name: intermediate
+      rank: 2
+      color: "#713f12"
+    - name: dimensions
+      rank: 3
+      color: "#4c1d95"
+    - name: marts
+      rank: 4
+      color: "#9d174d"
+    - name: api
+      rank: 5
+      color: "#155e75"
+    - name: exposure
+      rank: 6
+      color: "#44403c"
+  rules:
+    - layer: staging
+      match: folder
+      pattern: "*staging*"
+    - layer: intermediate
+      match: folder
+      pattern: "*intermediate*"
+    - layer: dimensions
+      match: folder
+      pattern: "*dimensions*"
+    - layer: marts
+      match: folder
+      pattern: "*marts*"
+    - layer: api
+      match: folder
+      pattern: "*api*"
+    - layer: staging
+      match: name_prefix
+      pattern: "stg_"
+    - layer: intermediate
+      match: name_prefix
+      pattern: "int_"
+    - layer: api
+      match: name_prefix
+      pattern: "api_"
+
+health:
+  naming_rules:
+    staging: "^stg_"
+    intermediate: "^int_"
+    dimensions: ".*"
+    marts: ".*"
+    api: "^api_"

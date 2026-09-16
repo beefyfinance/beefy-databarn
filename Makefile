@@ -157,8 +157,10 @@ dbt:
 			echo "\n========== END =========="; \
 			;; \
 		docs) \
-			echo "Generating dbt documentation..."; \
-			$(UV) dbt docs generate && $(UV) dbt docs serve \
+			echo "Generating dbt documentation (Docglow)..."; \
+			$(UV) dbt docs generate && \
+			DOCGLOW_NO_TELEMETRY=1 $(UV) docglow generate --project-dir . --output-dir ./target/docglow --static --enable-erd && \
+			DOCGLOW_NO_TELEMETRY=1 $(UV) docglow serve --dir ./target/docglow \
 			;; \
 		help|"") \
 			echo "dbt:"; \
@@ -169,7 +171,7 @@ dbt:
 			echo "  make dbt test            Run dbt tests"; \
 			echo "  make dbt compile         Compile dbt models"; \
 			echo "  make dbt sql [<model>]   Show compiled SQL (optionally for specific model)"; \
-			echo "  make dbt docs            Generate and serve documentation"; \
+			echo "  make dbt docs            Generate and serve Docglow documentation"; \
 			echo "" \
 			;; \
 		*) \

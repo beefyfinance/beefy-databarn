@@ -21,6 +21,7 @@ DATA_DIRS := $(STORAGE_DIR)/clickhouse \
              $(STORAGE_DIR)/redis \
              $(STORAGE_DIR)/traefik_certs \
              $(STORAGE_DIR)/dbt \
+             $(STORAGE_DIR)/dbt-docs \
              $(STORAGE_DIR)/dlt
 
 # Default target
@@ -214,15 +215,21 @@ dbt:
 			fi; \
 			echo "dbt test completed successfully"; \
 		;; \
+		docs) \
+			echo "Generating and publishing dbt docs..."; \
+			$(DC) exec dbt /app/publish_docs.sh; \
+			echo "dbt docs published"; \
+		;; \
 		help|"") \
 			echo "dbt:"; \
 			echo "  make dbt run [<model>]     Run dbt models"; \
 			echo "  make dbt refresh [<model>] Full refresh all dbt models (or a specific model)"; \
 			echo "  make dbt test [<model>]    Run dbt tests"; \
+			echo "  make dbt docs              Generate and publish Docglow docs"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dbt [run [<model>]|refresh [<model>]|test [<model>]|help]"; \
+			echo "Usage: make dbt [run [<model>]|refresh [<model>]|test [<model>]|docs|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -461,7 +468,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop backup full incremental backup-status backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

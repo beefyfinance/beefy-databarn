@@ -30,14 +30,16 @@ RUN uv run dbt deps
 # Create logs directory
 RUN mkdir -p /app/dbt/logs
 
-# Copy infra scripts (scheduler + lock wrapper for single dbt run at a time)
+# Copy infra scripts (scheduler + lock wrapper + docs publish)
 COPY infra/dbt/scheduler.py /app/infra/dbt/scheduler.py
 COPY infra/dbt/run_dbt_with_lock.sh /app/run_dbt_with_lock.sh
-RUN chmod +x /app/infra/dbt/scheduler.py /app/run_dbt_with_lock.sh
+COPY infra/dbt/publish_docs.sh /app/publish_docs.sh
+RUN chmod +x /app/infra/dbt/scheduler.py /app/run_dbt_with_lock.sh /app/publish_docs.sh
 
 # Set environment variables
 ENV DBT_PROFILES_DIR=/app/dbt
 ENV DBT_PROJECT_DIR=/app/dbt
+ENV DOCGLOW_NO_TELEMETRY=1
 
 # Run the Python scheduler (runs every 30 minutes)
 CMD ["uv", "run", "/app/infra/dbt/scheduler.py"]

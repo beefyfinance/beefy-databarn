@@ -19,6 +19,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def publish_docs():
+    """Generate Docglow static docs once at startup. Failure must not block dbt run."""
+    try:
+        logger.info("Generating dbt docs (Docglow)...")
+        result = subprocess.run(["/app/publish_docs.sh"], cwd="/app/dbt")
+        if result.returncode == 0:
+            logger.info("dbt docs published successfully")
+        else:
+            logger.error("dbt docs generate/publish failed (continuing without refresh)")
+    except Exception as e:
+        logger.error(f"Error publishing dbt docs: {e}", exc_info=True)
+
+
 def run_dbt():
     """Run dbt models."""
     try:
@@ -60,7 +73,8 @@ def run_dbt():
 
 if __name__ == "__main__":
     logger.info("Starting dbt scheduler (runs every 30 minutes)...")
-    
+    publish_docs()
+
     scheduler = BlockingScheduler()
     
     # Schedule dbt to run every 30 minutes
