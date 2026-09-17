@@ -6,11 +6,11 @@ Runs four separate DLT pipelines on different schedules.
 from __future__ import annotations
 import logging
 import asyncio
-from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 import alerts
+from process import run_pipeline_script
 
 # Configure logging
 logging.basicConfig(
@@ -20,50 +20,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TASK_TIMEOUT = 60 * 30  # 30 minutes timeout max
-
-# Path to the dlt directory (assuming scheduler runs from /app/infra/dlt, dlt code is in /app/dlt)
-DLT_DIR = Path("/app/dlt")
-
-
-async def run_pipeline_script(script_name: str):
-    """Run a pipeline script using uv run."""
-    process = None
-    try:
-        logger.info(f"Starting {script_name} pipeline run...")
-        # Change to the dlt directory and run the script
-        # stdout=None and stderr=None let output stream directly to console
-        process = await asyncio.create_subprocess_exec(
-            "uv", "run", f"./{script_name}",
-            cwd=str(DLT_DIR),
-            stdout=None,  # Output directly to console
-            stderr=None,  # Errors directly to console
-        )
-
-        async with asyncio.timeout(TASK_TIMEOUT):
-            await process.wait()
-
-        if process.returncode == 0:
-            logger.info(f"{script_name} pipeline run completed successfully")
-            return
-
-        logger.error(f"{script_name} pipeline failed with return code {process.returncode}")
-        alerts.alert_job_failed(script_name, process.returncode)
-    except TimeoutError:
-        logger.error(f"{script_name} timed out after {TASK_TIMEOUT}s")
-        alerts.alert_job_timeout(script_name, TASK_TIMEOUT)
-    except Exception as e:
-        logger.error(f"Error running {script_name}: {e}", exc_info=True)
-        alerts.alert_job_error(script_name, e)
-    finally:
-        # Kill process if it's still running (timeout or other error)
-        if process and process.returncode is None:
-            logger.warning(f"Killing {script_name} process...")
-            try:
-                process.kill()
-                await asyncio.wait_for(process.wait(), timeout=30)
-            except asyncio.TimeoutError:
-                logger.error(f"Process {script_name} did not terminate after kill signal")
 
 async def beefy_api_pipeline():
     """Run the beefy_api pipeline."""

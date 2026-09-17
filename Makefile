@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse superset api deps-check setup dev
+.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -24,6 +24,7 @@ help: ## Show this help message
 	@$(MAKE) -s --no-print-directory clickhouse
 	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory api
+	@$(MAKE) -s --no-print-directory test
 	@echo "Dependencies:"
 	@echo "  make deps-check          Check for outdated dependencies"
 	@echo ""
@@ -443,6 +444,25 @@ api:
 			;; \
 		*) \
 			echo "Usage: make api [dev|help]"; \
+			exit 1 \
+			;; \
+	esac
+
+# Unit tests - using subcommands
+test:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		unit) \
+			echo "Running unit tests..."; \
+			uv run --with pytest pytest infra/tests \
+			;; \
+		help|"") \
+			echo "Tests:"; \
+			echo "  make test unit           Run Python unit tests"; \
+			echo "" \
+			;; \
+		*) \
+			echo "Usage: make test [unit|help]"; \
 			exit 1 \
 			;; \
 	esac

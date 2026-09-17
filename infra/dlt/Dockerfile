@@ -22,7 +22,7 @@ RUN uv sync --frozen
 COPY dlt/ /app/dlt/
 
 COPY infra/discord_webhook.py /app/infra/dlt/discord_webhook.py
-COPY infra/dlt/scheduler.py infra/dlt/alerts.py infra/dlt/entrypoint.sh infra/dlt/set_dlt_env.sh /app/infra/dlt/
+COPY infra/dlt/scheduler.py infra/dlt/process.py infra/dlt/alerts.py infra/dlt/entrypoint.sh infra/dlt/set_dlt_env.sh /app/infra/dlt/
 RUN chmod +x /app/infra/dlt/scheduler.py /app/infra/dlt/entrypoint.sh /app/infra/dlt/set_dlt_env.sh
 
 # Set working directory to dlt project

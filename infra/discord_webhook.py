@@ -19,6 +19,28 @@ DISCORD_DESCRIPTION_LIMIT = 4096
 DISCORD_TITLE_LIMIT = 256
 
 
+def as_inline_code(text: str) -> str:
+    """Wrap text so Discord does not interpret markdown (e.g. `__` as underline)."""
+    return "`" + text.replace("`", "'") + "`"
+
+
+def as_code_block(text: str, *, max_chars: int = 1800, keep: str = "end") -> str:
+    """Format a log/error excerpt as a Discord code block.
+
+    keep="end" retains a log tail (typical for tracebacks).
+    keep="start" retains the beginning (typical for dbt adapter errors).
+    """
+    cleaned = text.replace("```", "'''").strip()
+    if not cleaned:
+        return ""
+    if len(cleaned) > max_chars:
+        if keep == "start":
+            cleaned = cleaned[: max_chars - 2].rstrip() + "\n…"
+        else:
+            cleaned = "…\n" + cleaned[-(max_chars - 2) :].lstrip()
+    return f"```\n{cleaned}\n```"
+
+
 def _today_utc() -> str:
     return datetime.now(timezone.utc).date().isoformat()
 
