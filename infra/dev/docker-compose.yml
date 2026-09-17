@@ -215,7 +215,7 @@ services:
         max-file: "3"
       
   rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.83
+    image: rustfs/rustfs:1.0.0
     ports:
       - "9002:9000"  # API port (mapped to 9002 to avoid conflict with ClickHouse)
       - "9001:9001"  # Console port

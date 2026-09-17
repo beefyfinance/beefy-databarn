@@ -284,7 +284,7 @@ services:
     restart: unless-stopped
 
   rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.83
+    image: rustfs/rustfs:1.0.0
     volumes:
       - rustfs_data:/data
     environment:
