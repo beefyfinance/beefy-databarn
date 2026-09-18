@@ -15,11 +15,11 @@ models:
           name: int_product_stats__harvest_hourly_in_unified
           config:
             store_failures: true
-            where: "date_hour >= toStartOfHour(now('UTC')) - interval 2 day"
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
           arguments:
             to: ref('int_product_stats__unified_hourly')
             columns: ["chain_id", "product_address", "date_hour"]
-            to_where: "source = 'harvest' and date_hour >= toStartOfHour(now('UTC')) - interval 2 day"
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
     columns:
       - name: date_hour
         description: "Start of hour (UTC) for the aggregation"
