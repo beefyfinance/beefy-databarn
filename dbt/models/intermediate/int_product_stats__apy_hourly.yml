@@ -11,15 +11,17 @@ models:
           arguments:
             to: ref('int_product_keys')
             columns: ["chain_id", "product_address"]
+      # 30-day window, one source: a full-history EXCEPT against unified takes ~1 min.
+      # Latest day excluded; unified incremental reloads with a 1-day lag.
       - keys_match:
           name: int_product_stats__apy_hourly_in_unified
           config:
             store_failures: true
-            where: "date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
           arguments:
             to: ref('int_product_stats__unified_hourly')
             columns: ["chain_id", "product_address", "date_hour"]
-            to_where: "date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+            to_where: "source = 'apy' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
     columns:
       - name: apy
         description: "APY percentage"
