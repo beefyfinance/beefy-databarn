@@ -24,8 +24,9 @@ models:
               - product_address
               - toStartOfHour(txn_timestamp)
             to_where: "txn_timestamp >= toStartOfHour(now('UTC')) - interval 30 day"
-      # 30-day window, one source: a full-history EXCEPT against unified takes ~1 min.
+      # 30-day window: a full-history EXCEPT against unified takes ~1 min.
       # Latest day excluded; unified incremental reloads with a 1-day lag.
+      # No source filter: CoalescingMergeTree folds every source into one row.
       - keys_match:
           name: int_product_stats__yield_hourly_in_unified
           config:
@@ -34,7 +35,7 @@ models:
           arguments:
             to: ref('int_product_stats__unified_hourly')
             columns: ["chain_id", "product_address", "date_hour"]
-            to_where: "source = 'yield' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
     columns:
       - name: underlying_amount_compounded
         description: "Underlying amount compounded"
