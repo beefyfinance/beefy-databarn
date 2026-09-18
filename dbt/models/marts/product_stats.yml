@@ -69,6 +69,12 @@ models:
         codec: LZ4
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
       - name: display_name
         description: "Product/vault display name"
         data_type: String
@@ -186,6 +192,12 @@ models:
         description: "Tokens Addresses"
         data_type: Array(String)
         codec: LZ4
+        meta:
+          docglow:
+            relationships:
+              - to: token
+                field: representation_address
+                kind: many_to_many
       - name: breakdown_balances
         description: "Balances information (JSON)"
         data_type: Array(Decimal(76, 20))

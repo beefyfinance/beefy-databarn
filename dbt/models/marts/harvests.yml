@@ -3,13 +3,31 @@ version: 2
 models:
   - name: harvests
     description: "One row per harvest event, joined to product dimension only. No grouping. Includes computed USD columns (fee * native_price, harvest_amount * want_price). Fraxtal platform fees use frxETH price."
+    tests:
+      - relationships_multi_key:
+          name: relationships_harvests_product
+          arguments:
+            to: ref('product')
+            from_columns: ["chain_id", "product_address"]
+            to_columns: ["chain_id", "product_address"]
     columns:
       - name: txn_timestamp
         description: "Transaction timestamp (UTC)"
       - name: chain_id
         description: "Chain ID (from product dimension)"
+        tests:
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
       - name: product_address
         description: "Product contract address (from product dimension)"
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
       - name: beefy_key
         description: "Beefy product identifier"
       - name: product_type

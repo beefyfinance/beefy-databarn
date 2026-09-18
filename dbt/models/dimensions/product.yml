@@ -39,6 +39,10 @@ models:
         data_type: Int64
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
       - name: product_type
         description: "Type of product (classic_vault, clm_manager, classic_boost, or reward_pool)"
         data_type: String

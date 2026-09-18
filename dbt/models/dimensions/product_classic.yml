@@ -43,6 +43,15 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_one
+              - to: token
+                field: representation_address
+                kind: one_to_one
       - name: beefy_key
         description: "Beefy-specific vault/product identifier"
         data_type: String
@@ -79,6 +88,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: token
+                field: representation_address
+                kind: one_to_many
       - name: creation_block
         description: "Block number when the product was initialized (from envio)"
         data_type: Nullable(Int64)

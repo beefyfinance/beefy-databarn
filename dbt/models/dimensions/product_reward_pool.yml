@@ -32,11 +32,24 @@ models:
         data_type: Int64
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('chain')
+                field: chain_id
       - name: reward_pool_address
         description: "Reward pool contract address"
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_one
+              - to: token
+                field: representation_address
+                kind: one_to_one
       - name: beefy_key
         description: "Beefy-specific reward pool/product identifier"
         data_type: String
@@ -70,6 +83,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
       - name: reward_token_representation_addresses
         description: "Reward token contract addresses"
         data_type: Array(String)

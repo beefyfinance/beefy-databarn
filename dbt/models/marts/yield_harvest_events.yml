@@ -61,6 +61,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
       - name: underlying_amount_compounded
         description: "Amount harvested"
         data_type: Decimal(76, 20)

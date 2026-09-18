@@ -48,6 +48,12 @@ models:
               arguments:
                 to: ref('chain')
                 to_column: chain_id
+        meta:
+          docglow:
+            relationships:
+              - to: chain
+                field: chain_id
+                kind: many_to_many
       - name: first_activity_timestamp
         description: "Timestamp of the first token balance change for this address. Null if the address has no recorded activity."
         data_type: Nullable(DateTime64(3, 'UTC'))

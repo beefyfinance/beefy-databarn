@@ -44,6 +44,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: token
+                field: representation_address
+                kind: one_to_many
       - name: token_erc20_address
         description: "ERC20 token address, null for native tokens"
         data_type: Nullable(String)

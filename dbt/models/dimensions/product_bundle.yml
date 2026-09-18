@@ -45,6 +45,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_one
       - name: bundle_type
         description: "Type of bundle: 'clm_bundle' or 'classic_bundle'"
         data_type: String
@@ -83,11 +89,23 @@ models:
         data_type: Array(String)
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product_reward_pool
+                field: reward_pool_address
+                kind: many_to_many
       - name: classic_boost_addresses
         description: "Array of classic boost contract addresses associated with this bundle"
         data_type: Array(String)
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product_classic_boost
+                field: boost_address
+                kind: many_to_many
       - name: creation_block
         description: "Block number when the bundle's root product was initialized (from envio)"
         data_type: Nullable(Int64)

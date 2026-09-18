@@ -49,6 +49,12 @@ models:
         data_type: String
         tests:
           - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: int_product_keys
+                field: product_address
+                kind: one_to_many
       - name: block_number
         description: "Block number of the balance change"
         data_type: Int64
