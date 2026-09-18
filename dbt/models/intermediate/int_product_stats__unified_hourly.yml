@@ -3,6 +3,68 @@ version: 2
 models:
   - name: int_product_stats__unified_hourly
     description: "Unified hourly stats from all sources (TVL, APY, breakdowns, LPS, yield, harvest). Uses UNION ALL + CoalescingMergeTree for better performance."
+    tests:
+      - keys_match:
+          name: int_product_stats__unified_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      - keys_match:
+          name: int_product_stats__unified_tvl_in_tvl_hourly
+          config:
+            store_failures: true
+            where: "source = 'tvl' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__tvl_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__unified_apy_in_apy_hourly
+          config:
+            store_failures: true
+            where: "source = 'apy' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__apy_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__unified_apy_breakdown_in_apy_breakdown_hourly
+          config:
+            store_failures: true
+            where: "source = 'apy_breakdown' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__apy_breakdown_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__unified_lps_breakdown_in_lps_breakdown_hourly
+          config:
+            store_failures: true
+            where: "source = 'lps_breakdown' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__lps_breakdown_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__unified_yield_in_yield_hourly
+          config:
+            store_failures: true
+            where: "source = 'yield' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__yield_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__unified_harvest_in_harvest_hourly
+          config:
+            store_failures: true
+            where: "source = 'harvest' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__harvest_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
     columns:
       - name: tvl_usd
         description: "Total value locked in USD"

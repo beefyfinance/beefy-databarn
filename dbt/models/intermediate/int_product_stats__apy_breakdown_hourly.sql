@@ -28,7 +28,7 @@ SELECT
   argMax(ab.merkl_apr, ab.date_time) as merkl_apr,
   argMax(ab.linea_ignition_apr, ab.date_time) as linea_ignition_apr
 FROM {{ ref('stg_beefy_api__apy_breakdown') }} ab
-INNER JOIN {{ ref('product') }} p
+INNER JOIN {{ ref('int_product_keys') }} p
   ON ab.vault_id = p.beefy_key
 WHERE 
   ab.compoundings_per_year between 0 and 1000000000

@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: int_chain_keys
+    description: "Skinny chain identity map (network_id / beefy slug → chain_id). Used by intermediate models; display attributes live on chain."
+    config:
+      meta:
+        primary_key: "chain_id"
+    tests:
+      - keys_match:
+          name: int_chain_keys_in_chain
+          config:
+            store_failures: true
+          arguments:
+            to: ref('chain')
+            columns: ["chain_id", "network_id", "beefy_key"]
+    columns:
+      - name: chain_id
+        description: "Chain ID (same as network_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - unique
+      - name: network_id
+        description: "Network identifier (same as chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - unique
+      - name: beefy_key
+        description: "Normalized Beefy chain slug (e.g. bsc, ethereum)"
+        data_type: String
+        tests:
+          - not_null
+          - unique

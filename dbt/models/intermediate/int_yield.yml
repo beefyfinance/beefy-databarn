@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: int_yield
+    description: "Harvest events keyed to (chain_id, product_address) via int_product_keys."
+    tests:
+      - keys_match:
+          name: int_yield_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      - keys_match:
+          name: int_yield_hours_in_yield_hourly
+          config:
+            store_failures: true
+            where: >
+              txn_timestamp >= toStartOfHour(now('UTC')) - interval 30 day
+              and underlying_amount_compounded between 0 and 1000000000000
+              and underlying_token_price_usd between 0 and 1000000
+              and underlying_amount_compounded_usd between 0 and 1000000000000
+          arguments:
+            to: ref('int_product_stats__yield_hourly')
+            columns:
+              - chain_id
+              - product_address
+              - toStartOfHour(txn_timestamp)
+            to_columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"

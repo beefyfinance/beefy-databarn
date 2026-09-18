@@ -20,7 +20,7 @@ SELECT
   argMax(lb.underlying_balances, lb.date_time) as underlying_balances,
   argMax(lb.underlying_price, lb.date_time) as underlying_price
 FROM {{ ref('stg_beefy_api__lps_breakdown') }} lb
-INNER JOIN {{ ref('product') }} p
+INNER JOIN {{ ref('int_product_keys') }} p
   ON lb.vault_id = p.beefy_key
 WHERE 
   lb.price between 0 and 1000000

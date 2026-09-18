@@ -9,6 +9,14 @@ models:
       meta:
         primary_key: ["chain_id", "product_address"]
     tests:
+      - keys_match:
+          name: product_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address", "beefy_key", "beefy_price_oracle_key"]
+            to_columns: ["chain_id", "product_address", "beefy_key", "oracle_key"]
       - stg_api_ids_in_product:
           name: stg_clm_vaults_in_product
           config:

@@ -11,13 +11,13 @@ models:
           - not_null
           - unique
       - name: chain_id
-        description: "Chain ID from chain dimension (same as network_id, included for consistency with product dimensions)"
+        description: "Chain ID from int_chain_keys (same as network_id)"
         data_type: Int64
         tests:
           - not_null
           - unique
           - relationships:
               arguments:
-                to: ref('chain')
+                to: ref('int_chain_keys')
                 field: chain_id
 

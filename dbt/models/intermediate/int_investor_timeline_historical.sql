@@ -76,15 +76,9 @@ SELECT
   tbc.block_timestamp as datetime,
   tbc.account_id as account_id,
   p.beefy_key as product_key,
-  p.display_name as product_display_name,
   tbc.chain_id as chain_id,
-  c.chain_name as chain_name,
-  p.product_type as product_type,
   tbc.token_contract_address as product_address,
 
-  NOT p.is_active as is_eol,
-  NOT p.is_active as is_dashboard_eol,
-  
   tbc.block_number as block_number,
   tbc.trx_hash as transaction_hash,
   tbc.log_index as log_index,
@@ -106,11 +100,9 @@ SELECT
   {{ to_decimal('tbc.balance_after * coalesce(share_price.price, 0)') }} as usd_balance_after,
   {{ to_decimal('(tbc.balance_after - tbc.balance_before) * coalesce(share_price.price, 0)') }} as usd_balance_diff
 FROM filtered_balance_changes tbc
-INNER JOIN {{ ref('product') }} p
+INNER JOIN {{ ref('int_product_keys') }} p
   ON tbc.chain_id = p.chain_id
   AND tbc.token_contract_address = p.product_address
-INNER JOIN {{ ref('chain') }} c
-  ON tbc.chain_id = c.chain_id
 ASOF LEFT JOIN filtered_prices share_price
   ON tbc.chain_id = share_price.chain_id
   AND tbc.token_contract_address = share_price.token_address

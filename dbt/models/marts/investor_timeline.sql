@@ -23,62 +23,87 @@
 {% set cutoff_date = cutoff_date_tbl.columns[0][0] %}
 {% endif %}
 
-SELECT 
-  datetime,
-  account_id,
-  product_key,
-  product_display_name,
-  chain_id,
-  chain_name,
-  product_type,
-  product_address,
-  is_eol,
-  is_dashboard_eol,
-  block_number,
-  transaction_hash,
-  log_index,
-  share_to_underlying_price,
-  underlying_to_usd_price,
-  share_to_usd_price,
-  share_balance_after,
-  share_balance_before,
-  share_balance_diff,
-  underlying_balance_after,
-  underlying_balance_before,
-  underlying_balance_diff,
-  usd_balance_before,
-  usd_balance_after,
-  usd_balance_diff
-FROM {{ ref('int_investor_timeline_historical') }} final
-WHERE datetime < toDateTime('{{ cutoff_date }}')
+with timeline as (
+  SELECT 
+    datetime,
+    account_id,
+    product_key,
+    chain_id,
+    product_address,
+    block_number,
+    transaction_hash,
+    log_index,
+    share_to_underlying_price,
+    underlying_to_usd_price,
+    share_to_usd_price,
+    share_balance_after,
+    share_balance_before,
+    share_balance_diff,
+    underlying_balance_after,
+    underlying_balance_before,
+    underlying_balance_diff,
+    usd_balance_before,
+    usd_balance_after,
+    usd_balance_diff
+  FROM {{ ref('int_investor_timeline_historical') }} final
+  WHERE datetime < toDateTime('{{ cutoff_date }}')
 
-UNION ALL
+  UNION ALL
+
+  SELECT
+    datetime,
+    account_id,
+    product_key,
+    chain_id,
+    product_address,
+    block_number,
+    transaction_hash,
+    log_index,
+    share_to_underlying_price,
+    underlying_to_usd_price,
+    share_to_usd_price,
+    share_balance_after,
+    share_balance_before,
+    share_balance_diff,
+    underlying_balance_after,
+    underlying_balance_before,
+    underlying_balance_diff,
+    usd_balance_before,
+    usd_balance_after,
+    usd_balance_diff
+  FROM {{ ref('int_investor_timeline_recent') }}
+  WHERE datetime >= toDateTime('{{ cutoff_date }}')
+)
 
 SELECT
-  datetime,
-  account_id,
-  product_key,
-  product_display_name,
-  chain_id,
-  chain_name,
-  product_type,
-  product_address,
-  is_eol,
-  is_dashboard_eol,
-  block_number,
-  transaction_hash,
-  log_index,
-  share_to_underlying_price,
-  underlying_to_usd_price,
-  share_to_usd_price,
-  share_balance_after,
-  share_balance_before,
-  share_balance_diff,
-  underlying_balance_after,
-  underlying_balance_before,
-  underlying_balance_diff,
-  usd_balance_before,
-  usd_balance_after,
-  usd_balance_diff
-FROM {{ ref('int_investor_timeline_recent') }}
-WHERE datetime >= toDateTime('{{ cutoff_date }}')
+  t.datetime,
+  t.account_id,
+  t.product_key,
+  p.display_name as product_display_name,
+  t.chain_id,
+  c.chain_name,
+  p.product_type,
+  t.product_address,
+  NOT p.is_active as is_eol,
+  NOT p.is_active as is_dashboard_eol,
+  t.block_number,
+  t.transaction_hash,
+  t.log_index,
+  t.share_to_underlying_price,
+  t.underlying_to_usd_price,
+  t.share_to_usd_price,
+  t.share_balance_before,
+  t.share_balance_after,
+  t.share_balance_diff,
+  t.underlying_balance_before,
+  t.underlying_balance_after,
+  t.underlying_balance_diff,
+  t.usd_balance_before,
+  t.usd_balance_after,
+  t.usd_balance_diff
+FROM timeline t
+INNER JOIN {{ ref('product') }} p
+  ON t.chain_id = p.chain_id
+  AND t.product_address = p.product_address
+INNER JOIN {{ ref('chain') }} c
+  ON t.chain_id = c.chain_id

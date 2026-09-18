@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: int_product_keys
+    description: "Skinny product identity map (beefy_key / oracle_key → chain_id + product_address). Used by intermediate models; display attributes live on product."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address"]
+    tests:
+      - keys_match:
+          name: int_product_keys_in_product
+          config:
+            store_failures: true
+          arguments:
+            to: ref('product')
+            columns: ["chain_id", "product_address", "beefy_key", "oracle_key"]
+            to_columns: ["chain_id", "product_address", "beefy_key", "beefy_price_oracle_key"]
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_chain_keys')
+                field: chain_id
+      - name: product_address
+        description: "Product contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy vault/product identifier (1:1 with product)"
+        data_type: String
+        tests:
+          - not_null
+          - unique
+      - name: oracle_key
+        description: "Price oracle key (coalesce of API oracle_id and beefy_key). Not unique; one oracle maps to many products."
+        data_type: String
+        tests:
+          - not_null

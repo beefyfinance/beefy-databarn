@@ -3,6 +3,23 @@ version: 2
 models:
   - name: int_product_stats__tvl_hourly
     description: "Hourly TVL aggregations"
+    tests:
+      - keys_match:
+          name: int_product_stats__tvl_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      - keys_match:
+          name: int_product_stats__tvl_hourly_in_unified
+          config:
+            store_failures: true
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__unified_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "source = 'tvl' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
     columns:
       - name: tvl_usd
         description: "Total value locked in USD"

@@ -35,7 +35,7 @@ WITH tvl_with_product AS (
   FROM {{ ref('stg_beefy_db__tvls') }} a
   INNER JOIN {{ ref('stg_beefy_db__vault_ids') }} vi
     ON a.vault_id = vi.vault_id
-  INNER JOIN {{ ref('product') }} p
+  INNER JOIN {{ ref('int_product_keys') }} p
     ON vi.beefy_key = p.beefy_key
   WHERE
     a.tvl_usd between 0 and 1000000000

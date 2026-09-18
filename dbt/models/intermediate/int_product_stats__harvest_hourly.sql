@@ -23,7 +23,7 @@ WITH harvest_with_product AS (
     h.native_price,
     h.want_price
   FROM {{ ref('stg_beefy_db__harvests') }} h
-  INNER JOIN {{ ref('product') }} p
+  INNER JOIN {{ ref('int_product_keys') }} p
     ON h.network_id = p.chain_id
     AND h.vault_beefy_key = p.beefy_key
   WHERE

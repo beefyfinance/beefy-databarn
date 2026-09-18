@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_investor_timeline_historical
-    description: "Historical investor timeline data. Incremental table for processing historical data in batches to avoid memory issues. Allows overlap with recent view (last 24h) - deduplication handled in unified mart."
+    description: "Historical investor timeline events. Incremental table for processing historical data in batches. Filters envio balance changes to known products via int_product_keys. Display attributes are joined on the investor_timeline mart."
     config:
       contract:
         enforced: true
@@ -12,7 +12,7 @@ models:
       - relationships_multi_key:
           name: relationships_int_investor_timeline_historical_product
           arguments:
-            to: ref('product')
+            to: ref('int_product_keys')
             from_columns: ["chain_id", "product_address"]
             to_columns: ["chain_id", "product_address"]
     columns:
@@ -38,13 +38,8 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('product')
+                to: ref('int_product_keys')
                 field: beefy_key
-      - name: product_display_name
-        description: "Product/vault display name"
-        data_type: String
-        tests:
-          - not_null
       - name: chain_id
         description: "Chain ID where the product exists"
         data_type: Int64
@@ -52,34 +47,11 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('chain')
+                to: ref('int_chain_keys')
                 field: chain_id
-      - name: chain_name
-        description: "Chain name"
-        data_type: String
-        tests:
-          - not_null
-      - name: product_type
-        description: "Type of product (classic_vault, clm_manager, classic_boost, or reward_pool)"
-        data_type: String
-        tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ['classic_vault', 'clm_manager', 'classic_boost', 'reward_pool']
       - name: product_address
         description: "Product contract address"
         data_type: String
-        tests:
-          - not_null
-      - name: is_eol
-        description: "Whether the product is end-of-life (NOT is_active)"
-        data_type: Bool
-        tests:
-          - not_null
-      - name: is_dashboard_eol
-        description: "Whether the product is end-of-life for dashboard purposes (same as is_eol)"
-        data_type: Bool
         tests:
           - not_null
       - name: block_number
@@ -106,13 +78,13 @@ models:
       - name: share_to_usd_price
         description: "Price conversion from share token to USD"
         data_type: Nullable(Decimal(76, 20))
-      - name: share_balance_before
-        description: "Share token balance before the change"
+      - name: share_balance_after
+        description: "Share token balance after the change"
         data_type: Decimal(76, 20)
         tests:
           - not_null
-      - name: share_balance_after
-        description: "Share token balance after the change"
+      - name: share_balance_before
+        description: "Share token balance before the change"
         data_type: Decimal(76, 20)
         tests:
           - not_null
@@ -121,11 +93,11 @@ models:
         data_type: Decimal(76, 20)
         tests:
           - not_null
-      - name: underlying_balance_before
-        description: "Underlying token balance before the change (share_balance_before * share_to_underlying_price, when available)"
-        data_type: Nullable(Decimal(76, 20))
       - name: underlying_balance_after
         description: "Underlying token balance after the change (share_balance_after * share_to_underlying_price, when available)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_balance_before
+        description: "Underlying token balance before the change (share_balance_before * share_to_underlying_price, when available)"
         data_type: Nullable(Decimal(76, 20))
       - name: underlying_balance_diff
         description: "Change in underlying token balance (share_balance_diff * share_to_underlying_price, when available)"
@@ -145,4 +117,3 @@ models:
         data_type: Decimal(76, 20)
         tests:
           - not_null
-

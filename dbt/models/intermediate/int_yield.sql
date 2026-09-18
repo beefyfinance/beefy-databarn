@@ -35,7 +35,7 @@ SELECT
   h.want_price as underlying_token_price_usd,
   toDecimal256(h.harvest_amount * h.want_price, 20) as underlying_amount_compounded_usd
 FROM {{ ref('stg_beefy_db__harvests') }} h
-INNER JOIN {{ ref('product') }} p
+INNER JOIN {{ ref('int_product_keys') }} p
   ON h.network_id = p.chain_id
   AND h.vault_beefy_key = p.beefy_key
 WHERE

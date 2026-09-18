@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: int_tvl
+    description: "API TVL snapshots keyed to (chain_id, product_address) via int_product_keys."
+    tests:
+      - keys_match:
+          name: int_tvl_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]

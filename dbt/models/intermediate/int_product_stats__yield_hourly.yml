@@ -3,6 +3,36 @@ version: 2
 models:
   - name: int_product_stats__yield_hourly
     description: "Hourly yield aggregations"
+    tests:
+      - keys_match:
+          name: int_product_stats__yield_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      - keys_match:
+          name: int_product_stats__yield_hourly_in_int_yield
+          config:
+            store_failures: true
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_yield')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_columns:
+              - chain_id
+              - product_address
+              - toStartOfHour(txn_timestamp)
+            to_where: "txn_timestamp >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
+          name: int_product_stats__yield_hourly_in_unified
+          config:
+            store_failures: true
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__unified_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "source = 'yield' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
     columns:
       - name: underlying_amount_compounded
         description: "Underlying amount compounded"

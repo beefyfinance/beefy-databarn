@@ -15,6 +15,6 @@ SELECT DISTINCT
 FROM {{ ref('stg_envio__token_balance') }} tb
 INNER JOIN {{ ref('stg_envio__account') }} a
   ON tb.account_id = a.id
-INNER JOIN {{ ref('chain') }} c
+INNER JOIN {{ ref('int_chain_keys') }} c
   ON tb.network_id = c.network_id
 

@@ -35,7 +35,7 @@ WITH apy_with_product AS (
   FROM {{ ref('stg_beefy_db__apys') }} a
   INNER JOIN {{ ref('stg_beefy_db__vault_ids') }} vi
     ON a.vault_id = vi.vault_id
-  INNER JOIN {{ ref('product') }} p
+  INNER JOIN {{ ref('int_product_keys') }} p
     ON vi.beefy_key = p.beefy_key
   WHERE
     a.apy between 0 and 1000000 -- no one product has an apy over 1M %

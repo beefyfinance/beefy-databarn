@@ -8,6 +8,14 @@ models:
         enforced: true
       meta:
         primary_key: "chain_id"
+    tests:
+      - keys_match:
+          name: chain_in_int_chain_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_chain_keys')
+            columns: ["chain_id", "network_id", "beefy_key"]
     columns:
       - name: chain_id
         description: "Unique identifier for the chain (primary key)"
