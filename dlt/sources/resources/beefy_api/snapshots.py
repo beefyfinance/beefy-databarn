@@ -230,36 +230,3 @@ async def get_beefy_api_treasury_resource() -> Any:
                     }
 
     return beefy_treasury()
-
-
-async def get_beefy_api_treasury_mm_resource() -> Any:
-    payload, etag = await fetch_url_json_dict("https://api.beefy.finance/treasury/mm")
-
-    @dlt.resource(
-        name="treasury_mm",
-        primary_key=["etag", "mm_id", "exchange_name", "token_symbol"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
-        columns={
-            "price": {"data_type": "double"},
-            "usd_value": {"data_type": "decimal"},
-            "balance": {"data_type": "decimal"},
-        },
-    )
-    async def beefy_treasury_mm() -> AsyncIterator[Dict[str, Any]]:
-        now = datetime.now(timezone.utc)
-        etag_value = etag or now.isoformat()
-        for mm_id, exchanges in payload.items():
-            for exchange_name, tokens in exchanges.items():
-                for token_symbol, token_data in tokens.items():
-                    row = {k: str(v) for k, v in token_data.items() if v is not None}
-                    row["usdValue"] = get_int_like(row, "usdValue")
-                    yield {
-                        "etag": etag_value,
-                        "mm_id": str(mm_id),
-                        "exchange_name": str(exchange_name),
-                        "token_symbol": str(token_symbol),
-                        "date_time": now,
-                        **row,
-                    }
-
-    return beefy_treasury_mm()

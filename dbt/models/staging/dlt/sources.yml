@@ -41,8 +41,6 @@ sources:
         description: "APY snapshots from Beefy API"
       - name: beefy_api___treasury
         description: "Treasury snapshots from Beefy API"
-      - name: beefy_api___treasury_mm
-        description: "Treasury money market snapshots from Beefy API"
       - name: beefy_api___tvl
         description: "TVL snapshots from Beefy API"
       - name: beefy_api___prices

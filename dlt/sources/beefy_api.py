@@ -20,7 +20,6 @@ from .resources.beefy_api.snapshots import (
     get_beefy_api_lps_resource,
     get_beefy_api_mootokenprices_resource,
     get_beefy_api_prices_resource,
-    get_beefy_api_treasury_mm_resource,
     get_beefy_api_treasury_resource,
     get_beefy_api_tvl_resource,
 )
@@ -69,6 +68,5 @@ async def beefy_api_source() -> Any:
         await _optional_resource("tvl", get_beefy_api_tvl_resource),
         await _optional_resource("mootokenprices", get_beefy_api_mootokenprices_resource),
         await _optional_resource("treasury", get_beefy_api_treasury_resource),
-        await _optional_resource("treasury_mm", get_beefy_api_treasury_mm_resource),
     ]
     return [r for r in candidates if r is not None]
