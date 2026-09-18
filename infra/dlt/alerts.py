@@ -16,6 +16,8 @@ _ERROR_MARKERS = (
 _ERROR_LINE_RE = re.compile(
     r"\[ERROR\]|\bERROR\b|\bCRITICAL\b|[A-Za-z_]*Exception:|[A-Za-z_]*Error:"
 )
+# First ": " after the URL. Ports (":443") have no space, so they stay in the URL.
+_FETCH_FAIL_RE = re.compile(r"Failed to reach (\S+?): ([^\n]+)")
 
 
 def _alert(key: str, title: str, description: str) -> None:
@@ -41,14 +43,33 @@ def _log_excerpt(output: str, *, max_chars: int = 1800) -> str:
             text = "\n".join(lines[max(0, error_line - 5) :])
         else:
             text = "\n".join(lines[-40:])
-    return text.strip()[: max_chars * 2]
+    # Exception lines sit at the end. Keep the tail so Discord does not show
+    # the middle of a long httpx stack and drop the actual error.
+    limit = max_chars * 2
+    text = text.strip()
+    if len(text) > limit:
+        text = text[-limit:]
+    return text.strip()
 
 
 def _looks_like_error(line: str) -> bool:
     return _ERROR_LINE_RE.search(line) is not None
 
 
+def _fetch_failure_lines(output: str) -> list[str]:
+    text = _ANSI_RE.sub("", output.replace("\r\n", "\n").replace("\r", "\n"))
+    lines: list[str] = []
+    for url, detail in _FETCH_FAIL_RE.findall(text):
+        line = f"Failed to reach {as_inline_code(url)}: {detail.strip()}"
+        if line not in lines:
+            lines.append(line)
+    return lines[:5]
+
+
 def _with_output(prefix: str, output: str = "") -> str:
+    failures = _fetch_failure_lines(output)
+    if failures:
+        prefix = prefix + "\n" + "\n".join(failures)
     excerpt = _log_excerpt(output)
     if not excerpt:
         return prefix

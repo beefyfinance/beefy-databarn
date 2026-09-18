@@ -22,6 +22,41 @@ ERROR_LOG = "\n".join(
 )
 
 
+def test_excerpt_keeps_exception_at_end_of_long_traceback(dlt_alerts):
+    frames = "\n".join(
+        f'  File "/app/site-packages/httpx/frame_{i}.py", line 1, in send' for i in range(400)
+    )
+    log = (
+        "Traceback (most recent call last):\n"
+        + frames
+        + "\nlib.fetch.FetchError: Failed to reach https://api.beefy.finance/vaults: ConnectTimeout: timed out\n"
+    )
+    excerpt = dlt_alerts._log_excerpt(log)
+    assert "Failed to reach https://api.beefy.finance/vaults: ConnectTimeout: timed out" in excerpt
+    assert "frame_0.py" not in excerpt
+
+
+def test_alert_job_failed_surfaces_unreachable_url(dlt_alerts, monkeypatch):
+    sent: list[tuple] = []
+    monkeypatch.setattr(
+        dlt_alerts,
+        "notify_once_per_day",
+        lambda key, title, description, state_path, **kwargs: sent.append(description) or True,
+    )
+    log = """
+Traceback (most recent call last):
+  File "/app/dlt/lib/fetch.py", line 16, in _fetch_url_json
+    response = await client.get(url)
+lib.fetch.FetchError: Failed to reach https://api.beefy.finance:443/vaults: ConnectTimeout: timed out
+"""
+    dlt_alerts.alert_job_failed("beefy_api_pipeline.py", 1, log)
+
+    description = sent[0]
+    assert "exited with return code 1" in description
+    assert "Failed to reach `https://api.beefy.finance:443/vaults`: ConnectTimeout: timed out" in description
+    assert description.index("Failed to reach") < description.index("```")
+
+
 def test_excerpt_keeps_traceback_not_startup_logs(dlt_alerts):
     excerpt = dlt_alerts._log_excerpt(TRACEBACK_LOG)
     assert excerpt.startswith("Traceback (most recent call last):")
