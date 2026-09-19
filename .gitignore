@@ -13,10 +13,12 @@ ENV/
 .uv/
 
 # dbt
+dbt/.venv
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
 dbt/.dbt/
+dbt/.dbt_run.lock
 
 # Environment variables
 .env*

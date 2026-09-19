@@ -18,11 +18,13 @@ env/
 ENV/
 
 # dbt data / build artifacts (all containers that COPY dbt/)
+dbt/.venv/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
 dbt/.dbt/
 dbt/.user.yml
+dbt/.dbt_run.lock
 
 # dlt data / pipeline state (all containers that COPY dlt/)
 dlt/.dlt/
