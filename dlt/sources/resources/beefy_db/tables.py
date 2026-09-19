@@ -42,7 +42,7 @@ def get_beefy_db_other_tables_resources() -> list[Any]:
             backend_kwargs={"tz": "UTC"},
             reflection_level="full_with_precision",
             primary_key=primary_key_columns,
-            write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+            write_disposition={"disposition": "merge", "strategy": "upsert"},
         )
         if resource is None:
             continue

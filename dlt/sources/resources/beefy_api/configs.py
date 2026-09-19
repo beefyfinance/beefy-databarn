@@ -22,7 +22,7 @@ async def get_beefy_api_vaults_resource() -> Any:
     @dlt.resource(
         name="vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
@@ -37,7 +37,7 @@ async def get_beefy_api_gov_vaults_resource() -> Any:
     @dlt.resource(
         name="gov_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_gov_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
@@ -52,7 +52,7 @@ async def get_beefy_api_boosts_resource() -> Any:
     @dlt.resource(
         name="boosts",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_boosts() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
@@ -74,7 +74,7 @@ async def get_beefy_api_clm_vaults_resource() -> Any:
     @dlt.resource(
         name="clm_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "feeTier": {"data_type": "text"},
         },
@@ -92,7 +92,7 @@ async def get_beefy_api_cow_vaults_resource() -> Any:
     @dlt.resource(
         name="cow_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_cow_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
@@ -112,7 +112,7 @@ async def get_beefy_api_tokens_resource() -> Any:
     @dlt.resource(
         name="tokens",
         primary_key=["chainId", "id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_tokens() -> AsyncIterator[Dict[str, Any]]:
         for item in items:

@@ -13,7 +13,7 @@ async def get_beefy_api_apy_resource() -> Any:
     @dlt.resource(
         name="apy",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "apy": {"data_type": "double"},
         },
@@ -38,7 +38,7 @@ async def get_beefy_api_lps_resource() -> Any:
     @dlt.resource(
         name="lps",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "lps": {"data_type": "double"},
         },
@@ -63,7 +63,7 @@ async def get_beefy_api_prices_resource() -> Any:
     @dlt.resource(
         name="prices",
         primary_key=["etag", "token_symbol"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "price": {"data_type": "double"},
         },
@@ -88,7 +88,7 @@ async def get_beefy_api_lps_breakdown_resource() -> Any:
     @dlt.resource(
         name="lps_breakdown",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "price": {"data_type": "double"},
             "total_supply": {"data_type": "decimal"},
@@ -116,7 +116,7 @@ async def get_beefy_api_apy_breakdown_resource() -> Any:
     @dlt.resource(
         name="apy_breakdown",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "compoundings_per_year": {"data_type": "bigint"},
             "beefy_performance_fee": {"data_type": "double"},
@@ -150,7 +150,7 @@ async def get_beefy_api_tvl_resource() -> Any:
     @dlt.resource(
         name="tvl",
         primary_key=["etag", "network_id", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "tvl": {"data_type": "double"},
         },
@@ -177,7 +177,7 @@ async def get_beefy_api_mootokenprices_resource() -> Any:
     @dlt.resource(
         name="mootokenprices",
         primary_key=["etag", "chain_id", "moo_token_symbol"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "price": {"data_type": "double"},
         },
@@ -204,7 +204,7 @@ async def get_beefy_api_treasury_resource() -> Any:
     @dlt.resource(
         name="treasury",
         primary_key=["etag", "chain_id", "wallet_address", "token_address"],
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
         columns={
             "token_decimals": {"data_type": "decimal"},
             "token_price": {"data_type": "double"},

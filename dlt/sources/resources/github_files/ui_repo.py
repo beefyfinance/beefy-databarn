@@ -15,7 +15,7 @@ async def get_github_files_ui_repo_resources() -> Any:
     @dlt.resource(
         name="beefy_platforms",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_platforms() -> AsyncIterator[Dict[str, Any]]:
         async for item in fetch_url_json_list("https://raw.githubusercontent.com/beefyfinance/beefy-v2/refs/heads/main/src/config/platforms.json"):
@@ -25,7 +25,7 @@ async def get_github_files_ui_repo_resources() -> Any:
     @dlt.resource(
         name="beefy_ui_chains",
         primary_key="chain_key",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={"disposition": "merge", "strategy": "upsert"},
     )
     async def beefy_ui_chains() -> AsyncIterator[Dict[str, Any]]:
         ts_source = await fetch_url_text("https://raw.githubusercontent.com/beefyfinance/beefy-v2/refs/heads/main/src/config/config.ts")
