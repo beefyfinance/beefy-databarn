@@ -12,5 +12,5 @@ SELECT
   cast(t.vault_id as String) as vault_id,
   {{ evm_address('t.vault_address') }} as vault_address,
   {{ evm_address('t.strategy_address') }} as strategy_address
-FROM {{ source('dlt', 'beefy_db___vault_strategies') }} t
+FROM {{ source('dlt', 'beefy_db___vault_strategies') }} t FINAL
 

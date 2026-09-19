@@ -13,5 +13,5 @@ SELECT
   t.description,
   t.type,
   JSONExtract(coalesce(t.risks, '[]'), 'Array(String)') as risks
-FROM {{ source('dlt', 'github_files___beefy_platforms') }} t
+FROM {{ source('dlt', 'github_files___beefy_platforms') }} t FINAL
 

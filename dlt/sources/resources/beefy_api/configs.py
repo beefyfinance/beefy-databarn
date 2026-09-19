@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, AsyncIterator, Dict, List
 
 import dlt
+from dlt.destinations.adapters import clickhouse_adapter
 from lib.fetch import fetch_url_json_dict, fetch_url_json_list
 
 
@@ -22,13 +23,13 @@ async def get_beefy_api_vaults_resource() -> Any:
     @dlt.resource(
         name="vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
     )
     async def beefy_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
             yield item
 
-    return beefy_vaults()
+    return clickhouse_adapter(beefy_vaults(), table_engine_type="replacing_merge_tree")
 
 
 async def get_beefy_api_gov_vaults_resource() -> Any:
@@ -37,13 +38,13 @@ async def get_beefy_api_gov_vaults_resource() -> Any:
     @dlt.resource(
         name="gov_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
     )
     async def beefy_gov_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
             yield item
 
-    return beefy_gov_vaults()
+    return clickhouse_adapter(beefy_gov_vaults(), table_engine_type="replacing_merge_tree")
 
 
 async def get_beefy_api_boosts_resource() -> Any:
@@ -52,13 +53,13 @@ async def get_beefy_api_boosts_resource() -> Any:
     @dlt.resource(
         name="boosts",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
     )
     async def beefy_boosts() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
             yield item
 
-    return beefy_boosts()
+    return clickhouse_adapter(beefy_boosts(), table_engine_type="replacing_merge_tree")
 
 
 async def get_beefy_api_clm_vaults_resource() -> Any:
@@ -74,7 +75,7 @@ async def get_beefy_api_clm_vaults_resource() -> Any:
     @dlt.resource(
         name="clm_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "feeTier": {"data_type": "text"},
         },
@@ -83,7 +84,7 @@ async def get_beefy_api_clm_vaults_resource() -> Any:
         for item in items:
             yield item
 
-    return beefy_clm_vaults()
+    return clickhouse_adapter(beefy_clm_vaults(), table_engine_type="replacing_merge_tree")
 
 
 async def get_beefy_api_cow_vaults_resource() -> Any:
@@ -92,13 +93,13 @@ async def get_beefy_api_cow_vaults_resource() -> Any:
     @dlt.resource(
         name="cow_vaults",
         primary_key="id",
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
     )
     async def beefy_cow_vaults() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
             yield item
 
-    return beefy_cow_vaults()
+    return clickhouse_adapter(beefy_cow_vaults(), table_engine_type="replacing_merge_tree")
 
 
 async def get_beefy_api_tokens_resource() -> Any:
@@ -112,10 +113,10 @@ async def get_beefy_api_tokens_resource() -> Any:
     @dlt.resource(
         name="tokens",
         primary_key=["chainId", "id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
     )
     async def beefy_tokens() -> AsyncIterator[Dict[str, Any]]:
         for item in items:
             yield item
 
-    return beefy_tokens()
+    return clickhouse_adapter(beefy_tokens(), table_engine_type="replacing_merge_tree")

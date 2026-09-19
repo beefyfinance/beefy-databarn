@@ -16,5 +16,5 @@ SELECT
   cast(t.decimals as Int64) as decimals,
   t.bridge,
   toBool(t.staked) as staked
-FROM {{ source('dlt', 'beefy_api___tokens') }} t
+FROM {{ source('dlt', 'beefy_api___tokens') }} t FINAL
 where t.chain_id is not null

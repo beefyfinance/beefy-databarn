@@ -14,12 +14,9 @@ WITH loads_latest AS (
     t.chain AS chain_key,
     CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String)) AS earned_token_address_key,
     argMax(l.load_id, l.inserted_at) AS load_id
-  FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
-  -- Completed loads only (dlt status 0). An in-progress load is partial, and
-  -- treating it as latest makes models built seconds apart see different rows.
+  FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t FINAL
   INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l
     ON t._dlt_load_id = l.load_id
-   AND l.status = 0
   GROUP BY t.chain, CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))
 )
 SELECT
@@ -56,7 +53,7 @@ SELECT
   t.retired_at,
   toBool(t.earning_points) as earning_points,
   t.updated_at
-FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t
+FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t FINAL
 INNER JOIN loads_latest ll
   ON ll.chain_key = t.chain
   AND ll.earned_token_address_key = CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))

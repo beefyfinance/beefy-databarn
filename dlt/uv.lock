@@ -260,7 +260,7 @@ dev = [
 requires-dist = [
     { name = "apscheduler", specifier = ">=3.11.1" },
     { name = "clickhouse-connect", specifier = ">=0.10.0,<1" },
-    { name = "dlt", extras = ["clickhouse", "filesystem", "sql-database", "s3"], git = "https://github.com/prevostc/dlt.git?rev=b12cef29884f2318af8a1eca9d885d2951fc62f2" },
+    { name = "dlt", extras = ["clickhouse", "filesystem", "sql-database", "s3"], specifier = "==1.30.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "json5", specifier = ">=0.12.1" },
     { name = "numpy", specifier = ">=2.3.5" },
@@ -274,7 +274,7 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "dlt", extras = ["hub"], git = "https://github.com/prevostc/dlt.git?rev=b12cef29884f2318af8a1eca9d885d2951fc62f2" }]
+dev = [{ name = "dlt", extras = ["hub"], specifier = "==1.30.0" }]
 
 [[package]]
 name = "botocore"
@@ -540,10 +540,9 @@ wheels = [
 [[package]]
 name = "dlt"
 version = "1.30.0"
-source = { git = "https://github.com/prevostc/dlt.git?rev=b12cef29884f2318af8a1eca9d885d2951fc62f2#b12cef29884f2318af8a1eca9d885d2951fc62f2" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "croniter" },
     { name = "fsspec" },
     { name = "gitpython" },
     { name = "giturlparse" },
@@ -569,6 +568,10 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "tzdata" },
     { name = "win-precise-time", marker = "python_full_version < '3.13' and os_name == 'nt'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/a8/fab4e86b8c9a6f7c04c5ecdb9a7d18297b6ecf6c92e13115eed033714ee7/dlt-1.30.0.tar.gz", hash = "sha256:46157b4c75aabde40c8b12af005e27d51ddde693ebbc2d338682ee0b19527d5b", size = 1155778, upload-time = "2026-08-11T13:21:57.707Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/09/7111a1dfda0b1a92648854182507df1a0c53b17cd258ea5dd206bc65d11f/dlt-1.30.0-py3-none-any.whl", hash = "sha256:7e3c66fc9f8874438539e15123c7ff4f587b5779939e5fca3a43bb3e865cbdab", size = 1432587, upload-time = "2026-08-11T13:21:59.734Z" },
 ]
 
 [package.optional-dependencies]

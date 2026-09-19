@@ -13,7 +13,7 @@ SELECT
   {{ to_decimal('t.bifi_amount') }} as bifi_amount,
   {{ to_decimal('t.bifi_price') }} as bifi_price,
   {{ to_decimal('t.buyback_total') }} as buyback_total
-FROM {{ source('dlt', 'beefy_db___bifi_buyback') }} t
+FROM {{ source('dlt', 'beefy_db___bifi_buyback') }} t FINAL
 WHERE
   -- Filter out invalid records (ensure revenue data quality)
   t.buyback_total IS NOT NULL

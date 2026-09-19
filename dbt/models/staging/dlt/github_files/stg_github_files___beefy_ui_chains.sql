@@ -19,5 +19,5 @@ SELECT
   case when t.eol is null then null else toDateTime(toInt64(t.eol)) end as eol_date_time,
   toBool(t.disabled) as ui_disabled,
   toBool(t.new) as ui_new
-FROM {{ source('dlt', 'github_files___beefy_ui_chains') }} t
+FROM {{ source('dlt', 'github_files___beefy_ui_chains') }} t FINAL
 

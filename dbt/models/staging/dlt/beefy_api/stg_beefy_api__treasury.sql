@@ -31,5 +31,5 @@ SELECT
   t.vault_id,
   t.price_per_full_share,
   t.helper
-FROM {{ source('dlt', 'beefy_api___treasury') }} t
+FROM {{ source('dlt', 'beefy_api___treasury') }} t FINAL
 

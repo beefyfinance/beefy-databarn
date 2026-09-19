@@ -15,7 +15,7 @@ SELECT
   {{ to_decimal('t.rewardpool_amt') }} as rewardpool_amt,
   {{ to_decimal('t.native_price') }} as native_price,
   {{ to_decimal('t.stable_price') }} as stable_price
-FROM {{ source('dlt', 'beefy_db___feebatch_harvests') }} t
+FROM {{ source('dlt', 'beefy_db___feebatch_harvests') }} t FINAL
 WHERE
   -- Filter out invalid records (ensure revenue data quality)
   t.treasury_amt IS NOT NULL

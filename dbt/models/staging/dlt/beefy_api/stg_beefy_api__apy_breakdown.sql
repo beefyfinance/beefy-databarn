@@ -23,5 +23,5 @@ SELECT
   toFloat64(t.composable_pool_apr) as composable_pool_apr,
   toFloat64(t.merkl_apr) as merkl_apr,
   toFloat64(t.linea_ignition_apr) as linea_ignition_apr
-FROM {{ source('dlt', 'beefy_api___apy_breakdown') }} t
+FROM {{ source('dlt', 'beefy_api___apy_breakdown') }} t FINAL
 

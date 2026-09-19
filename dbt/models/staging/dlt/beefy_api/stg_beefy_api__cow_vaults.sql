@@ -36,5 +36,5 @@ SELECT
   t.retired_at,
   toBool(t.earning_points) as earning_points,
   t.updated_at
-FROM {{ source('dlt', 'beefy_api___cow_vaults') }} t
+FROM {{ source('dlt', 'beefy_api___cow_vaults') }} t FINAL
 

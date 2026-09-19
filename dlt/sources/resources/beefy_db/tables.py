@@ -1,4 +1,5 @@
 from typing import Any
+from dlt.destinations.adapters import clickhouse_adapter
 from lib.config import BATCH_SIZE, get_beefy_db_url
 from lib.sql_database import try_sql_table
 
@@ -42,11 +43,11 @@ def get_beefy_db_other_tables_resources() -> list[Any]:
             backend_kwargs={"tz": "UTC"},
             reflection_level="full_with_precision",
             primary_key=primary_key_columns,
-            write_disposition={"disposition": "merge", "strategy": "upsert"},
+            write_disposition="append",
         )
         if resource is None:
             continue
         resource.apply_hints(columns=columns)
-        resources.append(resource)
+        resources.append(clickhouse_adapter(resource, table_engine_type="replacing_merge_tree"))
 
     return resources

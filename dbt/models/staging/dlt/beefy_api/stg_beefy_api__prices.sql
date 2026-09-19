@@ -9,5 +9,5 @@ SELECT
   t.token_symbol as token_symbol,
   toFloat64(t.price) as price,
   cast(t.date_time as DateTime('UTC')) as date_time
-FROM {{ source('dlt', 'beefy_api___prices') }} t
+FROM {{ source('dlt', 'beefy_api___prices') }} t FINAL
 

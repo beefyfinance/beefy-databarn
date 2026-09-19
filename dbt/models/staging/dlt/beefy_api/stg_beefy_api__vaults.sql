@@ -51,5 +51,5 @@ SELECT
   t.pool_together,
   t.retired_reason,
   t.bridged
-FROM {{ source('dlt', 'beefy_api___vaults') }} t
+FROM {{ source('dlt', 'beefy_api___vaults') }} t FINAL
 

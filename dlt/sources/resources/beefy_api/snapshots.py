@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict
 
 import dlt
+from dlt.destinations.adapters import clickhouse_adapter
 from lib.convert import get_int_like
 from lib.fetch import fetch_url_json_dict
 
@@ -13,7 +14,7 @@ async def get_beefy_api_apy_resource() -> Any:
     @dlt.resource(
         name="apy",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "apy": {"data_type": "double"},
         },
@@ -29,7 +30,7 @@ async def get_beefy_api_apy_resource() -> Any:
                 "date_time": now,
             }
 
-    return beefy_apy()
+    return clickhouse_adapter(beefy_apy(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_lps_resource() -> Any:
@@ -38,7 +39,7 @@ async def get_beefy_api_lps_resource() -> Any:
     @dlt.resource(
         name="lps",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "lps": {"data_type": "double"},
         },
@@ -54,7 +55,7 @@ async def get_beefy_api_lps_resource() -> Any:
                 "date_time": now,
             }
 
-    return beefy_lps()
+    return clickhouse_adapter(beefy_lps(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_prices_resource() -> Any:
@@ -63,7 +64,7 @@ async def get_beefy_api_prices_resource() -> Any:
     @dlt.resource(
         name="prices",
         primary_key=["etag", "token_symbol"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "price": {"data_type": "double"},
         },
@@ -79,7 +80,7 @@ async def get_beefy_api_prices_resource() -> Any:
                 "date_time": now,
             }
 
-    return beefy_prices()
+    return clickhouse_adapter(beefy_prices(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_lps_breakdown_resource() -> Any:
@@ -88,7 +89,7 @@ async def get_beefy_api_lps_breakdown_resource() -> Any:
     @dlt.resource(
         name="lps_breakdown",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "price": {"data_type": "double"},
             "total_supply": {"data_type": "decimal"},
@@ -107,7 +108,7 @@ async def get_beefy_api_lps_breakdown_resource() -> Any:
                 **breakdown,
             }
 
-    return beefy_lps_breakdown()
+    return clickhouse_adapter(beefy_lps_breakdown(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_apy_breakdown_resource() -> Any:
@@ -116,7 +117,7 @@ async def get_beefy_api_apy_breakdown_resource() -> Any:
     @dlt.resource(
         name="apy_breakdown",
         primary_key=["etag", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "compoundings_per_year": {"data_type": "bigint"},
             "beefy_performance_fee": {"data_type": "double"},
@@ -141,7 +142,7 @@ async def get_beefy_api_apy_breakdown_resource() -> Any:
                 **breakdown,
             }
 
-    return beefy_apy_breakdown()
+    return clickhouse_adapter(beefy_apy_breakdown(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_tvl_resource() -> Any:
@@ -150,7 +151,7 @@ async def get_beefy_api_tvl_resource() -> Any:
     @dlt.resource(
         name="tvl",
         primary_key=["etag", "network_id", "vault_id"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "tvl": {"data_type": "double"},
         },
@@ -168,7 +169,7 @@ async def get_beefy_api_tvl_resource() -> Any:
                     "date_time": now,
                 }
 
-    return beefy_tvl()
+    return clickhouse_adapter(beefy_tvl(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_mootokenprices_resource() -> Any:
@@ -177,7 +178,7 @@ async def get_beefy_api_mootokenprices_resource() -> Any:
     @dlt.resource(
         name="mootokenprices",
         primary_key=["etag", "chain_id", "moo_token_symbol"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "price": {"data_type": "double"},
         },
@@ -195,7 +196,7 @@ async def get_beefy_api_mootokenprices_resource() -> Any:
                     "date_time": now,
                 }
 
-    return beefy_mootokenprices()
+    return clickhouse_adapter(beefy_mootokenprices(), table_engine_type="replacing_merge_tree", partition="etag")
 
 
 async def get_beefy_api_treasury_resource() -> Any:
@@ -204,7 +205,7 @@ async def get_beefy_api_treasury_resource() -> Any:
     @dlt.resource(
         name="treasury",
         primary_key=["etag", "chain_id", "wallet_address", "token_address"],
-        write_disposition={"disposition": "merge", "strategy": "upsert"},
+        write_disposition="append",
         columns={
             "token_decimals": {"data_type": "decimal"},
             "token_price": {"data_type": "double"},
@@ -229,4 +230,4 @@ async def get_beefy_api_treasury_resource() -> Any:
                         **row,
                     }
 
-    return beefy_treasury()
+    return clickhouse_adapter(beefy_treasury(), table_engine_type="replacing_merge_tree", partition="etag")

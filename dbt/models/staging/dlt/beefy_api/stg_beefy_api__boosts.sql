@@ -25,5 +25,5 @@ SELECT
   toBool(t.is_moo_staked) as is_moo_staked,
   t.period_finish,
   t.campaign
-FROM {{ source('dlt', 'beefy_api___boosts') }} t
+FROM {{ source('dlt', 'beefy_api___boosts') }} t FINAL
 
