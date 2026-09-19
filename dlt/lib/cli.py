@@ -88,11 +88,38 @@ def _should_loop(source: Any, args: CliArgs, previous_load_info: Any) -> bool:
     return True
 
 
+def _rewrite_unsupported_merge_strategies(pipeline: Any) -> None:
+    """Rewrite stored upsert tables to append so official dlt can extract them.
+
+    Destination schemas from the ClickHouse upsert fork still have
+    ``write_disposition=merge`` and ``x-merge-strategy=upsert``. dlt 1.30
+    rejects that on extract even when the live resource is append.
+    """
+    for name in list(pipeline.schemas):
+        schema = pipeline.schemas[name]
+        changed = False
+        for table in schema.tables.values():
+            if table.get("x-merge-strategy") != "upsert":
+                continue
+            table["write_disposition"] = "append"
+            table.pop("x-merge-strategy", None)
+            changed = True
+            logger.info("Rewrote %s.%s from upsert merge to append", name, table["name"])
+        if changed:
+            pipeline.schemas.save_schema(schema)
+
+
 async def run_pipeline_loop(pipeline: Any, source_config: Any) -> Any:
     args = _parse_args()
 
     if args.reimport is not None:
         prepare_reimport(pipeline, source_config, args.only_resource, args.reimport)
+
+    if pipeline.config.restore_from_destination:
+        pipeline.sync_destination()
+        # run() would restore again and bring upsert schemas back
+        pipeline._state_restored = True
+    _rewrite_unsupported_merge_strategies(pipeline)
 
     iteration = 0
     while True:
