@@ -4,9 +4,15 @@
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .venv
+**/.venv
+dlt/.venv
+dbt/.venv
+.uv/
+**/.uv/
 venv/
 env/
 ENV/
