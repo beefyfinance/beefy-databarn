@@ -42,9 +42,13 @@ async def optimize_replacing_tables():
     # Daily at 05:00 UTC (1h before dbt tests); kill after 1h so tests start clean.
     await run_pipeline_script("optimize_replacing_tables.py", timeout=60 * 60)
 
+async def cleanup_pipeline_state():
+    """Delete superseded `_dlt_pipeline_state` rows older than the retention window."""
+    await run_pipeline_script("cleanup_pipeline_state.py", timeout=2 * 60 * 60)
+
 async def main():
     """Main async function to run the scheduler."""
-    logger.info("Starting DLT scheduler with 4 pipeline tasks and daily optimize...")
+    logger.info("Starting DLT scheduler with 4 pipeline tasks, daily optimize, and state cleanup...")
 
     scheduler = AsyncIOScheduler()
 
@@ -94,6 +98,17 @@ async def main():
         trigger=CronTrigger(hour=5, minute=0),
         id="optimize_replacing_tables",
         name="Optimize ReplacingMergeTree tables",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Historical pipeline-state snapshots, per pipeline_name:
+    # drop rows older than 30 days, but keep at least 50 newest. Every 3 days at 04:00 UTC.
+    scheduler.add_job(
+        cleanup_pipeline_state,
+        trigger=CronTrigger(day="*/3", hour=4, minute=0),
+        id="cleanup_pipeline_state",
+        name="Cleanup deprecated dlt pipeline state",
         max_instances=1,
         coalesce=True,
     )

@@ -270,6 +270,10 @@ dlt:
 			echo "Optimizing ReplacingMergeTree tables..."; \
 			$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/optimize_replacing_tables.py; \
 		;; \
+		cleanup-pipeline-state) \
+			echo "Cleaning up deprecated dlt pipeline state..."; \
+			$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/cleanup_pipeline_state.py; \
+		;; \
 		loop) \
 			echo "Looping dlt..."; \
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
@@ -346,6 +350,7 @@ dlt:
 			echo "dlt:"; \
 			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
 			echo "  make dlt optimize                          OPTIMIZE FINAL on ReplacingMergeTree tables"; \
+			echo "  make dlt cleanup-pipeline-state            Delete superseded _dlt_pipeline_state rows"; \
 			echo "  make dlt loop <source> <resource>          Loop dlt pipeline for a resource"; \
 			echo "  make dlt reimport <source> <resource> [<since>]"; \
 			echo "      Rewind cursor and re-append (loops, never truncates)."; \
@@ -355,7 +360,7 @@ dlt:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>|all] [resource]|optimize|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|optimize|cleanup-pipeline-state|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
 			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
@@ -494,7 +499,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize backup full incremental backup-status backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

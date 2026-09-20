@@ -208,6 +208,10 @@ dlt:
 			echo "Optimizing ReplacingMergeTree tables..."; \
 			$(UV) ./optimize_replacing_tables.py; \
 			;; \
+		cleanup-pipeline-state) \
+			echo "Cleaning up deprecated dlt pipeline state..."; \
+			$(UV) ./cleanup_pipeline_state.py; \
+			;; \
 		loop) \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Looping dlt pipeline: $$SOURCE, resource: $$RESOURCE..."; \
@@ -260,6 +264,7 @@ dlt:
 			echo "  make dlt run <source> [resource]         Run a specific pipeline or resource"; \
 			echo "                                  Examples: beefy_db vaults, beefy_api tokens"; \
 			echo "  make dlt optimize               OPTIMIZE FINAL on ReplacingMergeTree tables"; \
+			echo "  make dlt cleanup-pipeline-state Delete superseded _dlt_pipeline_state rows"; \
 			echo "  make dlt loop <source> <resource>    Loop until an incremental resource is caught up"; \
 			echo "  make dlt reimport <source> <resource> [<since>]"; \
 			echo "                                  Rewind cursor and re-append (loops, never truncates)."; \
@@ -269,7 +274,7 @@ dlt:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run <source> [resource]|optimize|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
+			echo "Usage: make dlt [run <source> [resource]|optimize|cleanup-pipeline-state|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
 			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
