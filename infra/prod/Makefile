@@ -266,6 +266,10 @@ dlt:
 				exit 1; \
 			fi; \
 		;; \
+		optimize) \
+			echo "Optimizing ReplacingMergeTree tables..."; \
+			$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/optimize_replacing_tables.py; \
+		;; \
 		loop) \
 			echo "Looping dlt..."; \
 			SOURCE="$(word 3,$(MAKECMDGOALS))" && \
@@ -341,6 +345,7 @@ dlt:
 		help|"") \
 			echo "dlt:"; \
 			echo "  make dlt run [<pipeline>|all] [resource]   Run dlt pipeline"; \
+			echo "  make dlt optimize                          OPTIMIZE FINAL on ReplacingMergeTree tables"; \
 			echo "  make dlt loop <source> <resource>          Loop dlt pipeline for a resource"; \
 			echo "  make dlt reimport <source> <resource> [<since>]"; \
 			echo "      Rewind cursor and re-append (loops, never truncates)."; \
@@ -350,7 +355,7 @@ dlt:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run [<pipeline>|all] [resource]|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
+			echo "Usage: make dlt [run [<pipeline>|all] [resource]|optimize|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
 			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
@@ -489,7 +494,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport backup full incremental backup-status backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize backup full incremental backup-status backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

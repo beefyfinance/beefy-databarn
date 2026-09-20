@@ -11,7 +11,7 @@ from typing import Any, Optional
 import logging
 
 from lib.reimport import prepare_reimport
-from lib.clickhouse import ensure_table_engines, optimize_replacing_tables
+from lib.clickhouse import ensure_table_engines
 
 logger = logging.getLogger(__name__)
 
@@ -135,15 +135,6 @@ async def run_pipeline_loop(pipeline: Any, source_config: Any) -> Any:
         await ensure_table_engines(pipeline.dataset_name, declared)
         load_info = pipeline.run(source)
         print(load_info)
-        if not load_info.is_empty:
-            await optimize_replacing_tables(
-                pipeline.dataset_name,
-                (
-                    name
-                    for name, engine in declared.items()
-                    if engine == "replacing_merge_tree"
-                ),
-            )
         if not _should_loop(source, args, load_info):
             break
 

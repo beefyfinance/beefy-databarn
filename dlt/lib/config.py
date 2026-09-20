@@ -9,6 +9,9 @@ BATCH_SIZE = 1_000_000
 # Pipeline iteration timeout (seconds)
 PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT", "3600"))
 
+# clickhouse_connect HTTP read timeout (seconds). OPTIMIZE FINAL can exceed the 300s default.
+CLICKHOUSE_SEND_RECEIVE_TIMEOUT = int(os.environ.get("DLT_CLICKHOUSE_SEND_RECEIVE_TIMEOUT", "3600"))
+
 
 def get_beefy_db_url() -> str:
     """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS)."""

@@ -9,9 +9,10 @@ services:
   clickhouse:
     image: *clickhouse-image
     ports:
-      - "8123:8123"
-      - "9000:9000"
-      - "9363:9363"
+      # Host ports are offset so they do not clash with other local ClickHouse stacks.
+      - "${CLICKHOUSE_HOST_HTTP_PORT:-18123}:8123"
+      - "${CLICKHOUSE_HOST_NATIVE_PORT:-19000}:9000"
+      - "${CLICKHOUSE_HOST_METRICS_PORT:-19363}:9363"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ../clickhouse/config.d:/etc/clickhouse-server/config.d:ro

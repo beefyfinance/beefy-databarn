@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Iterable, Mapping
+from typing import Mapping
 
 import clickhouse_connect
 
-from lib.config import get_clickhouse_credentials
+from lib.config import CLICKHOUSE_SEND_RECEIVE_TIMEOUT, get_clickhouse_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ async def get_clickhouse_client() -> clickhouse_connect.driver.asyncclient.Async
             password=credentials["password"],
             database=credentials["database"],
             secure=credentials["secure"],
+            send_receive_timeout=CLICKHOUSE_SEND_RECEIVE_TIMEOUT,
+            settings={"send_progress_in_http_headers": 1},
         )
     
     return _client_cache
@@ -164,25 +166,28 @@ async def ensure_table_engines(dataset_name: str, table_engine_types: Mapping[st
         await client.command(f"DROP TABLE IF EXISTS {swap}")
 
 
-async def optimize_replacing_tables(dataset_name: str, table_names: Iterable[str]) -> None:
+async def optimize_replacing_tables() -> None:
+    """OPTIMIZE ... FINAL on dlt ReplacingMergeTree tables (names containing ``___``).
+
+    Partitioned tables: newest partition only. Unpartitioned: the whole table.
+    Intended as a periodic job, not after every pipeline load.
+    """
     client = await get_clickhouse_client()
     database = clickhouse_default_database()
-    for table in table_names:
-        full_name = f"{dataset_name}___{table}"
-        meta = await client.query(
-            """
-            SELECT engine, partition_key
-            FROM system.tables
-            WHERE database = %(database)s AND name = %(table)s
-            """,
-            parameters={"database": database, "table": full_name},
-        )
-        if not meta.result_rows:
-            continue
-        engine, partition_key = meta.result_rows[0]
-        if "ReplacingMergeTree" not in str(engine):
-            continue
-        ident = _ident(database, full_name)
+    tables = await client.query(
+        """
+        SELECT name, partition_key
+        FROM system.tables
+        WHERE database = %(database)s
+          AND position(engine, 'ReplacingMergeTree') > 0
+          AND position(name, '___') > 0
+          AND NOT endsWith(name, %(swap_suffix)s)
+        ORDER BY name
+        """,
+        parameters={"database": database, "swap_suffix": _SWAP_SUFFIX},
+    )
+    for full_name, partition_key in tables.result_rows:
+        ident = _ident(database, str(full_name))
         if partition_key:
             parts = await client.query(
                 """

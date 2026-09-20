@@ -179,7 +179,7 @@ make dbt run        # Run dbt models
    ```
 
 4. Access services:
-   - ClickHouse: http://localhost:8123
+   - ClickHouse: http://localhost:18123
    - Superset: http://localhost:8088
    - Grafana: http://localhost:3000 (admin/changeme by default)
    - Prometheus: http://localhost:9090
@@ -356,7 +356,7 @@ Services can be moved between nodes using Docker Swarm labels.
 - Superset: http://localhost:8088
 - Grafana: http://localhost:3000
 - Prometheus: http://localhost:9090
-- ClickHouse: http://localhost:8123
+- ClickHouse: http://localhost:18123
 
 **Note**: Superset supports ClickHouse as a native data source. After initial setup, you can configure ClickHouse connections through the Superset UI to query your dbt models and data.
 

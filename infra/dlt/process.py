@@ -49,7 +49,7 @@ async def stop_process(process: asyncio.subprocess.Process, name: str) -> None:
         logger.error(f"Process {name} did not terminate after kill signal")
 
 
-async def run_pipeline_script(script_name: str) -> None:
+async def run_pipeline_script(script_name: str, timeout: int = TASK_TIMEOUT) -> None:
     """Run a pipeline script using uv run."""
     logger.info(f"Starting {script_name} pipeline run...")
     env = os.environ.copy()
@@ -74,11 +74,11 @@ async def run_pipeline_script(script_name: str) -> None:
     error: BaseException | None = None
     output = ""
     try:
-        async with asyncio.timeout(TASK_TIMEOUT):
+        async with asyncio.timeout(timeout):
             await process.wait()
     except TimeoutError:
         timed_out = True
-        logger.error(f"{script_name} timed out after {TASK_TIMEOUT}s")
+        logger.error(f"{script_name} timed out after {timeout}s")
     except Exception as e:
         error = e
         logger.error(f"Error running {script_name}: {e}", exc_info=True)
@@ -90,7 +90,7 @@ async def run_pipeline_script(script_name: str) -> None:
             logger.exception(f"Failed to collect output from {script_name}")
 
     if timed_out:
-        alerts.alert_job_timeout(script_name, TASK_TIMEOUT, output)
+        alerts.alert_job_timeout(script_name, timeout, output)
         return
     if error is not None:
         alerts.alert_job_error(script_name, error, output)

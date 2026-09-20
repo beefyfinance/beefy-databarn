@@ -103,3 +103,31 @@ def test_run_pipeline_script_passes_output_on_failure(dlt_process, tmp_path, mon
     assert returncode == 1
     assert "RuntimeError: boom" in output
 
+
+def test_run_pipeline_script_uses_custom_timeout(dlt_process, tmp_path, monkeypatch):
+    script = tmp_path / "slow_job.py"
+    script.write_text("import time\ntime.sleep(60)\n")
+    sent: list[int] = []
+    real_exec = asyncio.create_subprocess_exec
+
+    async def collect(stream, **kwargs):
+        return (await stream.read()).decode()
+
+    async def spawn(*args, **kwargs):
+        return await real_exec(
+            sys.executable,
+            str(script),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            limit=1024 * 1024,
+        )
+
+    monkeypatch.setattr(dlt_process, "DLT_DIR", tmp_path)
+    monkeypatch.setattr(dlt_process, "collect_output", collect)
+    monkeypatch.setattr(dlt_process.asyncio, "create_subprocess_exec", spawn)
+    monkeypatch.setattr(dlt_process.alerts, "alert_job_timeout", lambda name, timeout, output="": sent.append(timeout))
+
+    asyncio.run(dlt_process.run_pipeline_script("slow_job.py", timeout=1))
+
+    assert sent == [1]
+

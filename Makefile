@@ -204,6 +204,10 @@ dlt:
 				exit 1; \
 			fi \
 			;; \
+		optimize) \
+			echo "Optimizing ReplacingMergeTree tables..."; \
+			$(UV) ./optimize_replacing_tables.py; \
+			;; \
 		loop) \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Looping dlt pipeline: $$SOURCE, resource: $$RESOURCE..."; \
@@ -255,6 +259,7 @@ dlt:
 			echo "  make dlt run                    Run all dlt pipelines"; \
 			echo "  make dlt run <source> [resource]         Run a specific pipeline or resource"; \
 			echo "                                  Examples: beefy_db vaults, beefy_api tokens"; \
+			echo "  make dlt optimize               OPTIMIZE FINAL on ReplacingMergeTree tables"; \
 			echo "  make dlt loop <source> <resource>    Loop until an incremental resource is caught up"; \
 			echo "  make dlt reimport <source> <resource> [<since>]"; \
 			echo "                                  Rewind cursor and re-append (loops, never truncates)."; \
@@ -264,7 +269,7 @@ dlt:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dlt [run <source> [resource]|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
+			echo "Usage: make dlt [run <source> [resource]|optimize|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
 			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
 			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
@@ -518,7 +523,7 @@ _print-urls:
 	echo "  - API: http://localhost:8080/docs" && \
 	echo "  - Superset: http://localhost:8088" && \
 	echo "  - Traefik Dashboard: http://localhost:8080" && \
-	echo "  - ClickHouse: http://localhost:8123 ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
+	echo "  - ClickHouse: http://localhost:$${CLICKHOUSE_HOST_HTTP_PORT:-18123} ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
 	echo "  - Grafana: http://localhost:3000 ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
 	echo "  - Prometheus: http://localhost:9090 (no auth)" && \
 	echo "  - RustFS: http://localhost:9001 ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"

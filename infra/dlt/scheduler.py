@@ -12,6 +12,9 @@ from apscheduler.triggers.cron import CronTrigger
 import alerts
 from process import run_pipeline_script
 
+# Job runs every 2h; kill it after 1h so it cannot overlap the next tick.
+OPTIMIZE_TASK_TIMEOUT = 60 * 60
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -37,9 +40,13 @@ async def beefy_cctp_api_pipeline():
     """Run the beefy_cctp_api pipeline."""
     await run_pipeline_script("beefy_cctp_api_pipeline.py")
 
+async def optimize_replacing_tables():
+    """Collapse ReplacingMergeTree duplicates. Slow; not run after every load."""
+    await run_pipeline_script("optimize_replacing_tables.py", timeout=OPTIMIZE_TASK_TIMEOUT)
+
 async def main():
     """Main async function to run the scheduler."""
-    logger.info("Starting DLT scheduler with 4 pipeline tasks...")
+    logger.info("Starting DLT scheduler with 4 pipeline tasks and optimize...")
 
     scheduler = AsyncIOScheduler()
 
@@ -81,6 +88,16 @@ async def main():
         name="Beefy CCTP API Pipeline",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    # OPTIMIZE FINAL is too slow for the 5-minute load loop.
+    scheduler.add_job(
+        optimize_replacing_tables,
+        trigger=CronTrigger(minute="4", hour="*/2"),
+        id="optimize_replacing_tables",
+        name="Optimize ReplacingMergeTree tables",
+        max_instances=1,
+        coalesce=True,
     )
 
     scheduler.start()
