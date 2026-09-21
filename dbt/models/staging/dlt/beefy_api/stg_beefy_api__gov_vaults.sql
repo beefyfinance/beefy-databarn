@@ -1,24 +1,21 @@
 {{
   config(
-    materialized='view',
+    materialized='table',
+    engine='MergeTree',
+    order_by=['id'],
   )
 }}
 
-WITH loads_latest AS (
-  -- Keep only the latest load per (chain, earn_contract_address) by inserted_at to avoid
-  -- duplicates when API entity ids are corrected and reloaded.
-  -- Join keys stay Nullable(String) (ClickHouse common supertype of String and Nullable(String)).
-  -- Aliases must not reuse source column names: JOIN streams reject same-name columns
-  -- with different nullability (code 352).
-  SELECT
-    {{ normalize_network_beefy_key('t.chain') }} AS chain_key,
-    CAST({{ evm_address('t.earn_contract_address') }} AS Nullable(String)) AS earn_contract_address_key,
-    argMax(l.load_id, l.inserted_at) AS load_id
-  FROM {{ source('dlt', 'beefy_api___gov_vaults') }} t FINAL
-  INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l
-    ON t._dlt_load_id = l.load_id
-  GROUP BY {{ normalize_network_beefy_key('t.chain') }}, CAST({{ evm_address('t.earn_contract_address') }} AS Nullable(String))
+-- Table, not a view: one copy of the latest completed load per dbt run.
+-- No FINAL: an in-flight load must not hide rows from the completed load_id.
+
+WITH source AS (
+  SELECT *
+  FROM {{ source('dlt', 'beefy_api___gov_vaults') }}
+  WHERE _dlt_load_id = {{ latest_dlt_load_id('beefy_api', 'gov_vaults') }}
+  LIMIT 1 BY id
 )
+
 SELECT
   t.assets,
   t.risks,
@@ -52,14 +49,10 @@ SELECT
   t.earned_token_decimals__v_json,
   t.retired_at,
   t.retire_reason,
-  cast({{ evm_address('t.earned_token_address') }} as String) as earned_token_address,
+  cast(ifNull({{ evm_address('t.earned_token_address') }}, '') as String) as earned_token_address,
   t.excluded as excluded,
   t.buy_token_url,
   t.updated_at,
   t.earning_points as earning_points
-FROM {{ source('dlt', 'beefy_api___gov_vaults') }} t FINAL
-INNER JOIN loads_latest ll
-  ON ll.chain_key = {{ normalize_network_beefy_key('t.chain') }}
-  AND ll.earn_contract_address_key = CAST({{ evm_address('t.earn_contract_address') }} AS Nullable(String))
-  AND t._dlt_load_id = ll.load_id
+FROM source AS t
 

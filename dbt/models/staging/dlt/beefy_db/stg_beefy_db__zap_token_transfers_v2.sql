@@ -1,8 +1,13 @@
 {{
   config(
-    materialized='view',
+    materialized='table',
+    engine='MergeTree',
+    order_by=['network_id', 'block_number', 'txn_idx', 'parent_event_idx', 'event_idx'],
   )
 }}
+
+-- Table, not a view: beefy_db replaces this source every 5 minutes.
+-- zap_activity must read the same snapshot as the other zap staging tables.
 
 SELECT
   cast(t.chain_id as Int64) as network_id,

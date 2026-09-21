@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: stg_github_files__latest_dlt_loads
+    description: >
+      One row per github_files resource: the newest completed dlt load (status 0)
+      that wrote that table. Materialized so the rest of the dbt run cannot see
+      a load that lands after this table is built.
+    config:
+      meta:
+        primary_key: ["resource_name"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - resource_name
+      - latest_dlt_load_id_completed:
+          arguments:
+            dlt_source: github_files
+      - latest_dlt_load_id_in_resource:
+          arguments:
+            dlt_source: github_files
+            resources:
+              - beefy_platforms
+              - beefy_ui_chains
+    columns:
+      - name: source_name
+        description: "dlt dataset / pipeline name"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['github_files']
+      - name: resource_name
+        description: "dlt resource / table name (e.g. beefy_ui_chains)"
+        tests:
+          - not_null
+      - name: load_id
+        description: "Completed dlt load_id to read for this resource"
+        tests:
+          - not_null
+      - name: inserted_at
+        description: "When that load was marked complete"
+        tests:
+          - not_null

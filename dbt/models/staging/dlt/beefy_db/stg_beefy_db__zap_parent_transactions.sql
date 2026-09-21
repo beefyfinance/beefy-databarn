@@ -1,8 +1,13 @@
 {{
   config(
-    materialized='view',
+    materialized='table',
+    engine='MergeTree',
+    order_by=['network_id', 'block_number', 'txn_idx'],
   )
 }}
+
+-- Table, not a view: beefy_db replaces this source every 5 minutes.
+-- Downstream models in one dbt run must share this snapshot.
 
 SELECT
   cast(t.chain_id as Int64) as network_id,

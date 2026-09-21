@@ -15,6 +15,12 @@ sources:
         description: "CLM vault configurations from Beefy API"
       - name: beefy_api____dlt_loads
         description: "DLT load metadata for beefy_api pipeline (load_id, inserted_at)"
+      - name: beefy_db____dlt_loads
+        description: "DLT load metadata for beefy_db pipeline (load_id, inserted_at)"
+      - name: github_files____dlt_loads
+        description: "DLT load metadata for github_files pipeline (load_id, inserted_at)"
+      - name: beefy_cctp_api____dlt_loads
+        description: "DLT load metadata for beefy_cctp_api pipeline (load_id, inserted_at)"
       - name: beefy_api___cow_vaults
         description: "COW vault configurations from Beefy API"
       - name: beefy_api___gov_vaults

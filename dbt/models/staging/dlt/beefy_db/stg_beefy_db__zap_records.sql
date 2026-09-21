@@ -1,8 +1,13 @@
 {{
   config(
-    materialized='view',
+    materialized='table',
+    engine='MergeTree',
+    order_by=['network_id', 'block_number', 'txn_idx', 'event_idx'],
   )
 }}
+
+-- Table, not a view: beefy_db replaces zap_records every 5 minutes.
+-- account and zap_activity must read this snapshot from the same dbt run.
 
 SELECT
   cast(t.chain_id as Int64) as network_id,

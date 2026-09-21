@@ -1,24 +1,23 @@
 {{
   config(
-    materialized='view',
+    materialized='table',
+    engine='MergeTree',
+    order_by=['id'],
   )
 }}
 
-WITH loads_latest AS (
-  -- Keep only the latest load per (chain, earned_token_address) by inserted_at to avoid
-  -- duplicates when API entity ids are corrected and reloaded.
-  -- Join keys stay Nullable(String) (ClickHouse common supertype of String and Nullable(String)).
-  -- Aliases must not reuse source column names: JOIN streams reject same-name columns
-  -- with different nullability (code 352).
-  SELECT
-    t.chain AS chain_key,
-    CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String)) AS earned_token_address_key,
-    argMax(l.load_id, l.inserted_at) AS load_id
-  FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t FINAL
-  INNER JOIN {{ ref('stg_beefy_api__dlt_loads') }} l
-    ON t._dlt_load_id = l.load_id
-  GROUP BY t.chain, CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))
+-- Table, not a view: one copy of the latest completed load per dbt run.
+-- product_clm and int_product_keys both read this table, so they cannot
+-- diverge when a newer beefy_api load lands mid-run.
+-- No FINAL: an in-flight load must not hide rows from the completed load_id.
+
+WITH source AS (
+  SELECT *
+  FROM {{ source('dlt', 'beefy_api___clm_vaults') }}
+  WHERE _dlt_load_id = {{ latest_dlt_load_id('beefy_api', 'clm_vaults') }}
+  LIMIT 1 BY id
 )
+
 SELECT
   t.assets,
   t.fee_tier,
@@ -53,9 +52,5 @@ SELECT
   t.retired_at,
   toBool(t.earning_points) as earning_points,
   t.updated_at
-FROM {{ source('dlt', 'beefy_api___clm_vaults') }} t FINAL
-INNER JOIN loads_latest ll
-  ON ll.chain_key = t.chain
-  AND ll.earned_token_address_key = CAST({{ evm_address('t.earned_token_address') }} AS Nullable(String))
-  AND t._dlt_load_id = ll.load_id
+FROM source AS t
 
