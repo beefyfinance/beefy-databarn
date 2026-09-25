@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import lib.dlt_clickhouse_get_stored_state_patch  # noqa: F401
+import lib.dlt_clickhouse_truncate_if_exists_patch  # noqa: F401
 import lib.snapshot_incremental  # noqa: F401
 
 from dataclasses import dataclass
