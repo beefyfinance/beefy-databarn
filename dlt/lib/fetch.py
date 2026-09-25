@@ -1,5 +1,14 @@
+import asyncio
+import logging
 from typing import Any, AsyncIterator, Dict, Optional, Tuple, Mapping
 import httpx
+
+logger = logging.getLogger(__name__)
+
+# One try plus a few retries. Backoff doubles: 1s, 2s, 4s.
+_MAX_ATTEMPTS = 4
+_RETRY_BACKOFF_S = 1.0
+_RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 class FetchError(RuntimeError):
@@ -8,7 +17,10 @@ class FetchError(RuntimeError):
 
 def _unreachable(url: str, exc: httpx.HTTPError) -> FetchError:
     target = url
-    request = getattr(exc, "request", None)
+    try:
+        request = exc.request
+    except RuntimeError:
+        request = None
     if request is None and isinstance(exc, httpx.HTTPStatusError):
         request = exc.response.request
     if request is not None:
@@ -24,6 +36,14 @@ def _unreachable(url: str, exc: httpx.HTTPError) -> FetchError:
     return FetchError(f"Failed to reach {target}: {detail}")
 
 
+def _retryable(exc: httpx.HTTPError) -> bool:
+    if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in _RETRY_STATUS_CODES
+    return False
+
+
 async def _get(
     url: str,
     *,
@@ -32,14 +52,29 @@ async def _get(
     timeout_s: float = 5.0,
 ) -> httpx.Response:
     limits = httpx.Limits(max_keepalive_connections=100, max_connections=200)
-    try:
-        async with httpx.AsyncClient(limits=limits, timeout=timeout_s) as client:
-            response = await client.get(url, params=params, headers=headers)
-            response.raise_for_status()
-            await response.aread()
-            return response
-    except httpx.HTTPError as exc:
-        raise _unreachable(url, exc) from exc
+    exc: httpx.HTTPError
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            async with httpx.AsyncClient(limits=limits, timeout=timeout_s) as client:
+                response = await client.get(url, params=params, headers=headers)
+                response.raise_for_status()
+                await response.aread()
+                return response
+        except httpx.HTTPError as err:
+            exc = err
+            if attempt >= _MAX_ATTEMPTS or not _retryable(err):
+                break
+            delay = _RETRY_BACKOFF_S * (2 ** (attempt - 1))
+            logger.warning(
+                "Request to %s failed (%s); retry %s/%s in %.0fs",
+                url,
+                type(err).__name__,
+                attempt,
+                _MAX_ATTEMPTS - 1,
+                delay,
+            )
+            await asyncio.sleep(delay)
+    raise _unreachable(url, exc) from exc
 
 
 async def fetch_url_text(url: str) -> str:
