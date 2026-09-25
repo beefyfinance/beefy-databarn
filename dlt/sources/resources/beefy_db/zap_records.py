@@ -2,7 +2,7 @@ from typing import Any
 
 from dlt.sources.sql_database import sql_table
 
-from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
 from lib.sql_database import (
     compose_query_adapters,
     hex_encode_bytea_columns,
@@ -82,7 +82,7 @@ async def get_beefy_db_zap_records_resource() -> Any:
         credentials=get_beefy_db_url(),
         table="zap_records",
         backend="pyarrow",
-        chunk_size=BATCH_SIZE,
+        chunk_size=ZAP_BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
         reflection_level="full_with_precision",
         query_adapter_callback=compose_query_adapters(

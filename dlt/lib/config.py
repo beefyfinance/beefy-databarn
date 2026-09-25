@@ -5,6 +5,9 @@ See infra/dlt/set_dlt_env.sh for .env → DLT env name mapping.
 import os
 
 BATCH_SIZE = 1_000_000
+# Full-replace zap tables include hex-encoded calldata. yield_per=BATCH_SIZE
+# asks Postgres to hold ~1M wide rows in PortalHoldContext and OOMs.
+ZAP_BATCH_SIZE = 10_000
 
 # Pipeline iteration timeout (seconds)
 PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT", "3600"))

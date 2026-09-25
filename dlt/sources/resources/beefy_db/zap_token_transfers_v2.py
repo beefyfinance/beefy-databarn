@@ -2,7 +2,7 @@ from typing import Any
 
 from dlt.sources.sql_database import sql_table
 
-from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
 from lib.sql_database import hex_encode_bytea_columns
 
 
@@ -71,7 +71,7 @@ async def get_beefy_db_zap_token_transfers_v2_resource() -> Any:
         # resource is renamed to avoid colliding with the legacy CH table.
         table="zap_token_transfers",
         backend="pyarrow",
-        chunk_size=BATCH_SIZE,
+        chunk_size=ZAP_BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
         reflection_level="full_with_precision",
         query_adapter_callback=hex_encode_bytea_columns({"token_address"}),
