@@ -79,7 +79,7 @@ def run_dbt():
 
 
 if __name__ == "__main__":
-    logger.info("Starting dbt scheduler (models every 30 minutes, tests daily at 06:00 UTC, docs daily)...")
+    logger.info("Starting dbt scheduler (models every 30 minutes, tests daily at 06:15 UTC, docs daily)...")
     publish_docs()
 
     scheduler = BlockingScheduler()
@@ -94,9 +94,10 @@ if __name__ == "__main__":
         coalesce=True,   # Combine multiple pending runs into one
     )
 
+    # After the 06:00 run slot, not on :00/:30, so tests do not steal the run lock
     scheduler.add_job(
         run_dbt_tests,
-        trigger=CronTrigger(hour=6, minute=0),
+        trigger=CronTrigger(hour=6, minute=15),
         id="dbt_test",
         name="dbt Test",
         max_instances=1,
