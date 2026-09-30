@@ -12,7 +12,7 @@ models:
             to: ref('int_product_keys')
             columns: ["chain_id", "product_address"]
       # 30-day window: a full-history EXCEPT against unified takes ~1 min.
-      # Latest day excluded; unified incremental reloads with a 1-day lag.
+      # Latest day excluded. Unified reloads this full-table source with a 30-day lookback.
       # No source filter: CoalescingMergeTree folds every source into one row.
       - keys_match:
           name: int_product_stats__harvest_hourly_in_unified

@@ -15,10 +15,12 @@
     SELECT
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'tvl') AS threshold_tvl,
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'apy') AS threshold_apy,
-      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'apy_breakdown') AS threshold_apy_breakdown,
-      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'lps_breakdown') AS threshold_lps_breakdown,
-      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'yield') AS threshold_yield,
-      (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'harvest') AS threshold_harvest
+      -- Full-table sources: 30-day lookback so new products' history is not truncated
+      -- (keys_match tests the same 30-day window).
+      (SELECT max(date_hour) - INTERVAL 5 DAY FROM {{ this }} WHERE source = 'apy_breakdown') AS threshold_apy_breakdown,
+      (SELECT max(date_hour) - INTERVAL 5 DAY FROM {{ this }} WHERE source = 'lps_breakdown') AS threshold_lps_breakdown,
+      (SELECT max(date_hour) - INTERVAL 5 DAY FROM {{ this }} WHERE source = 'yield') AS threshold_yield,
+      (SELECT max(date_hour) - INTERVAL 5 DAY FROM {{ this }} WHERE source = 'harvest') AS threshold_harvest
   {% endset %}
   {% set threshold_result = run_query(threshold_sql) %}
   {% if threshold_result and threshold_result.rows | length > 0 %}
