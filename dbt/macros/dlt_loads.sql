@@ -46,17 +46,15 @@ HAVING count() > 0
 {% macro latest_completed_dlt_rows(source_name, resource_name) %}
 
 {#
-  Newest row per `id` for a ReplacingMergeTree entity table.
+  FINAL snapshot of a ReplacingMergeTree entity table.
 
-  Same pattern as stg_beefy_api__vaults (FINAL). Filtering to one completed
-  `_dlt_load_id` goes empty after OPTIMIZE FINAL replaces parts, which dropped
-  CLM + gov v2 from int_product_keys. Materialize the caller as a table so
-  this dbt run stays consistent if a newer load lands mid-run.
+  Do not filter to one completed `_dlt_load_id`: OPTIMIZE drops those parts
+  and emptied gov/clm staging. Callers materialize as a table and LIMIT 1 BY
+  their business key (API ids get reused/corrected across loads).
 #}
 
 SELECT *
 FROM {{ source('dlt', source_name ~ '___' ~ resource_name) }}
 FINAL
-LIMIT 1 BY id
 
 {% endmacro %}

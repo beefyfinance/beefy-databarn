@@ -6,8 +6,8 @@
   )
 }}
 
--- Table, not a view: FINAL snapshot per id for this dbt run (same as vaults).
--- A completed-load_id filter goes empty after ReplacingMergeTree OPTIMIZE.
+-- Table, not a view: FINAL snapshot for this dbt run.
+-- Grain is (chain, earn_contract_address): API `id` can change for the same pool.
 
 WITH source AS (
   {{ latest_completed_dlt_rows('beefy_api', 'gov_vaults') }}
@@ -52,4 +52,8 @@ SELECT
   t.updated_at,
   t.earning_points as earning_points
 FROM source AS t
+ORDER BY t._dlt_load_id DESC, t.id DESC
+LIMIT 1 BY
+  {{ normalize_network_beefy_key('t.chain') }},
+  cast({{ evm_address('t.earn_contract_address') }} as String)
 

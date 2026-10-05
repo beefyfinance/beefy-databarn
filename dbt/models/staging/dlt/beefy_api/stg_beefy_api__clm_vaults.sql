@@ -6,10 +6,10 @@
   )
 }}
 
--- Table, not a view: FINAL snapshot per id for this dbt run (same as vaults).
+-- Table, not a view: FINAL snapshot for this dbt run.
 -- product_clm and int_product_keys both read this table, so they cannot
 -- diverge when a newer beefy_api load lands mid-run.
--- A completed-load_id filter goes empty after ReplacingMergeTree OPTIMIZE.
+-- Grain is (chain, earned_token_address): API `id` can change for the same vault.
 
 WITH source AS (
   {{ latest_completed_dlt_rows('beefy_api', 'clm_vaults') }}
@@ -50,4 +50,8 @@ SELECT
   toBool(t.earning_points) as earning_points,
   t.updated_at
 FROM source AS t
+ORDER BY t._dlt_load_id DESC, t.id DESC
+LIMIT 1 BY
+  t.chain,
+  cast({{ evm_address('t.earned_token_address') }} as String)
 
