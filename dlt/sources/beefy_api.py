@@ -5,6 +5,7 @@ from typing import Any, Awaitable, Callable, Optional
 import dlt
 import httpx
 
+from lib.fetch import FetchError
 from .resources.beefy_api.configs import (
     get_beefy_api_boosts_resource,
     get_beefy_api_clm_vaults_resource,
@@ -27,18 +28,34 @@ from .resources.beefy_api.snapshots import (
 logger = logging.getLogger(__name__)
 
 
+def _skip_optional_fetch(exc: BaseException) -> bool:
+    # _get wraps httpx errors in FetchError; 404 and exhausted retries for
+    # timeouts/network must not abort the rest of the source.
+    if isinstance(exc, FetchError):
+        cause = exc.__cause__
+        if cause is not None:
+            return _skip_optional_fetch(cause)
+        return "HTTP 404" in str(exc)
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code == 404
+    return isinstance(
+        exc,
+        (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError),
+    )
+
+
 async def _optional_resource(
     name: str, factory: Callable[[], Awaitable[Any]]
 ) -> Optional[Any]:
-    # Soft-skip missing API endpoints so other resources still load.
+    # Soft-skip missing or unreachable API endpoints so other resources still load.
     # Omitting the resource keeps its dlt state unchanged for the next run.
     try:
         return await factory()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code != 404:
+    except (FetchError, httpx.HTTPError) as e:
+        if not _skip_optional_fetch(e):
             raise
         logger.warning(
-            "Skipping missing API resource %s (%s); will retry next run",
+            "Skipping API resource %s (%s); will retry next run",
             name,
             e,
         )

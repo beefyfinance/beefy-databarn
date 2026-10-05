@@ -73,6 +73,21 @@ def test_client_error_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     assert sleeps == []
 
 
+def test_get_default_timeout_allows_large_json_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+
+    def factory(*args: Any, **kwargs: Any) -> _ScriptedClient:
+        seen.update(kwargs)
+        return _ScriptedClient([200])
+
+    monkeypatch.setattr(fetch.httpx, "AsyncClient", factory)
+
+    asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+
+    assert seen["timeout"] == fetch._DEFAULT_TIMEOUT_S
+    assert fetch._DEFAULT_TIMEOUT_S == 30.0
+
+
 def test_server_error_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     sleeps: list[float] = []
     script: list[Any] = [503, 200]

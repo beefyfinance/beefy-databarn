@@ -33,6 +33,14 @@ models:
           arguments:
             from_model: ref('stg_beefy_api__vaults')
             where_clause: "ifNull(is_gov_vault, false) = false"
+      - stg_api_ids_in_product:
+          name: stg_gov_vaults_v2_in_product
+          config:
+            severity: warn
+            store_failures: true
+          arguments:
+            from_model: ref('stg_beefy_api__gov_vaults')
+            where_clause: "version = 2"
     columns:
       - name: chain_id
         description: "Chain ID where the product exists"

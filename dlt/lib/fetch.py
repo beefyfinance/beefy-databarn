@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 _MAX_ATTEMPTS = 4
 _RETRY_BACKOFF_S = 1.0
 _RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
+# Vaults/clm-vaults JSON is multiple MB; 5s ReadTimeout kills the whole pipeline.
+_DEFAULT_TIMEOUT_S = 30.0
 
 
 class FetchError(RuntimeError):
@@ -49,7 +51,7 @@ async def _get(
     *,
     params: Optional[Mapping[str, Any]] = None,
     headers: Optional[Mapping[str, str]] = None,
-    timeout_s: float = 5.0,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> httpx.Response:
     limits = httpx.Limits(max_keepalive_connections=100, max_connections=200)
     exc: httpx.HTTPError
@@ -94,7 +96,7 @@ async def fetch_url_json_dict_with_params(
     *,
     params: Optional[Mapping[str, Any]] = None,
     headers: Optional[Mapping[str, str]] = None,
-    timeout_s: float = 30.0,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> Tuple[Dict[str, Any], Optional[str]]:
     response = await _get(url, params=params, headers=headers, timeout_s=timeout_s)
     payload = response.json()

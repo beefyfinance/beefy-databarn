@@ -41,3 +41,25 @@ HAVING count() > 0
   WHERE resource_name = '{{ resource_name }}'
 )
 {%- endmacro %}
+
+
+{% macro latest_completed_dlt_rows(source_name, resource_name) %}
+
+{#
+  Newest completed row per `id` for a ReplacingMergeTree entity table.
+
+  Do not filter to a single frozen `_dlt_load_id`. OPTIMIZE FINAL replaces
+  older parts and drops that load_id, which emptied gov/clm staging and
+  dropped those products from int_product_keys. Ignoring in-flight loads
+  (status != 0) still avoids a half-written package hiding completed rows.
+#}
+
+SELECT t.*
+FROM {{ source('dlt', source_name ~ '___' ~ resource_name) }} AS t
+INNER JOIN {{ ref('stg_' ~ source_name ~ '__dlt_loads') }} AS l
+  ON t._dlt_load_id = l.load_id
+WHERE l.status = 0
+ORDER BY l.inserted_at DESC
+LIMIT 1 BY t.id
+
+{% endmacro %}

@@ -6,14 +6,11 @@
   )
 }}
 
--- Table, not a view: one copy of the latest completed load per dbt run.
--- No FINAL: an in-flight load must not hide rows from the completed load_id.
+-- Table, not a view: snapshot newest completed row per id for this dbt run.
+-- Not a single frozen load_id: ReplacingMergeTree OPTIMIZE drops old load_ids.
 
 WITH source AS (
-  SELECT *
-  FROM {{ source('dlt', 'beefy_api___gov_vaults') }}
-  WHERE _dlt_load_id = {{ latest_dlt_load_id('beefy_api', 'gov_vaults') }}
-  LIMIT 1 BY id
+  {{ latest_completed_dlt_rows('beefy_api', 'gov_vaults') }}
 )
 
 SELECT
