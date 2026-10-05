@@ -6,10 +6,10 @@
   )
 }}
 
--- Table, not a view: snapshot newest completed row per id for this dbt run.
+-- Table, not a view: FINAL snapshot per id for this dbt run (same as vaults).
 -- product_clm and int_product_keys both read this table, so they cannot
 -- diverge when a newer beefy_api load lands mid-run.
--- Not a single frozen load_id: ReplacingMergeTree OPTIMIZE drops old load_ids.
+-- A completed-load_id filter goes empty after ReplacingMergeTree OPTIMIZE.
 
 WITH source AS (
   {{ latest_completed_dlt_rows('beefy_api', 'clm_vaults') }}

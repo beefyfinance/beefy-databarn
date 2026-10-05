@@ -6,8 +6,8 @@
   )
 }}
 
--- Table, not a view: snapshot newest completed row per id for this dbt run.
--- Not a single frozen load_id: ReplacingMergeTree OPTIMIZE drops old load_ids.
+-- Table, not a view: FINAL snapshot per id for this dbt run (same as vaults).
+-- A completed-load_id filter goes empty after ReplacingMergeTree OPTIMIZE.
 
 WITH source AS (
   {{ latest_completed_dlt_rows('beefy_api', 'gov_vaults') }}
