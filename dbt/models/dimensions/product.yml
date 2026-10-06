@@ -9,6 +9,11 @@ models:
       meta:
         primary_key: ["chain_id", "product_address"]
     tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
       - keys_match:
           name: product_in_int_product_keys
           config:

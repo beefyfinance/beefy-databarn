@@ -81,4 +81,18 @@ INNER JOIN {{ ref('product') }} p
   AND hs.product_address = p.product_address
 {% if is_incremental() %}
   WHERE hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
+     -- Re-load keys that already violate uniqueness in the test window.
+     -- delete+insert only covers the 1-day lookback, so a one-off join
+     -- fanout leaves extras in MergeTree until they are selected again.
+     OR (hs.date_hour, hs.chain_id, hs.product_address) IN (
+       SELECT date_hour, chain_id, product_address
+       FROM {{ this }}
+       WHERE date_hour >= toStartOfHour(now('UTC')) - INTERVAL 30 DAY
+       GROUP BY date_hour, chain_id, product_address
+       HAVING count() > 1
+     )
 {% endif %}
+-- Grain is (chain_id, product_address, date_hour). CoalescingMergeTree FINAL
+-- should already be unique; keep one row if a join ever fans out.
+ORDER BY hs.tvl_usd DESC NULLS LAST
+LIMIT 1 BY hs.chain_id, hs.product_address, hs.date_hour
