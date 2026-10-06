@@ -601,6 +601,7 @@ services:
       BEEFY_DB_NAME: ${BEEFY_DB_NAME:-beefy-db}
       BEEFY_DB_USER: ${BEEFY_DB_USER:-postgres}
       BEEFY_DB_PASSWORD: ${BEEFY_DB_PASSWORD}
+      BEEFY_DB_SSLMODE: ${BEEFY_DB_SSLMODE:-require}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
     networks:
       - backend_network

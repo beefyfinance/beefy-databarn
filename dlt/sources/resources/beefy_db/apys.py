@@ -2,11 +2,11 @@ import logging
 from typing import Any
 from datetime import datetime, timedelta, timezone
 import dlt
-import psycopg2
 import sqlalchemy as sa
 from dlt.sources.sql_database import sql_table
 from lib.config import BATCH_SIZE, get_beefy_db_url
 from lib.clickhouse import get_clickhouse_client
+from lib.postgres import connect_beefy_db
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ async def _init_resource() -> list[int]:
     client = await get_clickhouse_client()
     await client.query(TABLE_SQL)
 
-    conn = psycopg2.connect(get_beefy_db_url())
+    conn = connect_beefy_db()
     try:
         with conn.cursor() as cur:
             cur.execute(VAULT_IDS_SQL)

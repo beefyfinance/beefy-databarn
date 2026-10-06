@@ -36,7 +36,10 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}
 : "${BEEFY_DB_HOST:?BEEFY_DB_HOST must be set}"
 : "${BEEFY_DB_PORT:?BEEFY_DB_PORT must be set}"
 : "${BEEFY_DB_NAME:?BEEFY_DB_NAME must be set}"
-export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}"
+# gssencmode=disable: libpq otherwise tries Kerberos before TLS and can fail the
+# handshake against Heroku/AWS Postgres. connect_timeout keeps a hung TCP from
+# blocking the whole pipeline run.
+export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
 
 # --- Runtime / load / extract / normalize (optional; defaults can come from .dlt/config.toml) ---
 export LOAD__TRUNCATE_STAGING_DATASET="${LOAD__TRUNCATE_STAGING_DATASET:-true}"

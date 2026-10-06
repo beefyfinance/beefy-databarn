@@ -3,6 +3,7 @@ Read-only config helpers. DLT is configured via env vars; map your .env in infra
 See infra/dlt/set_dlt_env.sh for .env → DLT env name mapping.
 """
 import os
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 BATCH_SIZE = 1_000_000
 # Full-replace zap tables include hex-encoded calldata. yield_per=BATCH_SIZE
@@ -16,6 +17,22 @@ PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT"
 CLICKHOUSE_SEND_RECEIVE_TIMEOUT = int(os.environ.get("DLT_CLICKHOUSE_SEND_RECEIVE_TIMEOUT", "3600"))
 
 
+# Heroku/AWS Postgres needs TLS. Newer libpq also tries GSS first; disable it.
+_DEFAULT_SSLMODE = "require"
+_DEFAULT_GSSENCMODE = "disable"
+_DEFAULT_CONNECT_TIMEOUT_S = "10"
+
+
+def _with_postgres_connect_params(url: str) -> str:
+    """Fill in SSL/GSS/timeout params without overriding values already in the DSN."""
+    parsed = urlparse(url)
+    params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    params.setdefault("sslmode", os.environ.get("BEEFY_DB_SSLMODE", _DEFAULT_SSLMODE))
+    params.setdefault("gssencmode", _DEFAULT_GSSENCMODE)
+    params.setdefault("connect_timeout", _DEFAULT_CONNECT_TIMEOUT_S)
+    return urlunparse(parsed._replace(query=urlencode(params)))
+
+
 def get_beefy_db_url() -> str:
     """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS)."""
     url = os.environ.get("SOURCES__BEEFY_DB__CREDENTIALS")
@@ -23,7 +40,7 @@ def get_beefy_db_url() -> str:
         raise ValueError(
             "SOURCES__BEEFY_DB__CREDENTIALS not set. Source infra/dlt/set_dlt_env.sh or set BEEFY_DB_* / SOURCES__BEEFY_DB__CREDENTIALS."
         )
-    return url
+    return _with_postgres_connect_params(url)
 
 
 def get_clickhouse_credentials() -> dict:
