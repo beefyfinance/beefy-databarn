@@ -31,3 +31,8 @@ dev = [
     "dlt[hub]==1.30.0",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+
