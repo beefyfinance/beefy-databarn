@@ -1,0 +1,65 @@
+# Unit tests for PRs and post-merge pushes to main.
+#
+# Security (do not "fix" these without a threat review):
+# - Trigger is `pull_request`, never `pull_request_target`. The latter runs in
+#   the base repo context with secrets and a write token; checking out PR code
+#   there is the classic open-source "pwn request" / GITHUB_TOKEN grab.
+# - `permissions` is contents:read only. Declaring any permission zeros the rest.
+# - No `secrets.*` are referenced. Tests do not need credentials.
+# - checkout persist-credentials: false so the token is not written into .git.
+# - GITHUB_TOKEN is cleared on the pytest steps so test code cannot read it.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  infra:
+    name: infra unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Run infra tests
+        env:
+          GITHUB_TOKEN: ""
+        run: uv run --with pytest pytest infra/tests
+
+  dlt:
+    name: dlt unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dlt deps
+        working-directory: dlt
+        run: uv sync --extra dev --frozen
+
+      - name: Run dlt tests
+        working-directory: dlt
+        env:
+          GITHUB_TOKEN: ""
+        run: uv run pytest

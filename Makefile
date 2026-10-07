@@ -463,12 +463,14 @@ test:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
 		unit) \
-			echo "Running unit tests..."; \
-			uv run --with pytest pytest infra/tests \
+			echo "Running infra unit tests..."; \
+			uv run --with pytest pytest infra/tests; \
+			echo "Running dlt unit tests..."; \
+			cd dlt && unset VIRTUAL_ENV && uv run --extra dev pytest \
 			;; \
 		help|"") \
 			echo "Tests:"; \
-			echo "  make test unit           Run Python unit tests"; \
+			echo "  make test unit           Run Python unit tests (infra + dlt)"; \
 			echo "" \
 			;; \
 		*) \
