@@ -44,6 +44,26 @@ def test_get_beefy_db_url_adds_params(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "gssencmode=disable" in url
 
 
+def test_get_beefy_timescaledb_url_requires_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS", raising=False)
+    with pytest.raises(ValueError, match="SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS"):
+        config.get_beefy_timescaledb_url()
+
+
+def test_get_beefy_timescaledb_url_uses_own_sslmode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BEEFY_DB_SSLMODE", "disable")
+    monkeypatch.delenv("BEEFY_TIMESCALEDB_SSLMODE", raising=False)
+    monkeypatch.setenv(
+        "SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS",
+        "postgresql://tsdbadmin:pass@example.tsdb.cloud.timescale.com:38766/tsdb",
+    )
+    url = config.get_beefy_timescaledb_url()
+    assert "example.tsdb.cloud.timescale.com:38766/tsdb?" in url
+    assert "sslmode=require" in url
+    assert "sslmode=disable" not in url
+    assert "gssencmode=disable" in url
+
+
 def test_connect_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
     sleeps: list[float] = []
     calls = {"n": 0}
@@ -83,3 +103,20 @@ def test_connect_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
         postgres.connect_beefy_db()
 
     assert len(sleeps) == postgres._MAX_ATTEMPTS - 1
+
+
+def test_connect_timescaledb_uses_timescaledb_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_url = "postgresql://tsdbadmin:pass@example.tsdb.cloud.timescale.com:38766/tsdb?sslmode=require"
+    seen: list[str] = []
+
+    def connect(url: str) -> object:
+        seen.append(url)
+        return object()
+
+    monkeypatch.setattr(postgres, "get_beefy_timescaledb_url", lambda: expected_url)
+    monkeypatch.setattr(postgres.psycopg2, "connect", connect)
+
+    conn = postgres.connect_beefy_timescaledb()
+
+    assert conn is not None
+    assert seen == [expected_url]

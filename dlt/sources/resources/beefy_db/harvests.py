@@ -1,13 +1,13 @@
 
 import logging
 from typing import Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import dlt
-import sqlalchemy as sa
 from dlt.sources.sql_database import sql_table
 from lib.config import BATCH_SIZE, get_beefy_db_url
 from lib.clickhouse import get_clickhouse_client
-from lib.postgres import connect_beefy_db
+from lib.postgres import connect_beefy_timescaledb
+from lib.sql_database import time_bounded_select, time_window_bounds
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ async def _init_resource() -> list[int]:
     client = await get_clickhouse_client()
     await client.query(TABLE_SQL)
 
-    conn = connect_beefy_db()
+    conn = connect_beefy_timescaledb()
     try:
         with conn.cursor() as cur:
             cur.execute(CHAINS_SQL)
@@ -63,27 +63,24 @@ async def _init_resource() -> list[int]:
 async def get_beefy_db_harvests_resource() -> Any:
     chain_ids = await _init_resource()
 
-    # # Harvests table 
+    # harvests is still on Heroku; chain_ids come from Timescale. Time bounds
+    # keep the Postgres scan on txn_timestamp.
     def harvests_query_adapter_callback(query, table, incremental=None, engine=None):
-        start_value = incremental.start_value
-        if start_value is None:
-            start_value = datetime(2022, 1, 13, 0, 0, 0, tzinfo=timezone.utc) #  2022-01-13 08:32:56+00
-
-        end_value = start_value + timedelta(days=DATE_RANGE_SIZE_IN_DAYS)
+        start_value, end_value = time_window_bounds(
+            incremental,
+            default_start=datetime(2022, 1, 13, 0, 0, 0, tzinfo=timezone.utc),  # 2022-01-13 08:32:56+00
+            window_days=DATE_RANGE_SIZE_IN_DAYS,
+        )
 
         logger.info(f"harvests_query_adapter_callback: {start_value} {end_value}")
 
-        return sa.text(f"""
-            SELECT *
-            FROM {table.fullname} 
-            WHERE chain_id = ANY(:chain_ids) 
-            AND txn_timestamp > :start_value 
-            AND txn_timestamp <= :end_value 
-        """).bindparams(**{
-            "start_value": start_value,
-            "end_value": end_value,
-            "chain_ids": chain_ids,
-        })
+        return time_bounded_select(
+            table,
+            time_column="txn_timestamp",
+            start_value=start_value,
+            end_value=end_value,
+            any_filters={"chain_id": ("chain_ids", chain_ids)},
+        )
         
     harvests = sql_table(
         credentials=get_beefy_db_url(),
