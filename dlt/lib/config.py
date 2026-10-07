@@ -23,11 +23,11 @@ _DEFAULT_GSSENCMODE = "disable"
 _DEFAULT_CONNECT_TIMEOUT_S = "10"
 
 
-def _with_postgres_connect_params(url: str) -> str:
+def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_DB_SSLMODE") -> str:
     """Fill in SSL/GSS/timeout params without overriding values already in the DSN."""
     parsed = urlparse(url)
     params = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    params.setdefault("sslmode", os.environ.get("BEEFY_DB_SSLMODE", _DEFAULT_SSLMODE))
+    params.setdefault("sslmode", os.environ.get(sslmode_env, _DEFAULT_SSLMODE))
     params.setdefault("gssencmode", _DEFAULT_GSSENCMODE)
     params.setdefault("connect_timeout", _DEFAULT_CONNECT_TIMEOUT_S)
     return urlunparse(parsed._replace(query=urlencode(params)))
@@ -40,7 +40,17 @@ def get_beefy_db_url() -> str:
         raise ValueError(
             "SOURCES__BEEFY_DB__CREDENTIALS not set. Source infra/dlt/set_dlt_env.sh or set BEEFY_DB_* / SOURCES__BEEFY_DB__CREDENTIALS."
         )
-    return _with_postgres_connect_params(url)
+    return _with_postgres_connect_params(url, sslmode_env="BEEFY_DB_SSLMODE")
+
+
+def get_beefy_timescaledb_url() -> str:
+    """Timescale (Tiger Cloud) connection string for migrated beefy-db hypertables/lookups."""
+    url = os.environ.get("SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS")
+    if not url:
+        raise ValueError(
+            "SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS not set. Source infra/dlt/set_dlt_env.sh or set BEEFY_TIMESCALEDB_* / SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS."
+        )
+    return _with_postgres_connect_params(url, sslmode_env="BEEFY_TIMESCALEDB_SSLMODE")
 
 
 def get_clickhouse_credentials() -> dict:

@@ -41,6 +41,15 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}
 # blocking the whole pipeline run.
 export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
 
+# --- Source: beefy TimescaleDB on Tiger Cloud ---
+# Migrated hypertables (prices, apys, tvls, tvl_by_chain) and lookups (chains, price_oracles, vault_ids).
+: "${BEEFY_TIMESCALEDB_USER:?BEEFY_TIMESCALEDB_USER must be set}"
+: "${BEEFY_TIMESCALEDB_PASSWORD:?BEEFY_TIMESCALEDB_PASSWORD must be set}"
+: "${BEEFY_TIMESCALEDB_HOST:?BEEFY_TIMESCALEDB_HOST must be set}"
+: "${BEEFY_TIMESCALEDB_PORT:?BEEFY_TIMESCALEDB_PORT must be set}"
+: "${BEEFY_TIMESCALEDB_NAME:?BEEFY_TIMESCALEDB_NAME must be set}"
+export SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS="postgresql://${BEEFY_TIMESCALEDB_USER}:${BEEFY_TIMESCALEDB_PASSWORD}@${BEEFY_TIMESCALEDB_HOST}:${BEEFY_TIMESCALEDB_PORT}/${BEEFY_TIMESCALEDB_NAME}?sslmode=${BEEFY_TIMESCALEDB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
+
 # --- Runtime / load / extract / normalize (optional; defaults can come from .dlt/config.toml) ---
 export LOAD__TRUNCATE_STAGING_DATASET="${LOAD__TRUNCATE_STAGING_DATASET:-true}"
 export RUNTIME__LOG_LEVEL="${RUNTIME__LOG_LEVEL:-INFO}"
