@@ -29,7 +29,7 @@ flowchart TB
     
     %% External Data Sources
     subgraph EXT["External Data Sources"]
-        BEEFY_DB[(PostgreSQL<br/>beefy-db)]
+        BEEFY_DB[(TimescaleDB<br/>beefy-db)]
         BEEFY_API[Beefy API]
     end
     
@@ -145,7 +145,7 @@ flowchart TB
 - Docker and Docker Compose (for local development)
 - Docker Swarm (for production deployment)
 - uv (Python package manager)
-- Access to external PostgreSQL "beefy-db" database
+- Access to the external TimescaleDB "beefy-db" instance
 
 ### Local Development Setup
 
@@ -268,7 +268,7 @@ graph LR
    - Creates ClickHouse external tables using PostgreSQL table engines
    - These tables act as read-only views that query the source database on-demand
    - No data is copied; queries are federated to PostgreSQL
-   - Example: `stg_beefy_db__harvests` queries the `harvests` table from beefy-db PostgreSQL
+   - Example: `stg_beefy_db__harvests` queries the `harvests` table ingested from TimescaleDB
    - Materialized as views (no storage overhead)
 
 2. **Intermediate** (`models/intermediate/`):
@@ -289,8 +289,8 @@ graph LR
 
 ### Example: Harvest Events Flow
 
-1. **Source**: PostgreSQL `harvests` table contains raw harvest transaction data
-2. **Staging**: `stg_beefy_db__harvests` creates an external table that queries PostgreSQL directly
+1. **Source**: TimescaleDB `harvests` table contains raw harvest transaction data
+2. **Staging**: `stg_beefy_db__harvests` is ingested from TimescaleDB into ClickHouse
 3. **Intermediate**: Data is cleaned (filters invalid prices, removes outliers)
 4. **Marts**: `yield_harvest_events` joins with dimensions (chain, product) and calculates USD values
 5. **Consumption**: Superset queries `yield_harvest_events` for dashboards and analytics
