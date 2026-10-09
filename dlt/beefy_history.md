@@ -98,5 +98,32 @@ Env: `BEEFY_HISTORY_DIR`, `BEEFY_HISTORY_DATA_DIR` (default `$STORAGE_DIR/beefy-
 | `stg_beefy_history__objects` | `object_id` (`kind:chain:address`) | Latest snapshot per contract, derived from events |
 | `int_beefy_history__event_windows` | `(object_id, seq)` | In-catalog + observed status from this event until the next |
 | `int_beefy_history__vault_lifecycle` | `object_id` (vaults) | `first_active_at`, `last_active_end_at`, retirement, CLM parent |
+| `int_beefy_history__stats_bounds` | 1 row | First counted launch, stats `end`, Monday on or before launch |
+| `int_beefy_history__stats_samples` | `sampled_at` | Mondays + month-starts + end (`/stats` `at`) |
+| `beefy_history_objects` | `object_id` | Search, `/inactive`, `/o/[objectId]` header |
+| `beefy_history_events` | `seq` | `/changes` feed, object timeline, commit events (`prev_data`) |
+| `beefy_history_commits` | `(commit_repo, commit_sha)` | Commit index; join events for `/commits/[repo]/[sha]` |
+| `beefy_history_stats_active` | `(sampled_at, chain, vault_type)` | Stacked active-by-chain / by-type + heatmap |
+| `beefy_history_stats_quarter_index` | `quarter` | Every UTC quarter from first launch to end |
+| `beefy_history_stats_quarters` | `(quarter, series, series_key)` | Launches by type/chain, retirements by reason |
+| `beefy_history_stats_lifespan` | `months` | `lifespanMonths[n]` (30.4375-day months) |
+| `beefy_history_stats_platforms` | `platform` | Launched / still active per platform |
+| `beefy_history_stats_headline` | 1 row | StatTiles: active now, peak, chains, launched, retired, median lifespan |
 
 Identity is **chain + contract address**, not `beefy_key`. Boosts are ingested if present; `/stats` ignores them. Run this producer once before `dbt run` or the `s3()` copy has nothing to read.
+
+### Recreating [history.beefy.rodeo](https://history.beefy.rodeo)
+
+Same predicates as the app: vaults only on `/stats`; empty/missing status = active; CLM wrappers excluded (`counts_for_stats`); launch = first in-catalog active; retirement = end of last active period if not active now and not paused.
+
+| Page | Read |
+|---|---|
+| `/` search + facets | `beefy_history_objects` (`kind`, `chain`, `vault_type`, `status`, `live`, `name`, ids, addresses) |
+| `/inactive` | `WHERE is_inactive` (optional `live`, `kind`, `chain`, `status`) |
+| `/changes` | `beefy_history_events` ordered by `seq` DESC; filter `change_type`, `reason`, `kind`, `chain`, `changed_keys`, day range on `committed_at` |
+| `/o/[objectId]` | objects header + events `WHERE object_id = … ORDER BY seq` (`prev_data` for diffs) |
+| `/commits/[repo]/[sha]` | `beefy_history_commits` + events `WHERE commit_repo AND commit_sha` |
+| `/stats` active-by-chain | `SELECT sampled_at, chain, sum(active_count) FROM beefy_history_stats_active GROUP BY 1, 2` |
+| `/stats` active-by-type | `GROUP BY sampled_at, vault_type` |
+| `/stats` launches / retirements | `beefy_history_stats_quarter_index` ⨯ `beefy_history_stats_quarters` (`series` + `reason_group`) |
+| `/stats` platforms / lifespan / tiles | `beefy_history_stats_platforms`, `_lifespan`, `_headline` |

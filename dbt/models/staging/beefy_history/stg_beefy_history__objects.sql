@@ -26,6 +26,7 @@ WITH agg AS (
     argMin(committed_at, seq) AS first_committed_at,
     argMax(committed_at, seq) AS last_committed_at,
     argMax(change_type, seq) AS last_change_type,
+    argMax(source, seq) AS last_source,
     count() AS event_count,
     maxIf(seq, data IS NOT NULL) AS data_seq
   FROM {{ ref('stg_beefy_history__events') }}
@@ -56,7 +57,34 @@ SELECT
   e.retire_reason,
   e.token_address,
   e.earn_contract_address,
-  {{ beefy_history_vault_type('e.config_type', 'ifNull(e.is_gov_vault, false)') }} AS vault_type
+  {{ beefy_history_vault_type('e.config_type', 'ifNull(e.is_gov_vault, false)') }} AS vault_type,
+  coalesce(
+    {{ beefy_history_json_text('e.data', 'name') }},
+    {{ beefy_history_json_text('e.data', 'title') }}
+  ) AS name,
+  {{ beefy_history_json_text('e.data', 'title') }} AS title,
+  {{ beefy_history_json_string_array('e.data', 'assets') }} AS assets,
+  lower({{ beefy_history_json_text('e.data', 'earnedTokenAddress') }}) AS earned_token_address,
+  arrayDistinct(
+    arrayFilter(
+      x -> x != '',
+      arrayConcat(
+        [ifNull(lower({{ beefy_history_json_text('e.data', 'earnedTokenAddress') }}), '')],
+        arrayMap(x -> lower(x), {{ beefy_history_json_string_array('e.data', 'earnedTokenAddresses') }}),
+        arrayMap(
+          x -> lower(JSONExtractString(x, 'address')),
+          if(
+            e.data IS NULL OR JSONType(e.data, 'rewards') != 'Array',
+            emptyArrayString(),
+            JSONExtractArrayRaw(e.data, 'rewards')
+          )
+        )
+      )
+    )
+  ) AS earned_token_addresses,
+  coalesce(e.source, a.last_source) AS source,
+  e.path AS path,
+  {{ beefy_history_config_layer('e.path') }} AS config_layer
 FROM agg a
 LEFT JOIN {{ ref('stg_beefy_history__events') }} e
   ON e.seq = a.data_seq

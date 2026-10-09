@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: beefy_history_events
+    description: >
+      Catalog events for /changes, /o/[objectId] timeline, and /commits/[repo]/[sha].
+      prev_data is the previous non-null snapshot of the same object, only for changed events.
+    config:
+      meta:
+        primary_key: ["seq"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - seq
+    columns:
+      - name: seq
+        tests:
+          - not_null
+          - unique
+      - name: object_id
+        tests:
+          - not_null
+      - name: change_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['added', 'changed', 'removed', 'readded']
+      - name: commit_repo
+        tests:
+          - not_null
+      - name: commit_sha
+        tests:
+          - not_null
+      - name: committed_at
+        tests:
+          - not_null
+      - name: commit_url
+        description: "https://github.com/beefyfinance/<repo>/commit/<sha>"
+      - name: file_url
+        description: "Blob URL; null when removed or the snapshot came from the other repo"
+      - name: changed_keys
+        description: "Top-level keys that changed; empty unless change_type = changed"
+      - name: prev_data
+        description: "Previous snapshot JSON; set only for changed"
+      - name: data
+        description: "Snapshot JSON; null when removed"

@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: int_beefy_history__stats_bounds
+    description: >
+      Single row with the /stats time window: first counted-vault launch, latest event time,
+      and the Monday on or before that launch. Empty when no vault ever counted for stats.
+    config:
+      meta:
+        primary_key: ["first_launch"]
+    columns:
+      - name: counted_vaults
+        description: "Vaults that /stats would count (ever active, not a CLM wrapper)"
+        tests:
+          - not_null
+      - name: first_launch
+        description: "Unix seconds of the first counted launch"
+        tests:
+          - not_null
+      - name: stats_end
+        description: "Unix seconds of the latest catalog event (stats `end`)"
+        tests:
+          - not_null
+      - name: monday_start
+        description: "Monday 00:00 UTC on or before first_launch"
+        tests:
+          - not_null

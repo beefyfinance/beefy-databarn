@@ -36,6 +36,8 @@ models:
         description: "Committer unix seconds"
       - name: valid_from
         description: "Inclusive start of this snapshot"
+      - name: valid_to_unix
+        description: "Exclusive end as committer unix seconds; null if this is the latest event"
       - name: valid_to
         description: "Exclusive end (next event); null if this is the latest event"
       - name: in_catalog

@@ -19,6 +19,11 @@ SELECT
   change_type,
   committed_at,
   committed_at_ts AS valid_from,
+  anyOrNull(committed_at) OVER (
+    PARTITION BY object_id
+    ORDER BY seq
+    ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING
+  ) AS valid_to_unix,
   anyOrNull(committed_at_ts) OVER (
     PARTITION BY object_id
     ORDER BY seq

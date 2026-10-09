@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: beefy_history_objects
+    description: >
+      One row per catalog object for history.beefy.rodeo search, /inactive, and /o/[objectId].
+      live is in_catalog. is_inactive is the /inactive predicate (live with a non-active status,
+      or removed). is_currently_active is in catalog with missing/empty/active status.
+    config:
+      meta:
+        primary_key: ["object_id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - object_id
+    columns:
+      - name: object_id
+        description: "kind:chain:address"
+        tests:
+          - not_null
+          - unique
+      - name: kind
+        description: "vault or boost"
+        tests:
+          - not_null
+      - name: chain
+        tests:
+          - not_null
+      - name: address
+        tests:
+          - not_null
+      - name: beefy_id
+        description: "Latest config id"
+      - name: beefy_ids
+        description: "Every id, first-seen order"
+      - name: name
+        description: "data.name, or data.title for promos boosts"
+      - name: live
+        description: "Latest change is not removed"
+        tests:
+          - not_null
+      - name: removed_at
+        description: "last_committed_at when not live; null while live"
+      - name: is_currently_active
+        description: "In catalog with status missing/empty/active"
+        tests:
+          - not_null
+      - name: is_inactive
+        description: "The /inactive list: not currently active"
+        tests:
+          - not_null
+      - name: counts_for_stats
+        description: "Vault that /stats would count; null for boosts"
+      - name: data
+        description: "Latest non-null config JSON"

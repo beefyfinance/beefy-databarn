@@ -80,3 +80,19 @@ models:
         description: "Latest data.earnContractAddress"
       - name: vault_type
         description: "config_type, else gov if is_gov_vault, else standard"
+      - name: name
+        description: "data.name, or data.title for promos boosts"
+      - name: title
+        description: "data.title"
+      - name: assets
+        description: "data.assets; empty when absent"
+      - name: earned_token_address
+        description: "data.earnedTokenAddress, lowercased"
+      - name: earned_token_addresses
+        description: "earnedTokenAddress(es) and promos rewards[].address, lowercased and deduped"
+      - name: source
+        description: "Repo of the latest snapshot (or last event when none)"
+      - name: path
+        description: "Config file of the latest snapshot; null when removed"
+      - name: config_layer
+        description: "vault | stake | boost | promos from path; null when unknown/removed"
