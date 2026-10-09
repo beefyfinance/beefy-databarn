@@ -7,7 +7,7 @@
   )
 }}
 
--- Vault lifecycle facts joined into beefy_object_events. Boosts stay in staging.
+-- Vault lifecycle facts joined into product_config_history. Boosts stay in staging.
 -- chain_id is the product/chain dimension key (null if the history chain is unknown).
 -- Launch = first time in-catalog and active. Retirement = end of last active period if not active now and not paused.
 -- CLM collapse: a cowcentrated vault counts once; gov/standard whose deposit token is that CLM on the same chain are wrappers.

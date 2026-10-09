@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: beefy_object_events
+  - name: product_config_history
     description: >
       One row per catalog change. FKs are chain_id (chain), (chain_id, product_address)
       (product), platform_id (platform), and token_representation_address (token).

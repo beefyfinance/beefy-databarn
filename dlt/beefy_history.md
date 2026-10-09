@@ -9,7 +9,7 @@ git mirrors of beefy-v2 + beefy-app
   → ClickHouse s3() of current/*.parquet
   → dbt staging tables (MergeTree copy)
   → int_beefy_history__* lifecycle facts
-  → beefy_object_events (FKs to chain / product / platform / token)
+  → product_config_history (FKs to chain / product / platform / token)
 ```
 
 ## Pinned CLI
@@ -92,7 +92,7 @@ Env: `BEEFY_HISTORY_DIR`, `BEEFY_HISTORY_DATA_DIR` (default `$STORAGE_DIR/beefy-
 
 ## dbt
 
-One mart: `beefy_object_events`. It is a fact table with FKs onto the existing dimensions — there is no parallel history objects table.
+One mart: `product_config_history`. It is a fact table with FKs onto the existing dimensions — there is no parallel history objects table.
 
 | Model | Grain | What it is |
 |---|---|---|
@@ -101,7 +101,7 @@ One mart: `beefy_object_events`. It is a fact table with FKs onto the existing d
 | `stg_beefy_history__objects` | `object_id` (`kind:chain:address`) | Latest snapshot per contract, derived from events (DuckDB `objects` is not a file) |
 | `int_beefy_history__event_windows` | `(object_id, seq)` | In-catalog + observed status from this event until the next |
 | `int_beefy_history__vault_lifecycle` | `object_id` (vaults) | Launch / retirement / CLM parent, with `chain_id` for `product` |
-| `beefy_object_events` | `seq` | Catalog changes + valid windows + lifecycle flags, keyed to dimensions |
+| `product_config_history` | `seq` | Catalog changes + valid windows + lifecycle flags, keyed to dimensions |
 
 Join keys on the mart:
 
@@ -137,7 +137,7 @@ SELECT
   c.chain_name,
   plat.platform_name,
   t.symbol AS want_symbol
-FROM beefy_object_events e
+FROM product_config_history e
 LEFT JOIN product p
   ON e.chain_id = p.chain_id AND e.product_address = p.product_address
 LEFT JOIN chain c
@@ -156,36 +156,36 @@ SELECT
   count() AS launched,
   countIf(is_retired) AS retired,
   quantileExact(0.5)(lifespan_months) AS median_lifespan_months
-FROM beefy_object_events
+FROM product_config_history
 WHERE valid_to_unix IS NULL AND counts_for_stats;
 
 -- launches by type (or chain_id)
 SELECT launch_quarter, vault_type, count()
-FROM beefy_object_events
+FROM product_config_history
 WHERE valid_to_unix IS NULL AND counts_for_stats
 GROUP BY launch_quarter, vault_type;
 
 -- retirements by reason group
 SELECT retirement_quarter, retire_reason_group, count()
-FROM beefy_object_events
+FROM product_config_history
 WHERE valid_to_unix IS NULL AND counts_for_stats AND is_retired
 GROUP BY retirement_quarter, retire_reason_group;
 
 -- platforms (join platform for names)
 SELECT stats_platform, count() AS launched, countIf(is_active) AS active_now
-FROM beefy_object_events
+FROM product_config_history
 WHERE valid_to_unix IS NULL AND counts_for_stats
 GROUP BY stats_platform;
 
 -- lifespan histogram
 SELECT lifespan_months, count()
-FROM beefy_object_events
+FROM product_config_history
 WHERE valid_to_unix IS NULL AND counts_for_stats AND is_retired
 GROUP BY lifespan_months;
 
 -- active counted vaults at unix T (generate Mondays + month-starts + now in the client)
 SELECT chain_id, vault_type, count()
-FROM beefy_object_events
+FROM product_config_history
 WHERE counts_for_stats AND is_active
   AND valid_from_unix <= T
   AND (valid_to_unix IS NULL OR T < valid_to_unix)
@@ -195,6 +195,6 @@ GROUP BY chain_id, vault_type;
 SELECT
   commit_repo, commit_sha, any(commit_subject), min(committed_at),
   count() AS event_count, uniqExact(object_id) AS object_count
-FROM beefy_object_events
+FROM product_config_history
 GROUP BY commit_repo, commit_sha;
 ```

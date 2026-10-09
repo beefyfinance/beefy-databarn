@@ -137,7 +137,7 @@ flowchart TB
 
 - **RustFS**: S3-compatible object storage used as the ClickHouse `BACKUP`/`RESTORE` disk (bucket `clickhouse-backups`; swap `.env` to remote S3 later) and for beefy-history parquet (separate bucket `beefy-history/`). dlt staging stays on local `file://`.
 
-- **beefy-history**: a scheduled job next to dlt (not an HTTP dlt source) keeps git mirrors of beefy-app + beefy-v2, runs the pinned CLI to parquet, and publishes atomically to `beefy-history/current/`. dbt copies those files into MergeTree staging, then one fact mart (`beefy_object_events`) keyed to the existing `chain` / `product` / `platform` / `token` dimensions so [history.beefy.rodeo](https://history.beefy.rodeo) pages are recreated at query time. This catalog is **not** sourced from `api.beefy.finance`. See [dlt/beefy_history.md](dlt/beefy_history.md).
+- **beefy-history**: a scheduled job next to dlt (not an HTTP dlt source) keeps git mirrors of beefy-app + beefy-v2, runs the pinned CLI to parquet, and publishes atomically to `beefy-history/current/`. dbt copies those files into MergeTree staging, then one fact mart (`product_config_history`) keyed to the existing `chain` / `product` / `platform` / `token` dimensions so [history.beefy.rodeo](https://history.beefy.rodeo) pages are recreated at query time. This catalog is **not** sourced from `api.beefy.finance`. See [dlt/beefy_history.md](dlt/beefy_history.md).
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
