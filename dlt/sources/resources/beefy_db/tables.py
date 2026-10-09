@@ -3,8 +3,8 @@ from dlt.destinations.adapters import clickhouse_adapter
 from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
 from lib.sql_database import try_sql_table
 
-# Lookup tables on Tiger Cloud Timescale. Destination schema is unchanged.
-TIMESCALEDB_TABLES = {
+# Small lookup tables still on Heroku beefy-db.
+HEROKU_TABLES = {
     "address_metadata": [
         {"name": "chain_id", "primary_key": True },
         {"name": "address", "primary_key": True },
@@ -22,6 +22,10 @@ TIMESCALEDB_TABLES = {
         {"name": "chain_id", "primary_key": True },
         {"name": "block_number", "primary_key": True },
     ],
+}
+
+# Lookup tables migrated to Tiger Cloud Timescale. Destination schema is unchanged.
+TIMESCALEDB_TABLES = {
     "chains": [
         {"name": "chain_id", "primary_key": True },
     ],
@@ -53,4 +57,6 @@ def _table_resources(db_url: str, tables: dict[str, list[dict[str, Any]]]) -> li
 
 
 def get_beefy_db_other_tables_resources() -> list[Any]:
-    return _table_resources(get_beefy_timescaledb_url(), TIMESCALEDB_TABLES)
+    resources = _table_resources(get_beefy_timescaledb_url(), HEROKU_TABLES)
+    resources.extend(_table_resources(get_beefy_timescaledb_url(), TIMESCALEDB_TABLES))
+    return resources

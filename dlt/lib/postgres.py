@@ -41,14 +41,10 @@ def connect_postgres(url: str, label: str) -> Any:
 
 
 def connect_beefy_db() -> Any:
-    """Connect to Heroku beefy-db.
-
-    Unused while all tables are read from Timescale; kept so resources can be
-    pointed back without rewiring env.
-    """
+    """Connect to Heroku beefy-db."""
     return connect_postgres(get_beefy_db_url(), "Beefy DB")
 
 
 def connect_beefy_timescaledb() -> Any:
-    """Connect to the Tiger Cloud Timescale instance of beefy-db tables."""
+    """Connect to the Tiger Cloud Timescale instance of migrated beefy-db tables."""
     return connect_postgres(get_beefy_timescaledb_url(), "Beefy Timescale DB")
