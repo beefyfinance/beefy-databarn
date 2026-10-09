@@ -17,13 +17,13 @@ PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT"
 CLICKHOUSE_SEND_RECEIVE_TIMEOUT = int(os.environ.get("DLT_CLICKHOUSE_SEND_RECEIVE_TIMEOUT", "3600"))
 
 
-# Tiger Cloud Postgres needs TLS. Newer libpq also tries GSS first; disable it.
+# Heroku/AWS and Tiger Cloud Postgres need TLS. Newer libpq also tries GSS first; disable it.
 _DEFAULT_SSLMODE = "require"
 _DEFAULT_GSSENCMODE = "disable"
 _DEFAULT_CONNECT_TIMEOUT_S = "10"
 
 
-def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_TIMESCALEDB_SSLMODE") -> str:
+def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_DB_SSLMODE") -> str:
     """Fill in SSL/GSS/timeout params without overriding values already in the DSN."""
     parsed = urlparse(url)
     params = dict(parse_qsl(parsed.query, keep_blank_values=True))
@@ -31,6 +31,20 @@ def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_TIMESCALED
     params.setdefault("gssencmode", _DEFAULT_GSSENCMODE)
     params.setdefault("connect_timeout", _DEFAULT_CONNECT_TIMEOUT_S)
     return urlunparse(parsed._replace(query=urlencode(params)))
+
+
+def get_beefy_db_url() -> str:
+    """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS).
+
+    Unused while all tables are read from Timescale; kept so resources can be
+    pointed back without rewiring env.
+    """
+    url = os.environ.get("SOURCES__BEEFY_DB__CREDENTIALS")
+    if not url:
+        raise ValueError(
+            "SOURCES__BEEFY_DB__CREDENTIALS not set. Source infra/dlt/set_dlt_env.sh or set BEEFY_DB_* / SOURCES__BEEFY_DB__CREDENTIALS."
+        )
+    return _with_postgres_connect_params(url, sslmode_env="BEEFY_DB_SSLMODE")
 
 
 def get_beefy_timescaledb_url() -> str:
