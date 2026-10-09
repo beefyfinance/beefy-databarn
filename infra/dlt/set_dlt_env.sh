@@ -29,6 +29,19 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__PASSWORD="${DLT_CLICKHOUSE_PASSWORD
 export DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE="${DLT_CLICKHOUSE_DB}"
 export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}"
 
+# --- Source: beefy_db (PostgreSQL) ---
+# Unused while all tables are read from Timescale; kept so we can point
+# resources back without rewiring env. DLT reads SOURCES__<source_name>__CREDENTIALS.
+: "${BEEFY_DB_USER:?BEEFY_DB_USER must be set}"
+: "${BEEFY_DB_PASSWORD:?BEEFY_DB_PASSWORD must be set}"
+: "${BEEFY_DB_HOST:?BEEFY_DB_HOST must be set}"
+: "${BEEFY_DB_PORT:?BEEFY_DB_PORT must be set}"
+: "${BEEFY_DB_NAME:?BEEFY_DB_NAME must be set}"
+# gssencmode=disable: libpq otherwise tries Kerberos before TLS and can fail the
+# handshake against Heroku/AWS Postgres. connect_timeout keeps a hung TCP from
+# blocking the whole pipeline run.
+export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
+
 # --- Source: beefy TimescaleDB on Tiger Cloud ---
 # All beefy-db tables. gssencmode=disable: libpq otherwise tries Kerberos before
 # TLS. connect_timeout keeps a hung TCP from blocking the whole pipeline run.

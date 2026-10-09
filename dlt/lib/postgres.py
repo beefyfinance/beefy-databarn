@@ -6,7 +6,7 @@ from typing import Any
 
 import psycopg2
 
-from lib.config import get_beefy_timescaledb_url
+from lib.config import get_beefy_db_url, get_beefy_timescaledb_url
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,15 @@ def connect_postgres(url: str, label: str) -> Any:
                 delay,
             )
             time.sleep(delay)
+
+
+def connect_beefy_db() -> Any:
+    """Connect to Heroku beefy-db.
+
+    Unused while all tables are read from Timescale; kept so resources can be
+    pointed back without rewiring env.
+    """
+    return connect_postgres(get_beefy_db_url(), "Beefy DB")
 
 
 def connect_beefy_timescaledb() -> Any:
