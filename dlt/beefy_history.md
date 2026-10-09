@@ -9,6 +9,7 @@ git mirrors of beefy-v2 + beefy-app
   → ClickHouse s3() of current/*.parquet
   → dbt staging tables (MergeTree copy)
   → int_beefy_history__* lifecycle facts
+  → beefy_object_events (FKs to chain / product / platform / token)
 ```
 
 ## Pinned CLI
@@ -91,82 +92,109 @@ Env: `BEEFY_HISTORY_DIR`, `BEEFY_HISTORY_DATA_DIR` (default `$STORAGE_DIR/beefy-
 
 ## dbt
 
-Two marts. Filter / group at query time — there are no chart-shaped tables.
+One mart: `beefy_object_events`. It is a fact table with FKs onto the existing dimensions — there is no parallel history objects table.
 
 | Model | Grain | What it is |
 |---|---|---|
 | `stg_beefy_history__events` | `seq` | Copy of `current/events.parquet` + flattened config columns |
 | `stg_beefy_history__issues` | `seq` | Copy of `current/issues.parquet` |
-| `stg_beefy_history__objects` | `object_id` (`kind:chain:address`) | Latest snapshot per contract, derived from events |
+| `stg_beefy_history__objects` | `object_id` (`kind:chain:address`) | Latest snapshot per contract, derived from events (DuckDB `objects` is not a file) |
 | `int_beefy_history__event_windows` | `(object_id, seq)` | In-catalog + observed status from this event until the next |
-| `int_beefy_history__vault_lifecycle` | `object_id` (vaults) | `first_active_at`, `last_active_end_at`, retirement, CLM parent |
-| `beefy_history_objects` | `object_id` | Current-state + launch / retire / platform / lifespan |
-| `beefy_history_events` | `seq` | Catalog changes with valid windows, `prev_data`, commit fields |
+| `int_beefy_history__vault_lifecycle` | `object_id` (vaults) | Launch / retirement / CLM parent, with `chain_id` for `product` |
+| `beefy_object_events` | `seq` | Catalog changes + valid windows + lifecycle flags, keyed to dimensions |
 
-Identity is **chain + contract address**, not `beefy_key`. Boosts are ingested if present; `/stats` ignores them (`WHERE counts_for_stats`). Run this producer once before `dbt run` or the `s3()` copy has nothing to read.
+Join keys on the mart:
+
+| Column | Dimension |
+|---|---|
+| `chain_id` | `chain` |
+| `(chain_id, product_address)` | `product` (`product_classic` / `product_clm` / `product_classic_boost` / `product_reward_pool` via `product_type`) |
+| `platform_id` / `stats_platform` | `platform` |
+| `(chain_id, token_representation_address)` | `token` |
+
+`product_type` is null when the contract is not in the current API-sourced `product` dimension (retired / API-dropped). Identity is **chain + contract address**, not `beefy_key`. Boosts are ingested if present; `/stats` ignores them (`WHERE counts_for_stats`). Run this producer once before `dbt run` or the `s3()` copy has nothing to read.
 
 ### Recreating [history.beefy.rodeo](https://history.beefy.rodeo)
 
-Same predicates as the app: vaults only on `/stats`; empty/missing status = active; CLM wrappers excluded (`counts_for_stats`); launch = first in-catalog active; retirement = end of last active period if not active now and not paused. Month length is 2_629_800 s (30.4375 days).
+Same predicates as the app: vaults only on `/stats`; empty/missing status = active; CLM wrappers excluded (`counts_for_stats`); launch = first in-catalog active; retirement = end of last active period if not active now and not paused. Month length is 2_629_800 s (30.4375 days). Current snapshot = `valid_to_unix IS NULL`. Display names, current API status, chain name, platform name come from the dimensions.
 
-| Page | Table | Filter |
-|---|---|---|
-| `/` search + facets | objects | `kind`, `chain`, `vault_type`, `status`, `live`, `name`, ids, addresses |
-| `/inactive` | objects | `WHERE is_inactive` |
-| `/o/[objectId]` | both | objects row + events `WHERE object_id = … ORDER BY seq` (`prev_data` for diffs) |
-| `/changes` | events | `ORDER BY seq DESC`; filter `change_type`, `reason`, `kind`, `chain`, `changed_keys`, `committed_at` |
-| `/commits/[repo]/[sha]` | events | `WHERE commit_repo AND commit_sha`; index = `GROUP BY commit_repo, commit_sha` |
-| `/stats` (all but the time series) | objects | `WHERE counts_for_stats` then `GROUP BY` below |
-| `/stats` active-over-time | events | windows: `counts_for_stats AND is_active AND valid_from_unix <= T AND (valid_to_unix IS NULL OR T < valid_to_unix)` |
+| Page | Filter |
+|---|---|
+| `/` search + facets | latest event + `product` / `chain` (`kind`, `chain_id`, `vault_type`, `status`, `product_type`) |
+| `/inactive` | `WHERE valid_to_unix IS NULL AND NOT is_active` |
+| `/o/[objectId]` | `WHERE object_id = … ORDER BY seq` (`prev_data` for diffs); header from `product` |
+| `/changes` | `ORDER BY seq DESC`; filter `change_type`, `reason`, `kind`, `chain_id`, `changed_keys`, `committed_at` |
+| `/commits/[repo]/[sha]` | `WHERE commit_repo AND commit_sha`; index = `GROUP BY commit_repo, commit_sha` |
+| `/stats` (all but the time series) | `WHERE valid_to_unix IS NULL AND counts_for_stats` then `GROUP BY` below |
+| `/stats` active-over-time | `counts_for_stats AND is_active AND valid_from_unix <= T AND (valid_to_unix IS NULL OR T < valid_to_unix)` |
 
 ```sql
+-- current catalog row + dimension attributes
+SELECT
+  e.*,
+  p.display_name,
+  p.is_active AS api_is_active,
+  c.chain_name,
+  plat.platform_name,
+  t.symbol AS want_symbol
+FROM beefy_object_events e
+LEFT JOIN product p
+  ON e.chain_id = p.chain_id AND e.product_address = p.product_address
+LEFT JOIN chain c
+  ON e.chain_id = c.chain_id
+LEFT JOIN platform plat
+  ON e.stats_platform = plat.platform_id
+LEFT JOIN token t
+  ON e.chain_id = t.chain_id AND e.token_representation_address = t.representation_address
+WHERE e.valid_to_unix IS NULL;
+
 -- /stats tiles (peak is the events query at many T; take max)
 SELECT
-  countIf(is_currently_active) AS active_now,
-  uniqExactIf(chain, is_currently_active) AS chains_now,
-  uniqExact(chain) AS chains_ever,
+  countIf(is_active) AS active_now,
+  uniqExactIf(chain_id, is_active) AS chains_now,
+  uniqExact(chain_id) AS chains_ever,
   count() AS launched,
   countIf(is_retired) AS retired,
   quantileExact(0.5)(lifespan_months) AS median_lifespan_months
-FROM beefy_history_objects
-WHERE counts_for_stats;
+FROM beefy_object_events
+WHERE valid_to_unix IS NULL AND counts_for_stats;
 
--- launches by type (or chain)
+-- launches by type (or chain_id)
 SELECT launch_quarter, vault_type, count()
-FROM beefy_history_objects
-WHERE counts_for_stats
+FROM beefy_object_events
+WHERE valid_to_unix IS NULL AND counts_for_stats
 GROUP BY launch_quarter, vault_type;
 
 -- retirements by reason group
 SELECT retirement_quarter, retire_reason_group, count()
-FROM beefy_history_objects
-WHERE counts_for_stats AND is_retired
+FROM beefy_object_events
+WHERE valid_to_unix IS NULL AND counts_for_stats AND is_retired
 GROUP BY retirement_quarter, retire_reason_group;
 
--- platforms
-SELECT stats_platform, count() AS launched, countIf(is_currently_active) AS active_now
-FROM beefy_history_objects
-WHERE counts_for_stats
+-- platforms (join platform for names)
+SELECT stats_platform, count() AS launched, countIf(is_active) AS active_now
+FROM beefy_object_events
+WHERE valid_to_unix IS NULL AND counts_for_stats
 GROUP BY stats_platform;
 
 -- lifespan histogram
 SELECT lifespan_months, count()
-FROM beefy_history_objects
-WHERE counts_for_stats AND is_retired
+FROM beefy_object_events
+WHERE valid_to_unix IS NULL AND counts_for_stats AND is_retired
 GROUP BY lifespan_months;
 
 -- active counted vaults at unix T (generate Mondays + month-starts + now in the client)
-SELECT chain, vault_type, count()
-FROM beefy_history_events
+SELECT chain_id, vault_type, count()
+FROM beefy_object_events
 WHERE counts_for_stats AND is_active
   AND valid_from_unix <= T
   AND (valid_to_unix IS NULL OR T < valid_to_unix)
-GROUP BY chain, vault_type;
+GROUP BY chain_id, vault_type;
 
 -- commit index
 SELECT
   commit_repo, commit_sha, any(commit_subject), min(committed_at),
   count() AS event_count, uniqExact(object_id) AS object_count
-FROM beefy_history_events
+FROM beefy_object_events
 GROUP BY commit_repo, commit_sha;
 ```

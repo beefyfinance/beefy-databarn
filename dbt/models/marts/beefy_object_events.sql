@@ -3,22 +3,23 @@
     materialized='table',
     engine='MergeTree',
     tags=['marts', 'beefy_history'],
-    order_by=['seq'],
+    order_by=['chain_id', 'product_address', 'seq'],
   )
 }}
 
--- One row per catalog change. Filter for /changes, /o/[objectId] timeline, /commits/[repo]/[sha],
--- and /stats active-over-time (counts_for_stats AND is_active AND valid_from_unix <= T < valid_to).
--- prev_data is the previous non-null snapshot of the same object (changed events only).
+-- Catalog change facts. Grain is seq. Join chain / product / platform / token on the FK columns;
+-- do not keep a parallel objects mart. product_type is null when the contract is not in `product`
+-- (API-dropped / history-only). Current snapshot: valid_to_unix IS NULL.
 
 SELECT
   e.seq,
   e.object_id,
   e.kind,
-  e.chain,
-  e.address,
+  ck.chain_id,
+  e.chain AS chain_beefy_key,
+  e.address AS product_address,
+  p.product_type,
   e.beefy_id,
-  o.name,
   e.change_type,
   e.reason,
   e.source,
@@ -41,7 +42,10 @@ SELECT
   e.status,
   w.vault_type,
   e.platform_id,
+  l.platform AS stats_platform,
+  e.token_address AS token_representation_address,
   e.retire_reason,
+  {{ beefy_history_retire_reason_group('coalesce(l.retire_reason, e.retire_reason)') }} AS retire_reason_group,
   w.in_catalog,
   w.is_active,
   e.committed_at AS valid_from_unix,
@@ -49,7 +53,15 @@ SELECT
   w.valid_to_unix,
   w.valid_to,
   l.counts_for_stats,
-  l.platform AS stats_platform,
+  l.is_clm_wrapper,
+  l.clm_parent_address,
+  l.is_retired,
+  l.is_paused,
+  l.first_active_at,
+  l.last_active_end_at,
+  l.launch_quarter,
+  l.retirement_quarter,
+  l.lifespan_months,
   if(
     e.change_type = 'changed',
     anyLastIf(e.data, e.data IS NOT NULL) OVER (
@@ -61,10 +73,13 @@ SELECT
   ) AS prev_data,
   e.data
 FROM {{ ref('stg_beefy_history__events') }} e
+LEFT JOIN {{ ref('int_chain_keys') }} ck
+  ON {{ normalize_network_beefy_key('e.chain') }} = ck.beefy_key
+LEFT JOIN {{ ref('product') }} p
+  ON ck.chain_id = p.chain_id
+  AND e.address = p.product_address
 LEFT JOIN {{ ref('int_beefy_history__event_windows') }} w
   ON e.object_id = w.object_id
   AND e.seq = w.seq
-LEFT JOIN {{ ref('stg_beefy_history__objects') }} o
-  ON e.object_id = o.object_id
 LEFT JOIN {{ ref('int_beefy_history__vault_lifecycle') }} l
   ON e.object_id = l.object_id

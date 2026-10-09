@@ -3,11 +3,12 @@
     materialized='table',
     tags=['intermediate'],
     engine='MergeTree()',
-    order_by=['chain', 'address'],
+    order_by=['chain_id', 'address'],
   )
 }}
 
--- Vault lifecycle facts joined into beefy_history_objects / beefy_history_events. Boosts stay in staging.
+-- Vault lifecycle facts joined into beefy_object_events. Boosts stay in staging.
+-- chain_id is the product/chain dimension key (null if the history chain is unknown).
 -- Launch = first time in-catalog and active. Retirement = end of last active period if not active now and not paused.
 -- CLM collapse: a cowcentrated vault counts once; gov/standard whose deposit token is that CLM on the same chain are wrappers.
 
@@ -88,29 +89,78 @@ clms AS (
     address AS clm_address
   FROM typed
   WHERE vault_type = 'cowcentrated'
+),
+
+lifecycle AS (
+  SELECT
+    t.object_id,
+    ck.chain_id,
+    t.chain,
+    t.address,
+    t.in_catalog,
+    t.status AS observed_status,
+    t.vault_type,
+    if(t.vault_type = 'cowcentrated', t.token_provider_id, t.platform_id) AS platform,
+    t.platform_id,
+    t.token_provider_id,
+    t.token_address,
+    t.retire_reason,
+    t.first_active_at,
+    t.last_active_end_at,
+    t.status = 'paused' AND t.in_catalog AS is_paused,
+    t.last_active_end_at IS NOT NULL
+      AND (t.latest_event_status IS NULL OR t.latest_event_status != 'paused') AS is_retired,
+    c.clm_address AS clm_parent_address,
+    c.clm_address IS NOT NULL AS is_clm_wrapper,
+    t.first_active_at IS NOT NULL AND c.clm_address IS NULL AS counts_for_stats
+  FROM typed t
+  LEFT JOIN clms c
+    ON t.vault_type IN ('gov', 'standard')
+    AND t.chain = c.chain
+    AND t.token_address = c.clm_address
+  LEFT JOIN {{ ref('int_chain_keys') }} ck
+    ON {{ normalize_network_beefy_key('t.chain') }} = ck.beefy_key
 )
 
 SELECT
-  t.object_id,
-  t.chain,
-  t.address,
-  t.in_catalog,
-  t.status AS observed_status,
-  t.vault_type,
-  if(t.vault_type = 'cowcentrated', t.token_provider_id, t.platform_id) AS platform,
-  t.platform_id,
-  t.token_provider_id,
-  t.token_address,
-  t.retire_reason,
-  t.first_active_at,
-  t.last_active_end_at,
-  t.status = 'paused' AND t.in_catalog AS is_paused,
-  t.last_active_end_at IS NOT NULL AND (t.latest_event_status IS NULL OR t.latest_event_status != 'paused') AS is_retired,
-  c.clm_address AS clm_parent_address,
-  c.clm_address IS NOT NULL AS is_clm_wrapper,
-  t.first_active_at IS NOT NULL AND c.clm_address IS NULL AS counts_for_stats
-FROM typed t
-LEFT JOIN clms c
-  ON t.vault_type IN ('gov', 'standard')
-  AND t.chain = c.chain
-  AND t.token_address = c.clm_address
+  object_id,
+  chain_id,
+  chain,
+  address,
+  in_catalog,
+  observed_status,
+  vault_type,
+  platform,
+  platform_id,
+  token_provider_id,
+  token_address,
+  retire_reason,
+  {{ beefy_history_retire_reason_group('retire_reason') }} AS retire_reason_group,
+  first_active_at,
+  last_active_end_at,
+  is_paused,
+  is_retired,
+  clm_parent_address,
+  is_clm_wrapper,
+  counts_for_stats,
+  if(
+    first_active_at IS NULL,
+    NULL,
+    concat(toString(toYear(first_active_at)), '-Q', toString(toQuarter(first_active_at)))
+  ) AS launch_quarter,
+  if(
+    NOT is_retired OR last_active_end_at IS NULL,
+    NULL,
+    concat(toString(toYear(last_active_end_at)), '-Q', toString(toQuarter(last_active_end_at)))
+  ) AS retirement_quarter,
+  if(
+    is_retired AND first_active_at IS NOT NULL AND last_active_end_at IS NOT NULL,
+    toUInt32(
+      intDiv(
+        toUnixTimestamp(last_active_end_at) - toUnixTimestamp(first_active_at),
+        {{ beefy_history_month_seconds() }}
+      )
+    ),
+    NULL
+  ) AS lifespan_months
+FROM lifecycle
