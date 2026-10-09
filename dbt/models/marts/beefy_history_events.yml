@@ -3,8 +3,16 @@ version: 2
 models:
   - name: beefy_history_events
     description: >
-      Catalog events for /changes, /o/[objectId] timeline, and /commits/[repo]/[sha].
-      prev_data is the previous non-null snapshot of the same object, only for changed events.
+      One row per catalog change. Filter for /changes, object timeline, commit pages,
+      and /stats active-over-time.
+
+      /changes: ORDER BY seq DESC; filter change_type, reason, kind, chain, changed_keys, committed_at
+      /o/[objectId]: WHERE object_id = … ORDER BY seq (prev_data for diffs)
+      /commits/[repo]/[sha]: WHERE commit_repo AND commit_sha
+      commit index: GROUP BY commit_repo, commit_sha
+      /stats active at T: WHERE counts_for_stats AND is_active
+        AND valid_from_unix <= T AND (valid_to_unix IS NULL OR T < valid_to_unix)
+        GROUP BY chain or vault_type
     config:
       meta:
         primary_key: ["seq"]
@@ -40,6 +48,16 @@ models:
         description: "https://github.com/beefyfinance/<repo>/commit/<sha>"
       - name: file_url
         description: "Blob URL; null when removed or the snapshot came from the other repo"
+      - name: vault_type
+        description: "Resolved standard | gov | cowcentrated | erc4626 for this snapshot"
+      - name: is_active
+        description: "This snapshot is in catalog with missing/empty/active status"
+      - name: valid_from_unix
+        description: "Inclusive start (same as committed_at)"
+      - name: valid_to_unix
+        description: "Exclusive end (next event); null if this is the latest event"
+      - name: counts_for_stats
+        description: "Object is a counted vault; null for boosts. Filter this for /stats series."
       - name: changed_keys
         description: "Top-level keys that changed; empty unless change_type = changed"
       - name: prev_data

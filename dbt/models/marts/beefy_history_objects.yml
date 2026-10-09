@@ -3,9 +3,16 @@ version: 2
 models:
   - name: beefy_history_objects
     description: >
-      One row per catalog object for history.beefy.rodeo search, /inactive, and /o/[objectId].
-      live is in_catalog. is_inactive is the /inactive predicate (live with a non-active status,
-      or removed). is_currently_active is in catalog with missing/empty/active status.
+      One row per catalog object (kind:chain:address). Filter this for search, /inactive,
+      /o/[objectId], and /stats object-level numbers (launches, retirements, platforms,
+      lifespan, headline). Use beefy_history_events windows for active-over-time.
+
+      /inactive: WHERE is_inactive
+      /stats launches: WHERE counts_for_stats GROUP BY launch_quarter, vault_type
+      /stats retirements: WHERE counts_for_stats AND is_retired GROUP BY retirement_quarter, retire_reason_group
+      /stats platforms: WHERE counts_for_stats GROUP BY stats_platform
+      /stats lifespan: WHERE counts_for_stats AND is_retired GROUP BY lifespan_months
+      /stats tiles: WHERE counts_for_stats — countIf(is_currently_active), countIf(is_retired), …
     config:
       meta:
         primary_key: ["object_id"]
@@ -51,6 +58,22 @@ models:
         tests:
           - not_null
       - name: counts_for_stats
-        description: "Vault that /stats would count; null for boosts"
+        description: "Ever-active vault that is not a CLM wrapper; null for boosts"
+      - name: is_retired
+        description: "Ended last active period and not paused; null for boosts"
+      - name: is_clm_wrapper
+        description: "gov/standard whose deposit token is a cowcentrated vault; null for boosts"
+      - name: clm_parent_address
+        description: "CLM this gov/standard wraps, if any"
+      - name: stats_platform
+        description: "platformId, or tokenProviderId for CLM"
+      - name: retire_reason_group
+        description: "rewards | tvl | upgrade | incident | other | none"
+      - name: launch_quarter
+        description: "YYYY-Qn of first in-catalog active observation"
+      - name: retirement_quarter
+        description: "YYYY-Qn of last active period end when retired"
+      - name: lifespan_months
+        description: "Whole 30.4375-day months from launch to retirement; null if not retired"
       - name: data
         description: "Latest non-null config JSON"

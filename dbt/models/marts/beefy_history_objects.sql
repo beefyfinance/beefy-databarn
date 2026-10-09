@@ -7,9 +7,9 @@
   )
 }}
 
--- Search, inactive list, and object header for history.beefy.rodeo.
--- live = in_catalog. is_inactive matches /inactive: live with a non-active status, or removed.
--- is_currently_active: in catalog with missing/empty/active status (empty counts as active).
+-- One row per contract. Filter this table for search, /inactive, /o/[objectId], and all
+-- /stats numbers except the active-over-time series (that is events windows).
+-- live = in_catalog. Empty/missing status counts as active.
 
 SELECT
   o.object_id,
@@ -30,6 +30,7 @@ SELECT
   o.earned_token_addresses,
   o.earn_contract_address,
   o.retire_reason,
+  {{ beefy_history_retire_reason_group('o.retire_reason') }} AS retire_reason_group,
   o.in_catalog AS live,
   o.first_committed_at,
   o.first_committed_at_ts,
@@ -48,10 +49,31 @@ SELECT
   l.platform AS stats_platform,
   l.counts_for_stats,
   l.is_clm_wrapper,
+  l.clm_parent_address,
   l.is_retired,
   l.is_paused,
   l.first_active_at,
-  l.last_active_end_at
+  l.last_active_end_at,
+  if(
+    l.first_active_at IS NULL,
+    NULL,
+    concat(toString(toYear(l.first_active_at)), '-Q', toString(toQuarter(l.first_active_at)))
+  ) AS launch_quarter,
+  if(
+    NOT l.is_retired OR l.last_active_end_at IS NULL,
+    NULL,
+    concat(toString(toYear(l.last_active_end_at)), '-Q', toString(toQuarter(l.last_active_end_at)))
+  ) AS retirement_quarter,
+  if(
+    l.is_retired AND l.first_active_at IS NOT NULL AND l.last_active_end_at IS NOT NULL,
+    toUInt32(
+      intDiv(
+        toUnixTimestamp(l.last_active_end_at) - toUnixTimestamp(l.first_active_at),
+        {{ beefy_history_month_seconds() }}
+      )
+    ),
+    NULL
+  ) AS lifespan_months
 FROM {{ ref('stg_beefy_history__objects') }} o
 LEFT JOIN {{ ref('int_beefy_history__vault_lifecycle') }} l
   ON o.object_id = l.object_id

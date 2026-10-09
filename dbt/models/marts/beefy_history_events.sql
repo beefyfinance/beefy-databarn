@@ -7,8 +7,9 @@
   )
 }}
 
--- Change feed, object timeline, and commit pages. prev_data is the previous non-null snapshot
--- of the same object (only filled for change_type = changed).
+-- One row per catalog change. Filter for /changes, /o/[objectId] timeline, /commits/[repo]/[sha],
+-- and /stats active-over-time (counts_for_stats AND is_active AND valid_from_unix <= T < valid_to).
+-- prev_data is the previous non-null snapshot of the same object (changed events only).
 
 SELECT
   e.seq,
@@ -38,9 +39,17 @@ SELECT
   {{ beefy_history_config_layer('e.path') }} AS config_layer,
   e.changed_keys,
   e.status,
-  {{ beefy_history_vault_type('e.config_type', 'e.is_gov_vault') }} AS vault_type,
+  w.vault_type,
   e.platform_id,
   e.retire_reason,
+  w.in_catalog,
+  w.is_active,
+  e.committed_at AS valid_from_unix,
+  w.valid_from,
+  w.valid_to_unix,
+  w.valid_to,
+  l.counts_for_stats,
+  l.platform AS stats_platform,
   if(
     e.change_type = 'changed',
     anyLastIf(e.data, e.data IS NOT NULL) OVER (
@@ -52,5 +61,10 @@ SELECT
   ) AS prev_data,
   e.data
 FROM {{ ref('stg_beefy_history__events') }} e
+LEFT JOIN {{ ref('int_beefy_history__event_windows') }} w
+  ON e.object_id = w.object_id
+  AND e.seq = w.seq
 LEFT JOIN {{ ref('stg_beefy_history__objects') }} o
   ON e.object_id = o.object_id
+LEFT JOIN {{ ref('int_beefy_history__vault_lifecycle') }} l
+  ON e.object_id = l.object_id

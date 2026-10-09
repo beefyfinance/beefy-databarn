@@ -91,6 +91,8 @@ Env: `BEEFY_HISTORY_DIR`, `BEEFY_HISTORY_DATA_DIR` (default `$STORAGE_DIR/beefy-
 
 ## dbt
 
+Two marts. Filter / group at query time — there are no chart-shaped tables.
+
 | Model | Grain | What it is |
 |---|---|---|
 | `stg_beefy_history__events` | `seq` | Copy of `current/events.parquet` + flattened config columns |
@@ -98,32 +100,73 @@ Env: `BEEFY_HISTORY_DIR`, `BEEFY_HISTORY_DATA_DIR` (default `$STORAGE_DIR/beefy-
 | `stg_beefy_history__objects` | `object_id` (`kind:chain:address`) | Latest snapshot per contract, derived from events |
 | `int_beefy_history__event_windows` | `(object_id, seq)` | In-catalog + observed status from this event until the next |
 | `int_beefy_history__vault_lifecycle` | `object_id` (vaults) | `first_active_at`, `last_active_end_at`, retirement, CLM parent |
-| `int_beefy_history__stats_bounds` | 1 row | First counted launch, stats `end`, Monday on or before launch |
-| `int_beefy_history__stats_samples` | `sampled_at` | Mondays + month-starts + end (`/stats` `at`) |
-| `beefy_history_objects` | `object_id` | Search, `/inactive`, `/o/[objectId]` header |
-| `beefy_history_events` | `seq` | `/changes` feed, object timeline, commit events (`prev_data`) |
-| `beefy_history_commits` | `(commit_repo, commit_sha)` | Commit index; join events for `/commits/[repo]/[sha]` |
-| `beefy_history_stats_active` | `(sampled_at, chain, vault_type)` | Stacked active-by-chain / by-type + heatmap |
-| `beefy_history_stats_quarter_index` | `quarter` | Every UTC quarter from first launch to end |
-| `beefy_history_stats_quarters` | `(quarter, series, series_key)` | Launches by type/chain, retirements by reason |
-| `beefy_history_stats_lifespan` | `months` | `lifespanMonths[n]` (30.4375-day months) |
-| `beefy_history_stats_platforms` | `platform` | Launched / still active per platform |
-| `beefy_history_stats_headline` | 1 row | StatTiles: active now, peak, chains, launched, retired, median lifespan |
+| `beefy_history_objects` | `object_id` | Current-state + launch / retire / platform / lifespan |
+| `beefy_history_events` | `seq` | Catalog changes with valid windows, `prev_data`, commit fields |
 
-Identity is **chain + contract address**, not `beefy_key`. Boosts are ingested if present; `/stats` ignores them. Run this producer once before `dbt run` or the `s3()` copy has nothing to read.
+Identity is **chain + contract address**, not `beefy_key`. Boosts are ingested if present; `/stats` ignores them (`WHERE counts_for_stats`). Run this producer once before `dbt run` or the `s3()` copy has nothing to read.
 
 ### Recreating [history.beefy.rodeo](https://history.beefy.rodeo)
 
-Same predicates as the app: vaults only on `/stats`; empty/missing status = active; CLM wrappers excluded (`counts_for_stats`); launch = first in-catalog active; retirement = end of last active period if not active now and not paused.
+Same predicates as the app: vaults only on `/stats`; empty/missing status = active; CLM wrappers excluded (`counts_for_stats`); launch = first in-catalog active; retirement = end of last active period if not active now and not paused. Month length is 2_629_800 s (30.4375 days).
 
-| Page | Read |
-|---|---|
-| `/` search + facets | `beefy_history_objects` (`kind`, `chain`, `vault_type`, `status`, `live`, `name`, ids, addresses) |
-| `/inactive` | `WHERE is_inactive` (optional `live`, `kind`, `chain`, `status`) |
-| `/changes` | `beefy_history_events` ordered by `seq` DESC; filter `change_type`, `reason`, `kind`, `chain`, `changed_keys`, day range on `committed_at` |
-| `/o/[objectId]` | objects header + events `WHERE object_id = … ORDER BY seq` (`prev_data` for diffs) |
-| `/commits/[repo]/[sha]` | `beefy_history_commits` + events `WHERE commit_repo AND commit_sha` |
-| `/stats` active-by-chain | `SELECT sampled_at, chain, sum(active_count) FROM beefy_history_stats_active GROUP BY 1, 2` |
-| `/stats` active-by-type | `GROUP BY sampled_at, vault_type` |
-| `/stats` launches / retirements | `beefy_history_stats_quarter_index` ⨯ `beefy_history_stats_quarters` (`series` + `reason_group`) |
-| `/stats` platforms / lifespan / tiles | `beefy_history_stats_platforms`, `_lifespan`, `_headline` |
+| Page | Table | Filter |
+|---|---|---|
+| `/` search + facets | objects | `kind`, `chain`, `vault_type`, `status`, `live`, `name`, ids, addresses |
+| `/inactive` | objects | `WHERE is_inactive` |
+| `/o/[objectId]` | both | objects row + events `WHERE object_id = … ORDER BY seq` (`prev_data` for diffs) |
+| `/changes` | events | `ORDER BY seq DESC`; filter `change_type`, `reason`, `kind`, `chain`, `changed_keys`, `committed_at` |
+| `/commits/[repo]/[sha]` | events | `WHERE commit_repo AND commit_sha`; index = `GROUP BY commit_repo, commit_sha` |
+| `/stats` (all but the time series) | objects | `WHERE counts_for_stats` then `GROUP BY` below |
+| `/stats` active-over-time | events | windows: `counts_for_stats AND is_active AND valid_from_unix <= T AND (valid_to_unix IS NULL OR T < valid_to_unix)` |
+
+```sql
+-- /stats tiles (peak is the events query at many T; take max)
+SELECT
+  countIf(is_currently_active) AS active_now,
+  uniqExactIf(chain, is_currently_active) AS chains_now,
+  uniqExact(chain) AS chains_ever,
+  count() AS launched,
+  countIf(is_retired) AS retired,
+  quantileExact(0.5)(lifespan_months) AS median_lifespan_months
+FROM beefy_history_objects
+WHERE counts_for_stats;
+
+-- launches by type (or chain)
+SELECT launch_quarter, vault_type, count()
+FROM beefy_history_objects
+WHERE counts_for_stats
+GROUP BY launch_quarter, vault_type;
+
+-- retirements by reason group
+SELECT retirement_quarter, retire_reason_group, count()
+FROM beefy_history_objects
+WHERE counts_for_stats AND is_retired
+GROUP BY retirement_quarter, retire_reason_group;
+
+-- platforms
+SELECT stats_platform, count() AS launched, countIf(is_currently_active) AS active_now
+FROM beefy_history_objects
+WHERE counts_for_stats
+GROUP BY stats_platform;
+
+-- lifespan histogram
+SELECT lifespan_months, count()
+FROM beefy_history_objects
+WHERE counts_for_stats AND is_retired
+GROUP BY lifespan_months;
+
+-- active counted vaults at unix T (generate Mondays + month-starts + now in the client)
+SELECT chain, vault_type, count()
+FROM beefy_history_events
+WHERE counts_for_stats AND is_active
+  AND valid_from_unix <= T
+  AND (valid_to_unix IS NULL OR T < valid_to_unix)
+GROUP BY chain, vault_type;
+
+-- commit index
+SELECT
+  commit_repo, commit_sha, any(commit_subject), min(committed_at),
+  count() AS event_count, uniqExact(object_id) AS object_count
+FROM beefy_history_events
+GROUP BY commit_repo, commit_sha;
+```

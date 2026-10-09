@@ -7,7 +7,7 @@
   )
 }}
 
--- Vault lifecycle facts for later /stats-style marts. Boosts are excluded here (they are still in staging).
+-- Vault lifecycle facts joined into beefy_history_objects / beefy_history_events. Boosts stay in staging.
 -- Launch = first time in-catalog and active. Retirement = end of last active period if not active now and not paused.
 -- CLM collapse: a cowcentrated vault counts once; gov/standard whose deposit token is that CLM on the same chain are wrappers.
 
