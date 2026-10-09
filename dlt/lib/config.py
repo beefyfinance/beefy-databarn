@@ -17,7 +17,7 @@ PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT"
 CLICKHOUSE_SEND_RECEIVE_TIMEOUT = int(os.environ.get("DLT_CLICKHOUSE_SEND_RECEIVE_TIMEOUT", "3600"))
 
 
-# Heroku/AWS and Tiger Cloud Postgres need TLS. Newer libpq also tries GSS first; disable it.
+# Heroku/AWS Postgres needs TLS. Newer libpq also tries GSS first; disable it.
 _DEFAULT_SSLMODE = "require"
 _DEFAULT_GSSENCMODE = "disable"
 _DEFAULT_CONNECT_TIMEOUT_S = "10"
@@ -34,11 +34,7 @@ def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_DB_SSLMODE
 
 
 def get_beefy_db_url() -> str:
-    """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS).
-
-    Unused while all tables are read from Timescale; kept so resources can be
-    pointed back without rewiring env.
-    """
+    """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS)."""
     url = os.environ.get("SOURCES__BEEFY_DB__CREDENTIALS")
     if not url:
         raise ValueError(
@@ -48,7 +44,7 @@ def get_beefy_db_url() -> str:
 
 
 def get_beefy_timescaledb_url() -> str:
-    """Timescale (Tiger Cloud) connection string for all beefy-db tables."""
+    """Timescale (Tiger Cloud) connection string for migrated beefy-db hypertables/lookups."""
     url = os.environ.get("SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS")
     if not url:
         raise ValueError(

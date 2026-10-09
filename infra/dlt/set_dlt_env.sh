@@ -30,8 +30,7 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE="${DLT_CLICKHOUSE_DB}"
 export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}"
 
 # --- Source: beefy_db (PostgreSQL) ---
-# Unused while all tables are read from Timescale; kept so we can point
-# resources back without rewiring env. DLT reads SOURCES__<source_name>__CREDENTIALS.
+# Single connection string; DLT reads SOURCES__<source_name>__CREDENTIALS
 : "${BEEFY_DB_USER:?BEEFY_DB_USER must be set}"
 : "${BEEFY_DB_PASSWORD:?BEEFY_DB_PASSWORD must be set}"
 : "${BEEFY_DB_HOST:?BEEFY_DB_HOST must be set}"
@@ -43,8 +42,7 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}
 export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
 
 # --- Source: beefy TimescaleDB on Tiger Cloud ---
-# All beefy-db tables. gssencmode=disable: libpq otherwise tries Kerberos before
-# TLS. connect_timeout keeps a hung TCP from blocking the whole pipeline run.
+# Migrated hypertables (prices, apys, tvls, tvl_by_chain) and lookups (chains, price_oracles, vault_ids).
 : "${BEEFY_TIMESCALEDB_USER:?BEEFY_TIMESCALEDB_USER must be set}"
 : "${BEEFY_TIMESCALEDB_PASSWORD:?BEEFY_TIMESCALEDB_PASSWORD must be set}"
 : "${BEEFY_TIMESCALEDB_HOST:?BEEFY_TIMESCALEDB_HOST must be set}"
