@@ -66,8 +66,13 @@ where not exists (
   Independently recompute the newest completed load that wrote each listed
   resource (argMax by inserted_at) and require an exact match.
 
-  Only attach this to small tables. Snapshot tables (apy, tvl, ...) are too
-  large for this scan — that is why the model itself no longer DISTINCT+joins.
+  Only attach this to append-style sources that keep historical _dlt_load_id
+  (github_files, cctp). Do not attach to ReplacingMergeTree entity tables
+  (beefy_api vaults/tokens/clm/cow/gov/boosts, beefy_db lookups): a later
+  dlt load + merge drops the frozen load_id, and tests run after the model
+  is intentionally frozen so concurrent pipelines can land a newer load.
+  Snapshot tables (apy, tvl, ...) are also too large for this scan.
+
   ClickHouse-safe: EXCEPT DISTINCT, not FULL OUTER JOIN (join_use_nulls=0).
   Wrap each EXCEPT: UNION ALL and EXCEPT bind left-to-right at the same
   precedence, so an unparenthesized mix would be wrong.

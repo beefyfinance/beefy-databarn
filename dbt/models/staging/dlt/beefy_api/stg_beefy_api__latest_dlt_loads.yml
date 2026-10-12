@@ -37,16 +37,6 @@ models:
               - lps_breakdown
               - apy_breakdown
               - mootokenprices
-      - latest_dlt_load_id_newest_completed:
-          arguments:
-            dlt_source: beefy_api
-            resources:
-              - vaults
-              - tokens
-              - clm_vaults
-              - cow_vaults
-              - gov_vaults
-              - boosts
     columns:
       - name: source_name
         description: "dlt dataset / pipeline name"
