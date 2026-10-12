@@ -175,6 +175,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt_test__audit.*        FROM dbt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dbt;
+    GRANT ${READ_PERM}                ON system.parts               TO dbt;
     GRANT ${READ_PERM}                ON dlt.*                      TO dbt;
     GRANT ${READ_PERM}                ON envio.*                    TO dbt;
     GRANT ${READ_PERM}                ON zapalytics.*               TO dbt;

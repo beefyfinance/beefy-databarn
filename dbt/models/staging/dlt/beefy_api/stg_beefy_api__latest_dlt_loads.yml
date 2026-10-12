@@ -4,7 +4,9 @@ models:
   - name: stg_beefy_api__latest_dlt_loads
     description: >
       One row per beefy_api resource: the newest completed dlt load (status 0)
-      that wrote that table. Materialized so the rest of the dbt run cannot see
+      that wrote that table. Snapshot tables are read from the newest small
+      MergeTree parts so a skipped API fetch keeps the previous load_id without
+      scanning every etag. Materialized so the rest of the dbt run cannot see
       a load that lands after this table is built.
     config:
       meta:
@@ -35,6 +37,16 @@ models:
               - lps_breakdown
               - apy_breakdown
               - mootokenprices
+      - latest_dlt_load_id_newest_completed:
+          arguments:
+            dlt_source: beefy_api
+            resources:
+              - vaults
+              - tokens
+              - clm_vaults
+              - cow_vaults
+              - gov_vaults
+              - boosts
     columns:
       - name: source_name
         description: "dlt dataset / pipeline name"

@@ -28,6 +28,17 @@ models:
               - feebatch_harvests
               - vault_ids
               - price_oracles
+      - latest_dlt_load_id_newest_completed:
+          arguments:
+            dlt_source: beefy_db
+            resources:
+              - chains
+              - vault_strategies
+              - address_metadata
+              - bifi_buyback
+              - feebatch_harvests
+              - vault_ids
+              - price_oracles
     columns:
       - name: source_name
         description: "dlt dataset / pipeline name"

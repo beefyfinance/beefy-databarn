@@ -58,3 +58,65 @@ where not exists (
 {% endfor %}
 
 {% endtest %}
+
+
+{% test latest_dlt_load_id_newest_completed(model, dlt_source, resources) %}
+
+{#
+  Independently recompute the newest completed load that wrote each listed
+  resource (argMax by inserted_at) and require an exact match.
+
+  Only attach this to small tables. Snapshot tables (apy, tvl, ...) are too
+  large for this scan — that is why the model itself no longer DISTINCT+joins.
+  ClickHouse-safe: EXCEPT DISTINCT, not FULL OUTER JOIN (join_use_nulls=0).
+  Wrap each EXCEPT: UNION ALL and EXCEPT bind left-to-right at the same
+  precedence, so an unparenthesized mix would be wrong.
+#}
+
+with expected as (
+  {% for resource_name in resources %}
+  {% if not loop.first %}union all{% endif %}
+  select
+    '{{ resource_name }}' as resource_name,
+    argMax(l.load_id, l.inserted_at) as load_id
+  from {{ source('dlt', dlt_source ~ '____dlt_loads') }} as l
+  where l.status = 0
+    and l.load_id in (
+      select r._dlt_load_id
+      from {{ source('dlt', dlt_source ~ '___' ~ resource_name) }} as r
+      where r._dlt_load_id in (
+        select load_id
+        from {{ source('dlt', dlt_source ~ '____dlt_loads') }}
+        where status = 0
+      )
+    )
+  having count() > 0
+  {% endfor %}
+),
+actual as (
+  select resource_name, load_id
+  from {{ model }}
+  where resource_name in (
+    {% for resource_name in resources %}
+    '{{ resource_name }}'{% if not loop.last %},{% endif %}
+    {% endfor %}
+  )
+)
+
+select resource_name, load_id, 'model not expected' as reason
+from (
+  select resource_name, load_id from actual
+  except distinct
+  select resource_name, load_id from expected
+)
+
+union all
+
+select resource_name, load_id, 'expected not in model' as reason
+from (
+  select resource_name, load_id from expected
+  except distinct
+  select resource_name, load_id from actual
+)
+
+{% endtest %}
