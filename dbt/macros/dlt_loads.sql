@@ -1,30 +1,25 @@
-{% macro dlt_recent_small_part_names(relation, max_rows=2000000, max_parts=128) %}
+{% macro dlt_recent_small_parts_sql(relation, max_rows=2000000, block_window=2048) %}
 
 {#
-  Newest MergeTree parts that are still small (not the daily OPTIMIZE blob).
-  A skipped snapshot writes no new parts, so these names are the last
-  successful loads. Empty list → caller must scan the whole table.
+  Small parts near the table's newest block. Skip writes no part, so those
+  names are the last successful loads. Exclude leftover low-block parts
+  (e.g. all_2_2_0) after OPTIMIZE has folded recent rows into a giant part.
+  Evaluated at query time so compiled SQL is not bound to one server's parts.
 #}
 
-  {% if not execute %}
-    {{ return([]) }}
-  {% endif %}
-  {% set q %}
-    SELECT name
-    FROM system.parts
-    WHERE database = '{{ relation.schema }}'
-      AND table = '{{ relation.identifier }}'
-      AND active
-      AND rows < {{ max_rows }}
-    ORDER BY max_block_number DESC
-    LIMIT {{ max_parts }}
-  {% endset %}
-  {% set tbl = run_query(q) %}
-  {% if tbl and tbl.columns | length > 0 %}
-    {{ return(tbl.columns[0].values()) }}
-  {% else %}
-    {{ return([]) }}
-  {% endif %}
+  SELECT name
+  FROM system.parts
+  WHERE database = '{{ relation.schema }}'
+    AND table = '{{ relation.identifier }}'
+    AND active
+    AND rows < {{ max_rows }}
+    AND max_block_number >= (
+      SELECT max(max_block_number) - {{ block_window }}
+      FROM system.parts
+      WHERE database = '{{ relation.schema }}'
+        AND table = '{{ relation.identifier }}'
+        AND active
+    )
 
 {% endmacro %}
 
@@ -40,9 +35,9 @@
 
   `resources`: small entity tables — join `_dlt_load_id` to completed loads.
 
-  `exists_only_resources`: snapshot tables that keep every etag. Read only
-  the newest small parts (a skip writes no part). If OPTIMIZE has already
-  merged those parts, fall back to a full-table join for that resource only.
+  `exists_only_resources`: snapshot tables that keep every etag. Restrict to
+  recent small parts. If none exist (everything already OPTIMIZEd), scan the
+  whole table for that resource only.
 #}
 
 {%- set exists_only_resources = exists_only_resources or [] -%}
@@ -74,7 +69,6 @@ HAVING count() > 0
 
 {% for resource_name in exists_only_resources %}
 {% set rel = source('dlt', source_name ~ '___' ~ resource_name) %}
-{% set parts = dlt_recent_small_part_names(rel) %}
 {% if ns.emitted %}
 UNION ALL
 {% endif %}
@@ -87,13 +81,15 @@ SELECT
 FROM {{ rel }} AS r
 INNER JOIN completed_loads AS l
   ON r._dlt_load_id = l.load_id
-{% if parts %}
 WHERE r._part IN (
-  {% for part in parts %}
-  '{{ part | replace("'", "\\'") }}'{% if not loop.last %},{% endif %}
-  {% endfor %}
+  {{ dlt_recent_small_parts_sql(rel) }}
 )
-{% endif %}
+  OR (
+    SELECT count()
+    FROM (
+      {{ dlt_recent_small_parts_sql(rel) }}
+    )
+  ) = 0
 HAVING count() > 0
 {% endfor %}
 
