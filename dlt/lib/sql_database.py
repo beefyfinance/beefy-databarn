@@ -18,6 +18,30 @@ def _require_ident(name: str) -> str:
     return name
 
 
+def _select_list(
+    table: Any,
+    hex_columns: Optional[Set[str]] = None,
+    json_array_columns: Optional[Set[str]] = None,
+) -> str:
+    hex_columns = hex_columns or set()
+    json_array_columns = json_array_columns or set()
+    if not hex_columns and not json_array_columns:
+        return "*"
+    columns = getattr(table, "c", None)
+    if not columns:
+        return "*"
+    parts = []
+    for col in columns:
+        name = _require_ident(col.name)
+        if name in hex_columns:
+            parts.append(f"'0x' || encode({name}, 'hex') AS {name}")
+        elif name in json_array_columns:
+            parts.append(f"CAST(array_to_json({name}) AS text) AS {name}")
+        else:
+            parts.append(name)
+    return ", ".join(parts) if parts else "*"
+
+
 def time_bounded_select(
     table: Any,
     *,
@@ -25,11 +49,15 @@ def time_bounded_select(
     start_value: datetime,
     end_value: datetime,
     any_filters: Optional[Mapping[str, tuple[str, Any]]] = None,
+    hex_columns: Optional[Set[str]] = None,
+    json_array_columns: Optional[Set[str]] = None,
 ) -> Any:
-    """SELECT * with a closed time window so Timescale can exclude chunks.
+    """Closed time window so Timescale can exclude compressed chunks.
 
     ``any_filters`` maps a column name to ``(bind_param, values)`` and emits
-    ``column = ANY(:bind_param)``.
+    ``column = ANY(:bind_param)``. ``hex_columns`` rewrites bytea as
+    ``'0x' || encode(col, 'hex')``. ``json_array_columns`` serializes Postgres
+    arrays as JSON text.
     """
     time_column = _require_ident(time_column)
     clauses = []
@@ -42,8 +70,11 @@ def time_bounded_select(
         params[param] = values
     clauses.append(f"{time_column} > :start_value")
     clauses.append(f"{time_column} <= :end_value")
+    select_list = _select_list(
+        table, hex_columns=hex_columns, json_array_columns=json_array_columns
+    )
     return sa.text(
-        f"SELECT * FROM {table.fullname} WHERE " + " AND ".join(clauses)
+        f"SELECT {select_list} FROM {table.fullname} WHERE " + " AND ".join(clauses)
     ).bindparams(**params)
 
 

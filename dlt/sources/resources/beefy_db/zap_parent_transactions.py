@@ -1,9 +1,14 @@
 from typing import Any
 
+import dlt
+from dlt.destinations.adapters import clickhouse_adapter
 from dlt.sources.sql_database import sql_table
 
-from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
-from lib.sql_database import hex_encode_bytea_columns
+from lib.config import ZAP_BATCH_SIZE, get_beefy_timescaledb_url
+from sources.resources.beefy_db.zap_common import zap_windowed_query_adapter
+
+RESOURCE_NAME = "zap_parent_transactions"
+HEX_COLUMNS = {"txn_hash", "from_address", "to_address", "calldata"}
 
 
 async def get_beefy_db_zap_parent_transactions_resource() -> Any:
@@ -77,18 +82,28 @@ async def get_beefy_db_zap_parent_transactions_resource() -> Any:
     }
 
     pk = [name for name, c in columns.items() if c.get("primary_key")]
+    incremental = dlt.sources.incremental(
+        "created_at",
+        initial_value=None,
+        primary_key=pk,
+        last_value_func=max,
+        row_order="asc",
+    )
+    incremental.duplicate_cursor_warning_threshold = 10_000
+
     resource = sql_table(
-        credentials=get_beefy_db_url(),
-        table="zap_parent_transactions",
+        credentials=get_beefy_timescaledb_url(),
+        table=RESOURCE_NAME,
         backend="pyarrow",
         chunk_size=ZAP_BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
         reflection_level="full_with_precision",
-        query_adapter_callback=hex_encode_bytea_columns(
-            {"txn_hash", "from_address", "to_address", "calldata"}
+        query_adapter_callback=zap_windowed_query_adapter(
+            RESOURCE_NAME, "created_at", hex_columns=HEX_COLUMNS
         ),
         primary_key=pk,
-        write_disposition="replace",
+        write_disposition="append",
+        incremental=incremental,
     )
     resource.apply_hints(columns=[{"name": name, **c} for name, c in columns.items()])
-    return resource
+    return clickhouse_adapter(resource, table_engine_type="replacing_merge_tree")

@@ -6,7 +6,7 @@
   )
 }}
 
--- Table, not a view: beefy_db replaces this source every 5 minutes.
+-- Table, not a view: append + ReplacingMergeTree; FINAL snapshot for this run.
 -- zap_activity must read the same snapshot as the other zap staging tables.
 
 SELECT
@@ -22,4 +22,4 @@ SELECT
   cast({{ evm_address('t.token_address') }} as String) as token_address,
   cast(t.created_at as DateTime('UTC')) as created_at,
   cast(t.updated_at as DateTime('UTC')) as updated_at
-FROM {{ source('dlt', 'beefy_db___zap_token_transfers_v2') }} t
+FROM {{ source('dlt', 'beefy_db___zap_token_transfers_v2') }} t FINAL

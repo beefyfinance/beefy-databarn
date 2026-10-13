@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from lib.sql_database import time_bounded_select, time_window_bounds
+from sources.resources.beefy_db.zap_common import ZAP_GENESIS, ZAP_WINDOW_DAYS
 
 
 def test_time_bounded_select_filters_by_time_and_ids() -> None:
@@ -61,3 +62,64 @@ def test_time_window_bounds_falls_back_to_default() -> None:
     )
     assert window_start == default
     assert (window_end - window_start).days == 120
+
+
+def test_time_bounded_select_hex_encodes_bytea_columns() -> None:
+    table = SimpleNamespace(
+        fullname="zap_parent_transactions",
+        c=[
+            SimpleNamespace(name="txn_hash"),
+            SimpleNamespace(name="value"),
+            SimpleNamespace(name="calldata"),
+        ],
+    )
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 31, tzinfo=timezone.utc)
+
+    clause = time_bounded_select(
+        table,
+        time_column="txn_timestamp",
+        start_value=start,
+        end_value=end,
+        hex_columns={"txn_hash", "calldata"},
+    )
+
+    sql = str(clause)
+    assert "FROM zap_parent_transactions" in sql
+    assert "'0x' || encode(txn_hash, 'hex') AS txn_hash" in sql
+    assert "'0x' || encode(calldata, 'hex') AS calldata" in sql
+    assert "value" in sql
+    assert "SELECT *" not in sql
+    assert "txn_timestamp > :start_value" in sql
+    assert "txn_timestamp <= :end_value" in sql
+
+
+def test_time_bounded_select_serializes_postgres_arrays() -> None:
+    table = SimpleNamespace(
+        fullname="zap_records",
+        c=[
+            SimpleNamespace(name="swap_source"),
+            SimpleNamespace(name="updated_at"),
+        ],
+    )
+    start = datetime(2026, 8, 13, tzinfo=timezone.utc)
+    end = datetime(2026, 9, 12, tzinfo=timezone.utc)
+
+    clause = time_bounded_select(
+        table,
+        time_column="updated_at",
+        start_value=start,
+        end_value=end,
+        json_array_columns={"swap_source"},
+    )
+
+    sql = str(clause)
+    assert "CAST(array_to_json(swap_source) AS text) AS swap_source" in sql
+    assert "updated_at > :start_value" in sql
+    assert "updated_at <= :end_value" in sql
+
+
+def test_zap_genesis_is_before_first_created_at() -> None:
+    first_row = datetime(2026, 8, 13, 5, 48, 24, tzinfo=timezone.utc)
+    assert ZAP_GENESIS < first_row
+    assert ZAP_WINDOW_DAYS == 30

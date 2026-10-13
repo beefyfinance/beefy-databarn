@@ -6,7 +6,7 @@
   )
 }}
 
--- Table, not a view: beefy_db replaces this source every 5 minutes.
+-- Table, not a view: append + ReplacingMergeTree; FINAL snapshot for this run.
 -- Downstream models in one dbt run must share this snapshot.
 
 SELECT
@@ -25,4 +25,4 @@ SELECT
   cast(t.calldata as String) as calldata,
   toBool(t.success) as success,
   cast(t.created_at as DateTime('UTC')) as created_at
-FROM {{ source('dlt', 'beefy_db___zap_parent_transactions') }} t
+FROM {{ source('dlt', 'beefy_db___zap_parent_transactions') }} t FINAL

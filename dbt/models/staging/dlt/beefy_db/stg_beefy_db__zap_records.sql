@@ -6,7 +6,7 @@
   )
 }}
 
--- Table, not a view: beefy_db replaces zap_records every 5 minutes.
+-- Table, not a view: append + ReplacingMergeTree; FINAL snapshot for this run.
 -- account and zap_activity must read this snapshot from the same dbt run.
 
 SELECT
@@ -26,4 +26,4 @@ SELECT
   {{ to_str_list('t.swap_source') }} as swap_source,
   cast(t.created_at as DateTime('UTC')) as created_at,
   cast(t.updated_at as DateTime('UTC')) as updated_at
-FROM {{ source('dlt', 'beefy_db___zap_records') }} t
+FROM {{ source('dlt', 'beefy_db___zap_records') }} t FINAL

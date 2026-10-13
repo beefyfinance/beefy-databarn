@@ -1,9 +1,13 @@
 from typing import Any
 
+import dlt
+from dlt.destinations.adapters import clickhouse_adapter
 from dlt.sources.sql_database import sql_table
 
 from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
-from lib.sql_database import hex_encode_bytea_columns
+from sources.resources.beefy_db.zap_common import zap_windowed_query_adapter
+
+RESOURCE_NAME = "zap_token_transfers_v2"
 
 
 async def get_beefy_db_zap_token_transfers_v2_resource() -> Any:
@@ -65,6 +69,15 @@ async def get_beefy_db_zap_token_transfers_v2_resource() -> Any:
     }
 
     pk = [name for name, c in columns.items() if c.get("primary_key")]
+    incremental = dlt.sources.incremental(
+        "updated_at",
+        initial_value=None,
+        primary_key=pk,
+        last_value_func=max,
+        row_order="asc",
+    )
+    incremental.duplicate_cursor_warning_threshold = 10_000
+
     resource = sql_table(
         credentials=get_beefy_db_url(),
         # Source Postgres table is still zap_token_transfers; destination
@@ -74,9 +87,15 @@ async def get_beefy_db_zap_token_transfers_v2_resource() -> Any:
         chunk_size=ZAP_BATCH_SIZE,
         backend_kwargs={"tz": "UTC"},
         reflection_level="full_with_precision",
-        query_adapter_callback=hex_encode_bytea_columns({"token_address"}),
+        query_adapter_callback=zap_windowed_query_adapter(
+            RESOURCE_NAME, "updated_at", hex_columns={"token_address"}
+        ),
         primary_key=pk,
-        write_disposition="replace",
+        write_disposition="append",
+        incremental=incremental,
     )
     resource.apply_hints(columns=[{"name": name, **c} for name, c in columns.items()])
-    return resource.with_name("zap_token_transfers_v2")
+    return clickhouse_adapter(
+        resource.with_name(RESOURCE_NAME),
+        table_engine_type="replacing_merge_tree",
+    )
