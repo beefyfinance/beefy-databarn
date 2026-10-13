@@ -35,8 +35,8 @@ async def _optional_resource(
 async def beefy_db_source() -> Any:
     """Expose Beefy DB resources for use by dlt pipelines.
 
-    All beefy-db tables are read from Tiger Cloud Timescale. ClickHouse
-    destination names and schemas are unchanged.
+    All tables are read from beefy-db. ClickHouse destination names and
+    schemas are unchanged.
     """
 
     candidates = [

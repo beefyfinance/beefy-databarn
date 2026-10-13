@@ -42,7 +42,7 @@ export DESTINATION__CLICKHOUSE__CREDENTIALS__SECURE="${DLT_CLICKHOUSE_SECURE:-0}
 export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_PASSWORD}@${BEEFY_DB_HOST}:${BEEFY_DB_PORT}/${BEEFY_DB_NAME}?sslmode=${BEEFY_DB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
 
 # --- Source: beefy TimescaleDB on Tiger Cloud ---
-# Migrated hypertables (prices, apys, tvls, tvl_by_chain) and lookups (chains, price_oracles, vault_ids).
+# Kept for the next cutover; ingestions currently read from beefy-db.
 : "${BEEFY_TIMESCALEDB_USER:?BEEFY_TIMESCALEDB_USER must be set}"
 : "${BEEFY_TIMESCALEDB_PASSWORD:?BEEFY_TIMESCALEDB_PASSWORD must be set}"
 : "${BEEFY_TIMESCALEDB_HOST:?BEEFY_TIMESCALEDB_HOST must be set}"

@@ -3,9 +3,9 @@ from typing import Any
 from datetime import datetime, timezone
 import dlt
 from dlt.sources.sql_database import sql_table
-from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
+from lib.config import BATCH_SIZE, get_beefy_db_url
 from lib.clickhouse import get_clickhouse_client
-from lib.postgres import connect_beefy_timescaledb
+from lib.postgres import connect_beefy_db
 from lib.sql_database import time_bounded_select, time_window_bounds
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ async def _init_resource() -> list[int]:
     client = await get_clickhouse_client()
     await client.query(TABLE_SQL)
 
-    conn = connect_beefy_timescaledb()
+    conn = connect_beefy_db()
     try:
         with conn.cursor() as cur:
             cur.execute(CHAINS_SQL)
@@ -52,7 +52,7 @@ async def _init_resource() -> list[int]:
 async def get_beefy_db_tvl_by_chain_resource() -> Any:
     chain_ids = await _init_resource()
 
-    # Time window is required so Timescale can exclude compressed chunks.
+    # Time window keeps each extract bounded so incremental loads don't scan the whole table.
     def tvl_by_chain_query_adapter_callback(query, table, incremental=None, engine=None):
         start_value, end_value = time_window_bounds(
             incremental,
@@ -81,7 +81,7 @@ async def get_beefy_db_tvl_by_chain_resource() -> Any:
     incremental.duplicate_cursor_warning_threshold = 10_000
 
     tvl_by_chain = sql_table(
-        credentials=get_beefy_timescaledb_url(),
+        credentials=get_beefy_db_url(),
         table=RESOURCE_NAME,
         backend="pyarrow",
         chunk_size=BATCH_SIZE,
