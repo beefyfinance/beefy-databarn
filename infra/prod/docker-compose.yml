@@ -595,7 +595,7 @@ services:
       DLT_CLICKHOUSE_USER: ${DLT_CLICKHOUSE_USER:-dlt}
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
       DLT_CLICKHOUSE_DB: ${DLT_CLICKHOUSE_DB:-dlt}
-      # beefy db source configuration
+      # beefy-db (Heroku) kept as fallback; ingestions use TimescaleDB
       BEEFY_DB_HOST: ${BEEFY_DB_HOST:-postgres}
       BEEFY_DB_PORT: ${BEEFY_DB_PORT:-5432}
       BEEFY_DB_NAME: ${BEEFY_DB_NAME:-beefy-db}

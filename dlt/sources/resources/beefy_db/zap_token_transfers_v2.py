@@ -4,7 +4,7 @@ import dlt
 from dlt.destinations.adapters import clickhouse_adapter
 from dlt.sources.sql_database import sql_table
 
-from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
+from lib.config import ZAP_BATCH_SIZE, get_beefy_timescaledb_url
 from sources.resources.beefy_db.zap_common import zap_windowed_query_adapter
 
 RESOURCE_NAME = "zap_token_transfers_v2"
@@ -79,7 +79,7 @@ async def get_beefy_db_zap_token_transfers_v2_resource() -> Any:
     incremental.duplicate_cursor_warning_threshold = 10_000
 
     resource = sql_table(
-        credentials=get_beefy_db_url(),
+        credentials=get_beefy_timescaledb_url(),
         # Source Postgres table is still zap_token_transfers; destination
         # resource is renamed to avoid colliding with the legacy CH table.
         table="zap_token_transfers",

@@ -34,7 +34,7 @@ def _with_postgres_connect_params(url: str, sslmode_env: str = "BEEFY_DB_SSLMODE
 
 
 def get_beefy_db_url() -> str:
-    """Beefy DB connection string (set by infra/dlt/set_dlt_env.sh from BEEFY_DB_* → SOURCES__BEEFY_DB__CREDENTIALS)."""
+    """Heroku beefy-db connection string. Fallback; ingestions use TimescaleDB."""
     url = os.environ.get("SOURCES__BEEFY_DB__CREDENTIALS")
     if not url:
         raise ValueError(
@@ -44,7 +44,7 @@ def get_beefy_db_url() -> str:
 
 
 def get_beefy_timescaledb_url() -> str:
-    """Timescale (Tiger Cloud) connection string for migrated beefy-db hypertables/lookups."""
+    """Timescale (Tiger Cloud) connection string. Active source for beefy_db dlt ingestions."""
     url = os.environ.get("SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS")
     if not url:
         raise ValueError(

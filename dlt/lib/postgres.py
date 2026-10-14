@@ -41,7 +41,7 @@ def connect_postgres(url: str, label: str) -> Any:
 
 
 def connect_beefy_db() -> Any:
-    """Connect to Heroku beefy-db."""
+    """Connect to Heroku beefy-db. Fallback; ingestions use TimescaleDB."""
     return connect_postgres(get_beefy_db_url(), "Beefy DB")
 
 

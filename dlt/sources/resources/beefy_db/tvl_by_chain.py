@@ -3,9 +3,9 @@ from typing import Any
 from datetime import datetime, timezone
 import dlt
 from dlt.sources.sql_database import sql_table
-from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
 from lib.clickhouse import get_clickhouse_client
-from lib.postgres import connect_beefy_db
+from lib.postgres import connect_beefy_timescaledb
 from lib.sql_database import time_bounded_select, time_window_bounds
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ async def _init_resource() -> list[int]:
     client = await get_clickhouse_client()
     await client.query(TABLE_SQL)
 
-    conn = connect_beefy_db()
+    conn = connect_beefy_timescaledb()
     try:
         with conn.cursor() as cur:
             cur.execute(CHAINS_SQL)
@@ -81,7 +81,7 @@ async def get_beefy_db_tvl_by_chain_resource() -> Any:
     incremental.duplicate_cursor_warning_threshold = 10_000
 
     tvl_by_chain = sql_table(
-        credentials=get_beefy_db_url(),
+        credentials=get_beefy_timescaledb_url(),
         table=RESOURCE_NAME,
         backend="pyarrow",
         chunk_size=BATCH_SIZE,
