@@ -105,18 +105,20 @@ def test_connect_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(sleeps) == postgres._MAX_ATTEMPTS - 1
 
 
-def test_timescaledb_engine_is_shared_null_pool(monkeypatch: pytest.MonkeyPatch) -> None:
-    from sqlalchemy.pool import NullPool
-
+def test_timescaledb_engine_is_shared_and_capped_at_role_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         postgres,
         "get_beefy_timescaledb_url",
         lambda: "postgresql://tsdbadmin:pass@example.tsdb.cloud.timescale.com:38766/tsdb",
     )
+    monkeypatch.setattr(postgres, "BEEFY_TIMESCALEDB_POOL_SIZE", 5)
     postgres.get_beefy_timescaledb_engine.cache_clear()
     try:
         engine = postgres.get_beefy_timescaledb_engine()
-        assert isinstance(engine.pool, NullPool)
+        assert engine.pool.size() == 5
+        assert engine.pool._max_overflow == 0
         assert postgres.get_beefy_timescaledb_engine() is engine
     finally:
         postgres.get_beefy_timescaledb_engine.cache_clear()

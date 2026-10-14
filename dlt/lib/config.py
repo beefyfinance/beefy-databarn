@@ -13,6 +13,9 @@ ZAP_BATCH_SIZE = 10_000
 # Pipeline iteration timeout (seconds)
 PIPELINE_ITERATION_TIMEOUT = int(os.environ.get("DLT_PIPELINE_ITERATION_TIMEOUT", "3600"))
 
+# Prod Timescale role beefy_databarn_prod allows 5 connections. Pool never overflows.
+BEEFY_TIMESCALEDB_POOL_SIZE = int(os.environ.get("BEEFY_TIMESCALEDB_POOL_SIZE", "5"))
+
 # clickhouse_connect HTTP read timeout (seconds). OPTIMIZE FINAL can exceed the 300s default.
 CLICKHOUSE_SEND_RECEIVE_TIMEOUT = int(os.environ.get("DLT_CLICKHOUSE_SEND_RECEIVE_TIMEOUT", "3600"))
 

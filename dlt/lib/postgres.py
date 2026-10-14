@@ -7,9 +7,13 @@ from typing import Any
 
 import psycopg2
 import sqlalchemy as sa
-from sqlalchemy.pool import NullPool
 
-from lib.config import get_beefy_db_url, get_beefy_timescaledb_url
+from lib.config import (
+    BEEFY_TIMESCALEDB_POOL_SIZE,
+    PIPELINE_ITERATION_TIMEOUT,
+    get_beefy_db_url,
+    get_beefy_timescaledb_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,18 +59,25 @@ def connect_beefy_timescaledb() -> Any:
 
 @lru_cache(maxsize=1)
 def get_beefy_timescaledb_engine() -> Any:
-    """Shared Timescale engine. NullPool so dlt reflection does not leak connections.
+    """Shared Timescale engine capped at the prod role connection budget.
 
-    Each ``sql_table(credentials=url)`` otherwise builds its own QueuePool and
-    leaves a live connection after autoload. Timescale role limits are small;
-    fifteen tables then fail with ``too many connections``.
+    ``sql_table(credentials=url)`` would otherwise build a QueuePool per table.
+    Parallel extract then opens one connection per resource and the Timescale
+    role hits ``too many connections``. Checkout waits if extract still fans out.
     """
     url = get_beefy_timescaledb_url()
 
     def creator() -> Any:
         return connect_postgres(url, "Beefy Timescale DB")
 
-    return sa.create_engine(url, creator=creator, poolclass=NullPool)
+    return sa.create_engine(
+        url,
+        creator=creator,
+        pool_size=BEEFY_TIMESCALEDB_POOL_SIZE,
+        max_overflow=0,
+        pool_timeout=PIPELINE_ITERATION_TIMEOUT,
+        pool_pre_ping=True,
+    )
 
 
 def fetch_timescaledb_ints(sql: str) -> list[int]:
