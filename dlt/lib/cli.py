@@ -110,7 +110,13 @@ def _rewrite_unsupported_merge_strategies(pipeline: Any) -> None:
             pipeline.schemas.save_schema(schema)
 
 
-async def run_pipeline_loop(pipeline: Any, source_config: Any) -> Any:
+async def run_pipeline_loop(
+    pipeline: Any,
+    source_config: Any,
+    *,
+    extract_workers: Optional[int] = None,
+    extract_max_parallel_items: Optional[int] = None,
+) -> Any:
     args = _parse_args()
 
     if args.reimport is not None:
@@ -134,7 +140,16 @@ async def run_pipeline_loop(pipeline: Any, source_config: Any) -> Any:
             if engine:
                 declared[name] = str(engine)
         await ensure_table_engines(pipeline.dataset_name, declared)
-        load_info = pipeline.run(source)
+        if extract_workers is None:
+            load_info = pipeline.run(source)
+        else:
+            pipeline.extract(
+                source,
+                workers=extract_workers,
+                max_parallel_items=extract_max_parallel_items,
+            )
+            pipeline.normalize()
+            load_info = pipeline.load()
         print(load_info)
         if not _should_loop(source, args, load_info):
             break

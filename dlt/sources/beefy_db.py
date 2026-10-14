@@ -37,6 +37,7 @@ async def beefy_db_source() -> Any:
 
     All tables are read from TimescaleDB. ClickHouse destination names and
     schemas are unchanged. Beefy-db connection helpers remain as a fallback.
+    Resources extract in parallel; the shared engine caps live connections.
     """
 
     candidates = [
