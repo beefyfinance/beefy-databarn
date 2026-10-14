@@ -1,6 +1,7 @@
 from typing import Any
 from dlt.destinations.adapters import clickhouse_adapter
-from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
+from lib.config import BATCH_SIZE
+from lib.postgres import get_beefy_timescaledb_engine
 from lib.sql_database import try_sql_table
 
 LOOKUP_TABLES = {
@@ -29,12 +30,12 @@ LOOKUP_TABLES = {
 }
 
 
-def _table_resources(db_url: str, tables: dict[str, list[dict[str, Any]]]) -> list[Any]:
+def _table_resources(credentials: Any, tables: dict[str, list[dict[str, Any]]]) -> list[Any]:
     resources = []
     for table_name, columns in tables.items():
         primary_key_columns = [column["name"] for column in columns if "primary_key" in column and column["primary_key"]]
         resource = try_sql_table(
-            credentials=db_url,
+            credentials=credentials,
             table=table_name,
             backend="sqlalchemy",
             chunk_size=BATCH_SIZE,
@@ -52,4 +53,4 @@ def _table_resources(db_url: str, tables: dict[str, list[dict[str, Any]]]) -> li
 
 
 def get_beefy_db_other_tables_resources() -> list[Any]:
-    return _table_resources(get_beefy_timescaledb_url(), LOOKUP_TABLES)
+    return _table_resources(get_beefy_timescaledb_engine(), LOOKUP_TABLES)

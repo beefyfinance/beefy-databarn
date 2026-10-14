@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import logging
 import time
+from functools import lru_cache
 from typing import Any
 
 import psycopg2
+import sqlalchemy as sa
+from sqlalchemy.pool import NullPool
 
 from lib.config import get_beefy_db_url, get_beefy_timescaledb_url
 
@@ -48,3 +51,25 @@ def connect_beefy_db() -> Any:
 def connect_beefy_timescaledb() -> Any:
     """Connect to the Tiger Cloud Timescale instance of migrated beefy-db tables."""
     return connect_postgres(get_beefy_timescaledb_url(), "Beefy Timescale DB")
+
+
+@lru_cache(maxsize=1)
+def get_beefy_timescaledb_engine() -> Any:
+    """Shared Timescale engine. NullPool so dlt reflection does not leak connections.
+
+    Each ``sql_table(credentials=url)`` otherwise builds its own QueuePool and
+    leaves a live connection after autoload. Timescale role limits are small;
+    fifteen tables then fail with ``too many connections``.
+    """
+    url = get_beefy_timescaledb_url()
+
+    def creator() -> Any:
+        return connect_postgres(url, "Beefy Timescale DB")
+
+    return sa.create_engine(url, creator=creator, poolclass=NullPool)
+
+
+def fetch_timescaledb_ints(sql: str) -> list[int]:
+    """Run a single-column integer query on the shared Timescale engine."""
+    with get_beefy_timescaledb_engine().connect() as conn:
+        return [int(row[0]) for row in conn.execute(sa.text(sql))]

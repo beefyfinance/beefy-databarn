@@ -105,6 +105,46 @@ def test_connect_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(sleeps) == postgres._MAX_ATTEMPTS - 1
 
 
+def test_timescaledb_engine_is_shared_null_pool(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sqlalchemy.pool import NullPool
+
+    monkeypatch.setattr(
+        postgres,
+        "get_beefy_timescaledb_url",
+        lambda: "postgresql://tsdbadmin:pass@example.tsdb.cloud.timescale.com:38766/tsdb",
+    )
+    postgres.get_beefy_timescaledb_engine.cache_clear()
+    try:
+        engine = postgres.get_beefy_timescaledb_engine()
+        assert isinstance(engine.pool, NullPool)
+        assert postgres.get_beefy_timescaledb_engine() is engine
+    finally:
+        postgres.get_beefy_timescaledb_engine.cache_clear()
+
+
+def test_fetch_timescaledb_ints_uses_shared_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _Result:
+        def __iter__(self):
+            return iter([(1,), (2,)])
+
+    class _Conn:
+        def execute(self, _stmt):
+            return _Result()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class _Engine:
+        def connect(self):
+            return _Conn()
+
+    monkeypatch.setattr(postgres, "get_beefy_timescaledb_engine", lambda: _Engine())
+    assert postgres.fetch_timescaledb_ints("SELECT id FROM vault_ids") == [1, 2]
+
+
 def test_connect_timescaledb_uses_timescaledb_url(monkeypatch: pytest.MonkeyPatch) -> None:
     expected_url = "postgresql://tsdbadmin:pass@example.tsdb.cloud.timescale.com:38766/tsdb?sslmode=require"
     seen: list[str] = []

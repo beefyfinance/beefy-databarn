@@ -27,6 +27,6 @@ def test_beefy_db_resources_ingest_from_timescaledb() -> None:
     assert resource_files
     for path in resource_files:
         text = path.read_text()
-        assert "get_beefy_timescaledb_url" in text, path.name
+        assert "get_beefy_timescaledb_engine" in text, path.name
         assert "get_beefy_db_url" not in text, path.name
         assert "connect_beefy_db(" not in text, path.name
