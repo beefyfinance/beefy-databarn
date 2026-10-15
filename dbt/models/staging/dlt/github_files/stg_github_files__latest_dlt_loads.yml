@@ -23,12 +23,6 @@ models:
             resources:
               - beefy_platforms
               - beefy_ui_chains
-      - latest_dlt_load_id_newest_completed:
-          arguments:
-            dlt_source: github_files
-            resources:
-              - beefy_platforms
-              - beefy_ui_chains
     columns:
       - name: source_name
         description: "dlt dataset / pipeline name"

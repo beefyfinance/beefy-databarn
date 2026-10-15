@@ -22,11 +22,6 @@ models:
             dlt_source: beefy_cctp_api
             resources:
               - messages
-      - latest_dlt_load_id_newest_completed:
-          arguments:
-            dlt_source: beefy_cctp_api
-            resources:
-              - messages
     columns:
       - name: source_name
         description: "dlt dataset / pipeline name"
