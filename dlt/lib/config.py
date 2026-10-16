@@ -5,9 +5,10 @@ See infra/dlt/set_dlt_env.sh for .env → DLT env name mapping.
 import os
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-BATCH_SIZE = 1_000_000
-# Full-replace zap tables include hex-encoded calldata. yield_per=BATCH_SIZE
-# asks Postgres to hold ~1M wide rows in PortalHoldContext and OOMs.
+# pyarrow/Postgres portal size. 1M rows × 5 parallel extracts OOM'd Timescale
+# incremental loads (prices/apys/tvls are dense snapshots, not sparse events).
+BATCH_SIZE = 50_000
+# Zap rows include hex-encoded calldata and are much wider.
 ZAP_BATCH_SIZE = 10_000
 
 # Pipeline iteration timeout (seconds)
