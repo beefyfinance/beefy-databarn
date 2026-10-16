@@ -1,10 +1,11 @@
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Optional, Set
 
 import sqlalchemy as sa
 from dlt.sources.sql_database import sql_table
+from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, TIMESTAMP
 from sqlalchemy.exc import NoSuchTableError
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,12 @@ def _select_list(
     return ", ".join(parts) if parts else "*"
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def time_bounded_select(
     table: Any,
     *,
@@ -54,6 +61,11 @@ def time_bounded_select(
 ) -> Any:
     """Closed time window so Timescale can exclude compressed chunks.
 
+    Timestamps are bound as TIMESTAMPTZ and id lists as BIGINT[] so the
+    planner can exclude chunks. Untyped ``$1`` binds make Timescale scan
+    (and decompress) the whole hypertable — e.g. harvests returning 8 rows
+    in 10+ seconds.
+
     ``any_filters`` maps a column name to ``(bind_param, values)`` and emits
     ``column = ANY(:bind_param)``. ``hex_columns`` rewrites bytea as
     ``'0x' || encode(col, 'hex')``. ``json_array_columns`` serializes Postgres
@@ -61,13 +73,18 @@ def time_bounded_select(
     """
     time_column = _require_ident(time_column)
     clauses = []
-    params: dict[str, Any] = {
-        "start_value": start_value,
-        "end_value": end_value,
-    }
+    params = [
+        sa.bindparam(
+            "start_value", _as_utc(start_value), type_=TIMESTAMP(timezone=True)
+        ),
+        sa.bindparam(
+            "end_value", _as_utc(end_value), type_=TIMESTAMP(timezone=True)
+        ),
+    ]
     for column, (param, values) in (any_filters or {}).items():
-        clauses.append(f"{_require_ident(column)} = ANY(:{_require_ident(param)})")
-        params[param] = values
+        param = _require_ident(param)
+        clauses.append(f"{_require_ident(column)} = ANY(:{param})")
+        params.append(sa.bindparam(param, list(values), type_=ARRAY(BIGINT)))
     clauses.append(f"{time_column} > :start_value")
     clauses.append(f"{time_column} <= :end_value")
     select_list = _select_list(
@@ -75,7 +92,7 @@ def time_bounded_select(
     )
     return sa.text(
         f"SELECT {select_list} FROM {table.fullname} WHERE " + " AND ".join(clauses)
-    ).bindparams(**params)
+    ).bindparams(*params)
 
 
 def time_window_bounds(

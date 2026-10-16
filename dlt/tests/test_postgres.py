@@ -162,3 +162,55 @@ def test_connect_timescaledb_uses_timescaledb_url(monkeypatch: pytest.MonkeyPatc
 
     assert conn is not None
     assert seen == [expected_url]
+
+
+def test_table_loader_buffers_then_releases_timescale() -> None:
+    import lib.dlt_timescaledb_no_cursor_patch as patch
+    from dlt.sources.sql_database.helpers import TableLoader
+
+    live: list[bool] = []
+
+    class _Result:
+        def keys(self):
+            return ["id"]
+
+        def partitions(self, size=None):
+            return [[[1], [2]]]
+
+        def close(self) -> None:
+            return None
+
+    class _Conn:
+        def execute(self, query):
+            live.append(True)
+            return _Result()
+
+        def execution_options(self, **kwargs):
+            raise AssertionError(f"yield_per would open a named cursor: {kwargs}")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            live.append(False)
+            return False
+
+    class _Engine:
+        def connect(self):
+            return _Conn()
+
+    loader = TableLoader.__new__(TableLoader)
+    loader.engine = _Engine()
+    loader.chunk_size = 50_000
+
+    def convert(result, kwargs):
+        assert live == [True, False], "Timescale connection must be closed before convert"
+        assert list(result.keys()) == ["id"]
+        assert list(result.partitions()) == [[[1], [2]]]
+        yield {"ok": True}
+
+    loader._convert_result = convert
+
+    rows = list(patch._load_rows_without_server_cursor(loader, "SELECT 1", {}))
+    assert rows == [{"ok": True}]
+    assert TableLoader._load_rows is patch._load_rows_without_server_cursor

@@ -14,6 +14,7 @@ from lib.config import (
     get_beefy_db_url,
     get_beefy_timescaledb_url,
 )
+import lib.dlt_timescaledb_no_cursor_patch  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

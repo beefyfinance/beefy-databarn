@@ -4,9 +4,18 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, TIMESTAMP
 
 from lib.sql_database import time_bounded_select, time_window_bounds
 from sources.resources.beefy_db.zap_common import ZAP_GENESIS, ZAP_WINDOW_DAYS
+
+
+def _bindparams(clause):
+    return clause.compile().params
+
+
+def _bindparam_types(clause) -> dict[str, object]:
+    return {name: param.type for name, param in clause._bindparams.items()}
 
 
 def test_time_bounded_select_filters_by_time_and_ids() -> None:
@@ -27,9 +36,33 @@ def test_time_bounded_select_filters_by_time_and_ids() -> None:
     assert "oracle_id = ANY(:oracle_ids)" in sql
     assert "t > :start_value" in sql
     assert "t <= :end_value" in sql
-    assert clause.compile().params["start_value"] == start
-    assert clause.compile().params["end_value"] == end
-    assert clause.compile().params["oracle_ids"] == [1, 2, 3]
+    params = _bindparams(clause)
+    assert params["start_value"] == start
+    assert params["end_value"] == end
+    assert params["oracle_ids"] == [1, 2, 3]
+    types = _bindparam_types(clause)
+    assert isinstance(types["start_value"], TIMESTAMP)
+    assert types["start_value"].timezone is True
+    assert isinstance(types["end_value"], TIMESTAMP)
+    assert types["end_value"].timezone is True
+    assert isinstance(types["oracle_ids"], ARRAY)
+    assert isinstance(types["oracle_ids"].item_type, BIGINT)
+
+
+def test_time_bounded_select_coerces_naive_datetimes_to_utc() -> None:
+    table = SimpleNamespace(fullname="harvests")
+    start = datetime(2026, 10, 14, 16, 52, 7)
+    end = datetime(2027, 2, 11, 16, 52, 7)
+
+    clause = time_bounded_select(
+        table,
+        time_column="txn_timestamp",
+        start_value=start,
+        end_value=end,
+    )
+    params = _bindparams(clause)
+    assert params["start_value"] == start.replace(tzinfo=timezone.utc)
+    assert params["end_value"] == end.replace(tzinfo=timezone.utc)
 
 
 def test_time_bounded_select_rejects_bad_identifiers() -> None:
