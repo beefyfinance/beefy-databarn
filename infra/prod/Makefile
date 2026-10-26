@@ -39,7 +39,7 @@ help:
 	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
-	@echo "  make reimport-prices <since>  Reload prices then rewind product_stats from SINCE"
+	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
 
 
 infra: ensure-dirs
@@ -513,18 +513,19 @@ docker:
 		;; \
 	esac
 
-# Reload ClickHouse prices from SINCE, then rewind incremental product stats.
-# Does not full-refresh dbt. TVL in product_stats still comes from `tvls`;
-# reimport that resource separately if Timescale TVL was also wrong.
+# Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
+# product_stats.tvl_usd is built from tvls, not prices.
 reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices, then dbt int_product_stats__tvl_hourly+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
+	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
+	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
 	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
 	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
 

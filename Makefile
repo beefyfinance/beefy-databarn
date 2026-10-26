@@ -32,7 +32,7 @@ help: ## Show this help message
 	@echo "  make setup               Initial setup (copy .env, install deps)"
 	@echo "  make start               Start infrastructure and initialize"
 	@echo "  make dev                 Full development workflow"
-	@echo "  make reimport-prices <since>  Reload prices then rewind product_stats from SINCE"
+	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
 
 # Infrastructure commands - using subcommands
 infra:
@@ -550,18 +550,19 @@ _print-urls:
 	echo "  - Prometheus: http://localhost:9090 (no auth)" && \
 	echo "  - RustFS: http://localhost:9001 ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
 
-# Reload ClickHouse prices from SINCE, then rewind incremental product stats.
-# Does not full-refresh dbt. TVL in product_stats still comes from `tvls`;
-# reimport that resource separately if Timescale TVL was also wrong.
+# Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
+# product_stats.tvl_usd is built from tvls, not prices.
 reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices, then dbt int_product_stats__tvl_hourly+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
+	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
+	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
 	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
 	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
 
