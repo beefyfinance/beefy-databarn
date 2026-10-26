@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -39,6 +39,7 @@ help:
 	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
+	@echo "  make reimport-prices <since>  Reload prices then rewind product_stats from SINCE"
 
 
 infra: ensure-dirs
@@ -191,6 +192,19 @@ dbt:
 			fi && \
 			echo "dbt refresh completed successfully"; \
 		;; \
+		reimport) \
+			MODEL="$(word 3,$(MAKECMDGOALS))" && \
+			SINCE="$(word 4,$(MAKECMDGOALS))" && \
+			if [ -n "$$MODEL" ] && [ -n "$$SINCE" ]; then \
+				echo "Reimporting dbt model: $$MODEL since $$SINCE..."; \
+				$(DC) exec dbt /app/run_dbt_with_lock.sh run --select $$MODEL --vars "{\"incremental_since\": \"$$SINCE\"}"; \
+			else \
+				echo "Usage: make dbt reimport <model> <since>"; \
+				echo "  since: YYYY-MM-DD; delete+insert from that timestamp (not a full refresh)"; \
+				exit 1; \
+			fi && \
+			echo "dbt reimport completed successfully"; \
+		;; \
 		run) \
 			echo "Running dbt..."; \
 			MODEL="$(word 3,$(MAKECMDGOALS))" && \
@@ -224,12 +238,13 @@ dbt:
 			echo "dbt:"; \
 			echo "  make dbt run [<model>]     Run dbt models"; \
 			echo "  make dbt refresh [<model>] Full refresh all dbt models (or a specific model)"; \
+			echo "  make dbt reimport <model> <since>  Rewind incremental lookback to SINCE"; \
 			echo "  make dbt test [<model>]    Run dbt tests"; \
 			echo "  make dbt docs              Generate and publish Docglow docs"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dbt [run [<model>]|refresh [<model>]|test [<model>]|docs|help]"; \
+			echo "Usage: make dbt [run [<model>]|refresh [<model>]|reimport <model> <since>|test [<model>]|docs|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -497,6 +512,21 @@ docker:
 			exit 1; \
 		;; \
 	esac
+
+# Reload ClickHouse prices from SINCE, then rewind incremental product stats.
+# Does not full-refresh dbt. TVL in product_stats still comes from `tvls`;
+# reimport that resource separately if Timescale TVL was also wrong.
+reimport-prices:
+	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
+	if [ -z "$$SINCE" ]; then \
+		echo "Usage: make reimport-prices <since>"; \
+		echo "  since: YYYY-MM-DD (dlt prices, then dbt int_product_stats__tvl_hourly+)"; \
+		exit 1; \
+	fi && \
+	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
+	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
+	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
 
 # Prevent make from treating command arguments as targets
 run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:

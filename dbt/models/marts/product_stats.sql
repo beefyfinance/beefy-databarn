@@ -23,6 +23,7 @@
 {% else %}
   {% set max_date = '2021-07-31 19:30:00' %}
 {% endif %}
+{% set since = incremental_since_var() %}
 
 SELECT
   hs.chain_id as chain_id,
@@ -80,7 +81,11 @@ INNER JOIN {{ ref('product') }} p
   ON hs.chain_id = p.chain_id
   AND hs.product_address = p.product_address
 {% if is_incremental() %}
+  {% if since is not none %}
+  WHERE hs.date_hour >= toDateTime('{{ since }}')
+  {% else %}
   WHERE hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
+  {% endif %}
      -- Re-load keys that already violate uniqueness in the test window.
      -- delete+insert only covers the 1-day lookback, so a one-off join
      -- fanout leaves extras in MergeTree until they are selected again.

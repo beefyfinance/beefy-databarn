@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev
+.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev reimport-prices
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -32,6 +32,7 @@ help: ## Show this help message
 	@echo "  make setup               Initial setup (copy .env, install deps)"
 	@echo "  make start               Start infrastructure and initialize"
 	@echo "  make dev                 Full development workflow"
+	@echo "  make reimport-prices <since>  Reload prices then rewind product_stats from SINCE"
 
 # Infrastructure commands - using subcommands
 infra:
@@ -118,6 +119,19 @@ dbt:
 			fi; \
 			echo "dbt refresh completed successfully"; \
 			;; \
+		reimport) \
+			MODEL="$(word 3,$(MAKECMDGOALS))" && \
+			SINCE="$(word 4,$(MAKECMDGOALS))" && \
+			if [ -n "$$MODEL" ] && [ -n "$$SINCE" ]; then \
+				echo "Reimporting dbt model: $$MODEL since $$SINCE..."; \
+				$(UV) dbt run --select $$MODEL --vars "{\"incremental_since\": \"$$SINCE\"}" --show-all-deprecations; \
+			else \
+				echo "Usage: make dbt reimport <model> <since>"; \
+				echo "  since: YYYY-MM-DD; delete+insert from that timestamp (not a full refresh)"; \
+				exit 1; \
+			fi; \
+			echo "dbt reimport completed successfully"; \
+			;; \
 		sql) \
 			echo "Compiling and showing SQL (no queries executed)..."; \
 			if [ -n "$$MODEL" ]; then \
@@ -169,6 +183,7 @@ dbt:
 			echo "  make dbt run <model>     Run a specific dbt model"; \
 			echo "  make dbt refresh         Full refresh all dbt models"; \
 			echo "  make dbt refresh <model> Full refresh a specific dbt model"; \
+			echo "  make dbt reimport <model> <since>  Rewind incremental lookback to SINCE"; \
 			echo "  make dbt test            Run dbt tests"; \
 			echo "  make dbt compile         Compile dbt models"; \
 			echo "  make dbt sql [<model>]   Show compiled SQL (optionally for specific model)"; \
@@ -176,7 +191,7 @@ dbt:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make dbt [run [model]|refresh [model]|test [model]|compile|sql [model_name]|docs|help]"; \
+			echo "Usage: make dbt [run [model]|refresh [model]|reimport <model> <since>|test [model]|compile|sql [model_name]|docs|help]"; \
 			exit 1 \
 			;; \
 	esac
@@ -534,6 +549,21 @@ _print-urls:
 	echo "  - Grafana: http://localhost:3000 ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
 	echo "  - Prometheus: http://localhost:9090 (no auth)" && \
 	echo "  - RustFS: http://localhost:9001 ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
+
+# Reload ClickHouse prices from SINCE, then rewind incremental product stats.
+# Does not full-refresh dbt. TVL in product_stats still comes from `tvls`;
+# reimport that resource separately if Timescale TVL was also wrong.
+reimport-prices:
+	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
+	if [ -z "$$SINCE" ]; then \
+		echo "Usage: make reimport-prices <since>"; \
+		echo "  since: YYYY-MM-DD (dlt prices, then dbt int_product_stats__tvl_hourly+)"; \
+		exit 1; \
+	fi && \
+	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
+	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
+	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
 
 # Catch-all target to prevent "No rule to make target" errors
 # This allows arguments to be passed to targets without make complaining

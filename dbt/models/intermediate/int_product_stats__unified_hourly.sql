@@ -39,6 +39,15 @@
     {% set threshold_yield = '1900-01-01 00:00:00' %}
     {% set threshold_harvest = '1900-01-01 00:00:00' %}
   {% endif %}
+  {% set since = incremental_since_var() %}
+  {% if since is not none %}
+    {% set threshold_tvl = since %}
+    {% set threshold_apy = since %}
+    {% set threshold_apy_breakdown = since %}
+    {% set threshold_lps_breakdown = since %}
+    {% set threshold_yield = since %}
+    {% set threshold_harvest = since %}
+  {% endif %}
 {% endif %}
 
 -- Materialized intermediate: Unified hourly stats from all sources

@@ -20,6 +20,10 @@
   {% else %}
     {% set threshold = '1900-01-01 00:00:00' %}
   {% endif %}
+  {% set since = incremental_since_var() %}
+  {% if since is not none %}
+    {% set threshold = since %}
+  {% endif %}
 {% endif %}
 
 -- Materialized intermediate: Hourly tvl aggregations
