@@ -124,7 +124,7 @@ dbt:
 			SINCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$MODEL" ] && [ -n "$$SINCE" ]; then \
 				echo "Reimporting dbt model: $$MODEL since $$SINCE..."; \
-				$(UV) dbt run --select $$MODEL --vars "{\"incremental_since\": \"$$SINCE\"}" --show-all-deprecations; \
+				$(UV) dbt run --select $$MODEL --vars=incremental_since:$$SINCE --show-all-deprecations; \
 			else \
 				echo "Usage: make dbt reimport <model> <since>"; \
 				echo "  since: YYYY-MM-DD; delete+insert from that timestamp (not a full refresh)"; \

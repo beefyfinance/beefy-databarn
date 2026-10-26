@@ -121,14 +121,16 @@ async def run_pipeline_loop(
 ) -> Any:
     args = _parse_args()
 
-    if args.reimport is not None:
-        prepare_reimport(pipeline, source_config, args.only_resource, args.reimport)
-
     if pipeline.config.restore_from_destination:
         pipeline.sync_destination()
         # run() would restore again and bring upsert schemas back
         pipeline._state_restored = True
     _rewrite_unsupported_merge_strategies(pipeline)
+
+    # After dest sync: a second sync_destination() would restore the cursor
+    # we are about to drop and the extract would be empty.
+    if args.reimport is not None:
+        prepare_reimport(pipeline, source_config, args.only_resource, args.reimport)
 
     iteration = 0
     while True:
