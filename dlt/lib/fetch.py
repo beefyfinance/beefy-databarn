@@ -5,16 +5,46 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# One try plus a few retries. Backoff doubles: 1s, 2s, 4s.
-_MAX_ATTEMPTS = 4
+# One try plus retries. Backoff doubles, then caps: 1s, 2s, 4s, 8s, 16s, 32s, 32s.
+# Eight attempts stay inside the 5-minute CCTP slot (~95s sleep + fast 500s).
+_MAX_ATTEMPTS = 8
 _RETRY_BACKOFF_S = 1.0
+_RETRY_BACKOFF_CAP_S = 32.0
 _RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
+_RESPONSE_SNIPPET_CHARS = 500
 # Vaults/clm-vaults JSON is multiple MB; 5s ReadTimeout kills the whole pipeline.
 _DEFAULT_TIMEOUT_S = 30.0
 
 
 class FetchError(RuntimeError):
     """A URL could not be fetched."""
+
+
+def _response_snippet(response: httpx.Response, *, max_chars: int = _RESPONSE_SNIPPET_CHARS) -> str:
+    """Collapse an HTTP body to a single-line Discord-safe snippet."""
+    try:
+        text = response.text.strip()
+    except Exception:
+        return ""
+    if not text:
+        return ""
+    text = " ".join(text.split())
+    if len(text) > max_chars:
+        text = text[: max_chars - 1] + "…"
+    return text
+
+
+def _http_status_detail(response: httpx.Response) -> str:
+    reason = response.reason_phrase or ""
+    detail = f"HTTP {response.status_code} {reason}".rstrip()
+    snippet = _response_snippet(response)
+    if snippet:
+        detail = f"{detail}: {snippet}"
+    return detail
+
+
+def _retry_delay_s(attempt: int) -> float:
+    return min(_RETRY_BACKOFF_S * (2 ** (attempt - 1)), _RETRY_BACKOFF_CAP_S)
 
 
 def _unreachable(url: str, exc: httpx.HTTPError) -> FetchError:
@@ -29,8 +59,7 @@ def _unreachable(url: str, exc: httpx.HTTPError) -> FetchError:
         target = str(request.url)
 
     if isinstance(exc, httpx.HTTPStatusError):
-        reason = exc.response.reason_phrase or ""
-        detail = f"HTTP {exc.response.status_code} {reason}".rstrip()
+        detail = _http_status_detail(exc.response)
     else:
         message = str(exc).strip()
         name = type(exc).__name__
@@ -66,11 +95,16 @@ async def _get(
             exc = err
             if attempt >= _MAX_ATTEMPTS or not _retryable(err):
                 break
-            delay = _RETRY_BACKOFF_S * (2 ** (attempt - 1))
+            delay = _retry_delay_s(attempt)
+            extra = ""
+            if isinstance(err, httpx.HTTPStatusError):
+                snippet = _response_snippet(err.response)
+                extra = f": {snippet}" if snippet else f" {err.response.status_code}"
             logger.warning(
-                "Request to %s failed (%s); retry %s/%s in %.0fs",
+                "Request to %s failed (%s%s); retry %s/%s in %.0fs",
                 url,
                 type(err).__name__,
+                extra,
                 attempt,
                 _MAX_ATTEMPTS - 1,
                 delay,

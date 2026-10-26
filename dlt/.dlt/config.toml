@@ -8,3 +8,14 @@ dlthub_telemetry = true
 [load]
 truncate_staging_dataset=true
 delete_completed_jobs=true
+
+# Mirror infra/dlt/set_dlt_env.sh. Python 3.13 GzipFile uses a weakref that
+# can raise RuntimeError: lost gzip_file when extract/normalize writers flush.
+[extract.data_writer]
+disable_compression=true
+
+[normalize.data_writer]
+disable_compression=true
+
+[load.data_writer]
+disable_compression=true

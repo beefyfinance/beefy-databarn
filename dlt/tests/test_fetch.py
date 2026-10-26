@@ -20,11 +20,15 @@ class _ScriptedClient:
         return False
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
-        status = self._script.pop(0)
-        if isinstance(status, Exception):
-            raise status
+        item = self._script.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        if isinstance(item, tuple):
+            status, content = item
+        else:
+            status, content = item, b"{}"
         request = httpx.Request("GET", url)
-        return httpx.Response(status, request=request, content=b"{}")
+        return httpx.Response(status, request=request, content=content)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, script: list[Any], sleeps: list[float]) -> None:
@@ -98,3 +102,45 @@ def test_server_error_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.status_code == 200
     assert sleeps == [1.0]
     assert script == []
+
+
+def test_http_500_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    script: list[Any] = [500, 500, 500, 500, 200]
+    _install(monkeypatch, script, sleeps)
+
+    response = asyncio.run(fetch._get("https://cctp-relay.beefy.com/v1/messages"))
+
+    assert response.status_code == 200
+    assert sleeps == [1.0, 2.0, 4.0, 8.0]
+    assert script == []
+
+
+def test_http_500_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    body = b'{"error":"relay exploded","code":500}'
+    script: list[Any] = [(500, body)] * fetch._MAX_ATTEMPTS
+    _install(monkeypatch, script, sleeps)
+
+    with pytest.raises(fetch.FetchError, match=r'HTTP 500 Internal Server Error: \{"error":"relay exploded"') as raised:
+        asyncio.run(fetch._get("https://cctp-relay.beefy.com/v1/messages"))
+
+    assert "Failed to reach https://cctp-relay.beefy.com/v1/messages" in str(raised.value)
+    assert sleeps == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 32.0]
+    assert script == []
+
+
+def test_response_snippet_collapses_and_truncates() -> None:
+    request = httpx.Request("GET", "https://cctp-relay.beefy.com/v1/messages")
+    response = httpx.Response(
+        500,
+        request=request,
+        content=b"{\n  \"error\": \"down\"\n}\n",
+    )
+    assert fetch._response_snippet(response) == '{ "error": "down" }'
+
+    huge = "x" * 800
+    long_response = httpx.Response(500, request=request, content=huge.encode())
+    snippet = fetch._response_snippet(long_response)
+    assert snippet.endswith("…")
+    assert len(snippet) == fetch._RESPONSE_SNIPPET_CHARS

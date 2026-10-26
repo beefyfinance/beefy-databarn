@@ -36,6 +36,26 @@ def test_excerpt_keeps_exception_at_end_of_long_traceback(dlt_alerts):
     assert "frame_0.py" not in excerpt
 
 
+def test_alert_job_failed_surfaces_http_500_response_body(dlt_alerts, monkeypatch):
+    sent: list[str] = []
+    monkeypatch.setattr(
+        dlt_alerts,
+        "notify_once_per_day",
+        lambda key, title, description, state_path, **kwargs: sent.append(description) or True,
+    )
+    log = """
+Traceback (most recent call last):
+  File "/app/dlt/lib/fetch.py", line 79, in _get
+    raise _unreachable(url, exc) from exc
+lib.fetch.FetchError: Failed to reach https://cctp-relay.beefy.com/v1/messages?limit=500: HTTP 500 Internal Server Error: {"error":"relay exploded"}
+"""
+    dlt_alerts.alert_job_failed("beefy_cctp_api_pipeline.py", 1, log)
+
+    description = sent[0]
+    assert "Failed to reach `https://cctp-relay.beefy.com/v1/messages?limit=500`: HTTP 500 Internal Server Error: {\"error\":\"relay exploded\"}" in description
+    assert '{"error":"relay exploded"}' in description
+
+
 def test_alert_job_failed_surfaces_unreachable_url(dlt_alerts, monkeypatch):
     sent: list[tuple] = []
     monkeypatch.setattr(
