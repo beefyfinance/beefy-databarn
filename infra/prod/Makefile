@@ -544,7 +544,7 @@ orphans:
 		*) echo "Usage: make orphans [list|sql]"; exit 1 ;; \
 	esac && \
 	echo "Refreshing dbt manifest..." && \
-	$(DC) exec -T dbt /app/run_dbt_with_lock.sh parse --quiet && \
+	$(DC) exec -T -w /app/dbt -e DBT_PROFILES_DIR=/app/dbt -e DBT_PROJECT_DIR=/app/dbt dbt uv run dbt parse --quiet && \
 	$(DC) exec -T dbt cat /app/dbt/target/manifest.json > $(ROOT_DIR)/dlt/.dbt_manifest.json && \
 	set -a && . $(ROOT_DIR)/.env && set +a && \
 	OUT=""; [ "$$SUBCMD" = "sql" ] && OUT="--sql-out /app/dlt/orphan_tables_cleanup.sql"; \
