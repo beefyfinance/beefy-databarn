@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: int_product_stats__share_price_hourly
+    description: "Hourly vault share price (USD per share): last 5-minute price of each hour from int_product_share_price, with mootoken corrections applied. One row per (chain_id, product_address, date_hour)."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address", "date_hour"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 7 day"
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+              - date_hour
+      - keys_match:
+          name: int_product_stats__share_price_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product share-token contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: date_hour
+        description: "Hour start"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: share_to_usd
+        description: "USD value of one vault share at the end of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

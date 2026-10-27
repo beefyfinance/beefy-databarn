@@ -73,7 +73,8 @@ SELECT
   hs.harvest_amount_usd,
   hs.avg_native_price,
   hs.harvest_txn_count,
-  hs.harvest_vault_count
+  hs.harvest_vault_count,
+  hs.share_to_usd
 FROM {{ ref('int_product_stats__unified_hourly') }} hs FINAL
 INNER JOIN {{ ref('chain') }} c
   ON hs.chain_id = c.chain_id

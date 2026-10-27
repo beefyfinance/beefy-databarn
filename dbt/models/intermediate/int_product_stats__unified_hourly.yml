@@ -48,6 +48,15 @@ models:
             columns: ["chain_id", "product_address", "date_hour"]
             to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
       - keys_match:
+          name: int_product_stats__unified_share_price_in_share_price_hourly
+          config:
+            store_failures: true
+            where: "source = 'share_price' and date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+          arguments:
+            to: ref('int_product_stats__share_price_hourly')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day"
+      - keys_match:
           name: int_product_stats__unified_yield_in_yield_hourly
           config:
             store_failures: true
@@ -249,4 +258,11 @@ models:
               arguments:
                 min_value: 0
                 max_value: 1000000000000
+                inclusive: true
+      - name: share_to_usd
+        description: "USD value of one vault share at the end of the hour (source = 'share_price')"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
                 inclusive: true

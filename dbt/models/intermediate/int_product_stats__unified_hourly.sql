@@ -15,6 +15,9 @@
     SELECT
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'tvl') AS threshold_tvl,
       (SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }} WHERE source = 'apy') AS threshold_apy,
+      -- share_price was added after the table existed: with no rows yet, load from the beginning
+      -- (max() of nothing is the epoch, and epoch - 1 day would underflow DateTime).
+      (SELECT if(count() = 0, toDateTime(0), max(date_hour) - INTERVAL 1 DAY) FROM {{ this }} WHERE source = 'share_price') AS threshold_share_price,
       -- Full-table sources: 30-day lookback so new products' history is not truncated
       -- (keys_match tests the same 30-day window).
       (SELECT max(date_hour) - INTERVAL 30 DAY FROM {{ this }} WHERE source = 'apy_breakdown') AS threshold_apy_breakdown,
@@ -27,13 +30,15 @@
     {% set row = threshold_result.rows[0] %}
     {% set threshold_tvl = row[0] | string %}
     {% set threshold_apy = row[1] | string %}
-    {% set threshold_apy_breakdown = row[2] | string %}
-    {% set threshold_lps_breakdown = row[3] | string %}
-    {% set threshold_yield = row[4] | string %}
-    {% set threshold_harvest = row[5] | string %}
+    {% set threshold_share_price = row[2] | string %}
+    {% set threshold_apy_breakdown = row[3] | string %}
+    {% set threshold_lps_breakdown = row[4] | string %}
+    {% set threshold_yield = row[5] | string %}
+    {% set threshold_harvest = row[6] | string %}
   {% else %}
     {% set threshold_tvl = '1900-01-01 00:00:00' %}
     {% set threshold_apy = '1900-01-01 00:00:00' %}
+    {% set threshold_share_price = '1900-01-01 00:00:00' %}
     {% set threshold_apy_breakdown = '1900-01-01 00:00:00' %}
     {% set threshold_lps_breakdown = '1900-01-01 00:00:00' %}
     {% set threshold_yield = '1900-01-01 00:00:00' %}
@@ -43,6 +48,7 @@
   {% if since is not none %}
     {% set threshold_tvl = since %}
     {% set threshold_apy = since %}
+    {% set threshold_share_price = since %}
     {% set threshold_apy_breakdown = since %}
     {% set threshold_lps_breakdown = since %}
     {% set threshold_yield = since %}
@@ -99,7 +105,8 @@ SELECT
   NULL AS harvest_amount_usd,
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
-  NULL AS harvest_vault_count
+  NULL AS harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__tvl_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_tvl }}') and date_hour < now() + INTERVAL 1 DAY
@@ -151,7 +158,8 @@ SELECT
   NULL AS harvest_amount_usd,
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
-  NULL AS harvest_vault_count
+  NULL AS harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__apy_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy }}') and date_hour < now() + INTERVAL 1 DAY
@@ -203,7 +211,8 @@ SELECT
   NULL AS harvest_amount_usd,
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
-  NULL AS harvest_vault_count
+  NULL AS harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__apy_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -255,7 +264,8 @@ SELECT
   NULL AS harvest_amount_usd,
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
-  NULL AS harvest_vault_count
+  NULL AS harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__lps_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_lps_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -307,7 +317,8 @@ SELECT
   NULL AS harvest_amount_usd,
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
-  NULL AS harvest_vault_count
+  NULL AS harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__yield_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_yield }}') and date_hour < now() + INTERVAL 1 DAY
@@ -359,8 +370,62 @@ SELECT
   harvest_amount_usd,
   avg_native_price,
   harvest_txn_count,
-  harvest_vault_count
+  harvest_vault_count,
+  NULL AS share_to_usd
 FROM {{ ref('int_product_stats__harvest_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_harvest }}') and date_hour < now() + INTERVAL 1 DAY
+{% endif %}
+
+UNION ALL
+
+-- Share price data (incremental: only hours we don't already have a share price for)
+SELECT
+  chain_id,
+  product_address,
+  date_hour,
+  'share_price' AS source,
+  NULL AS tvl_usd,
+  NULL AS apy,
+  NULL AS compoundings_per_year,
+  NULL AS beefy_performance_fee,
+  NULL AS lp_fee,
+  NULL AS total_apy,
+  NULL AS vault_apr,
+  NULL AS trading_apr,
+  NULL AS clm_apr,
+  NULL AS reward_pool_apr,
+  NULL AS reward_pool_trading_apr,
+  NULL AS vault_apy,
+  NULL AS liquid_staking_apr,
+  NULL AS composable_pool_apr,
+  NULL AS merkl_apr,
+  NULL AS linea_ignition_apr,
+  NULL AS lp_price,
+  [] AS breakdown_tokens,
+  [] AS breakdown_balances,
+  NULL AS total_supply,
+  NULL AS underlying_liquidity,
+  [] AS underlying_balances,
+  NULL AS underlying_price,
+  NULL AS underlying_amount_compounded,
+  NULL AS underlying_token_price_usd,
+  NULL AS underlying_amount_compounded_usd,
+  NULL AS harvest_call_fee,
+  NULL AS harvest_call_fee_usd,
+  NULL AS gas_fee,
+  NULL AS gas_fee_usd,
+  NULL AS platform_fee,
+  NULL AS platform_fee_usd,
+  NULL AS strategist_fee,
+  NULL AS strategist_fee_usd,
+  NULL AS harvest_amount,
+  NULL AS harvest_amount_usd,
+  NULL AS avg_native_price,
+  NULL AS harvest_txn_count,
+  NULL AS harvest_vault_count,
+  cast(share_to_usd as Nullable(Decimal(76, 20))) AS share_to_usd
+FROM {{ ref('int_product_stats__share_price_hourly') }}
+{% if is_incremental() %}
+WHERE date_hour >= toDateTime('{{ threshold_share_price }}') and date_hour < now() + INTERVAL 1 DAY
 {% endif %}
