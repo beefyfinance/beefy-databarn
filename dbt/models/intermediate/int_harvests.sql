@@ -36,7 +36,21 @@
 -- fixes old harvests on the next run. Removing one needs a reimport (make dbt reimport int_harvests+ <since>).
 
 select
-  h.* except (want_price, native_price),
+  h.network_id as network_id,
+  h.block_number as block_number,
+  h.txn_idx as txn_idx,
+  h.event_idx as event_idx,
+  h.txn_timestamp as txn_timestamp,
+  h.txn_hash as txn_hash,
+  h.vault_beefy_key as vault_beefy_key,
+  h.call_fee as call_fee,
+  h.gas_fee as gas_fee,
+  h.raw_gas_fee as raw_gas_fee,
+  h.platform_fee as platform_fee,
+  h.strategist_fee as strategist_fee,
+  h.harvest_amount as harvest_amount,
+  h.is_cowllector as is_cowllector,
+  h.strategist_address as strategist_address,
   if(want_corr.price_source != '', want_corr.price, h.want_price) as want_price,
   if(native_corr.price_source != '', native_corr.price, h.native_price) as native_price,
   want_corr.price_source != '' as is_want_price_corrected,

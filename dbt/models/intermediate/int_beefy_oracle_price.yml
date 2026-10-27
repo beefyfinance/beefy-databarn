@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: int_beefy_oracle_price
+    description: "Incremental USD price of Beefy price oracles (token symbols or LP oracle ids) from beefy_db prices on 5-minute slots, with int_price_oracle_corrections overriding known-bad slots. Oracle prices, not vault share prices (see int_product_share_price). ReplacingMergeTree(__rmt_version): read with FINAL and filter on beefy_price_oracle_key (duplicates per key exist until merge, so no uniqueness test)."
+    tests:
+      - keys_match:
+          name: int_beefy_oracle_price_in_price_oracles
+          config:
+            where: "date_time >= now('UTC') - interval 7 day"
+          arguments:
+            to: ref('stg_beefy_db__price_oracles')
+            columns: ["beefy_price_oracle_key"]
+            to_columns: ["oracle_id"]
+    columns:
+      - name: beefy_price_oracle_key
+        description: "Beefy price oracle key (stg_beefy_db__price_oracles.oracle_id): token symbol or LP oracle id"
+        data_type: String
+        tests:
+          - not_null
+      - name: date_time
+        description: "5-minute slot (toStartOfFiveMinutes of the beefy_db price time, or the correction slot)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: price
+        description: "USD price of the oracle"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: price_source
+        description: "beefy_db = raw beefy_db price; interpolated = from int_price_oracle_corrections"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['beefy_db', 'interpolated']
+      - name: __rmt_version
+        description: "ReplacingMergeTree version: price unix time for beefy_db rows, 1e10 + slot unix time for corrections, so corrections always win"
+        data_type: UInt64
+        tests:
+          - not_null

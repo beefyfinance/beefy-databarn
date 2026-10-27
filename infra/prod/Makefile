@@ -519,7 +519,7 @@ reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_beefy_oracle_price+ and int_product_stats__tvl_hourly+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
@@ -527,7 +527,9 @@ reimport-prices:
 	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
 	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
-	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
+	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
+	echo "=== dbt reimport int_beefy_oracle_price+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_beefy_oracle_price+' $$SINCE
 
 # Prevent make from treating command arguments as targets
 run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:

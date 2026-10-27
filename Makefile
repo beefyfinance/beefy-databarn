@@ -556,7 +556,7 @@ reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_beefy_oracle_price+ and int_product_stats__tvl_hourly+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
@@ -564,7 +564,9 @@ reimport-prices:
 	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
 	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
-	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE
+	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
+	echo "=== dbt reimport int_beefy_oracle_price+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_beefy_oracle_price+' $$SINCE
 
 # Catch-all target to prevent "No rule to make target" errors
 # This allows arguments to be passed to targets without make complaining

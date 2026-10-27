@@ -40,8 +40,9 @@ frxeth_price AS (
     toInt64(252) AS chain_id, -- fraxtal
     date_time,
     price
-  FROM {{ ref('int_price') }}
-  WHERE oracle_key = 'frxETH'
+  -- Corrected oracle prices; filtering on the primary key prefix keeps this to frxETH rows only.
+  FROM {{ ref('int_beefy_oracle_price') }} FINAL
+  WHERE beefy_price_oracle_key = 'frxETH'
 )
 
 SELECT

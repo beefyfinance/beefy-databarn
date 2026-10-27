@@ -1,14 +1,32 @@
 {{
   config(
-    materialized='table',
+    materialized='incremental',
     engine='MergeTree',
     tags=['intermediate', 'product_stats'],
+    unique_key=['chain_id', 'product_address', 'date_hour'],
     order_by=['date_hour', 'chain_id', 'product_address'],
     on_schema_change='append_new_columns',
+    incremental_strategy='delete+insert',
   )
 }}
 
+{% if is_incremental() %}
+  {% set threshold_sql %}
+    SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }}
+  {% endset %}
+  {% set threshold_result = run_query(threshold_sql) %}
+  {% if threshold_result and threshold_result.rows | length > 0 and threshold_result.rows[0][0] %}
+    {% set threshold = threshold_result.rows[0][0] | string %}
+  {% else %}
+    {% set threshold = '1900-01-01 00:00:00' %}
+  {% endif %}
+  {% set since = incremental_since_var() %}
+  {% if since is not none %}
+    {% set threshold = since %}
+  {% endif %}
+{% endif %}
 
+-- Incremental on date_hour (1-day lookback), like int_product_stats__tvl_hourly.
 SELECT
   p.chain_id,
   p.product_address,
@@ -41,4 +59,8 @@ WHERE
   and ab.reward_pool_apr between 0 and 1000000
   and ab.reward_pool_trading_apr between 0 and 1000000
   and ab.vault_apy between 0 and 1000000
+  {% if is_incremental() %}
+  and ab.date_time >= toDateTime('{{ threshold }}')
+  and ab.date_time < now() + INTERVAL 1 DAY
+  {% endif %}
 GROUP BY p.chain_id, p.product_address, toStartOfHour(ab.date_time)
