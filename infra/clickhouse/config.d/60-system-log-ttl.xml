@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- system.*_log tables never expire by default. Only applies when ClickHouse creates the table:
+     existing ones need ALTER TABLE system.<t> MODIFY TTL ... (or DROP TABLE + restart). -->
+<clickhouse>
+    <trace_log>
+        <ttl>event_date + INTERVAL 3 DAY DELETE</ttl>
+    </trace_log>
+    <text_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </text_log>
+    <query_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </query_log>
+    <part_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </part_log>
+    <metric_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </metric_log>
+    <asynchronous_metric_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </asynchronous_metric_log>
+</clickhouse>

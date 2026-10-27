@@ -381,6 +381,14 @@ clickhouse:
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status \
 			;; \
+		dev-usage) \
+			QUOTA_GB="$${DEV_DB_QUOTA_GB:-20}"; \
+			LIMIT=$$(($$QUOTA_GB * 1073741824)); \
+			$(DC) exec -T clickhouse clickhouse-client --query "SELECT database, formatReadableSize(sum(bytes_on_disk)) AS size, if(sum(bytes_on_disk) > $$LIMIT, 'OVER QUOTA', 'ok') AS status FROM system.parts WHERE active AND startsWith(database, 'dev_') GROUP BY database ORDER BY sum(bytes_on_disk) DESC FORMAT PrettyCompact"; \
+			OVER=$$($(DC) exec -T clickhouse clickhouse-client --query "SELECT count() FROM (SELECT database FROM system.parts WHERE active AND startsWith(database, 'dev_') GROUP BY database HAVING sum(bytes_on_disk) > $$LIMIT)"); \
+			if [ "$$OVER" != "0" ]; then echo "✗ $$OVER dev database(s) over the $$QUOTA_GB GiB quota"; exit 1; fi; \
+			echo "✓ all dev databases within the $$QUOTA_GB GiB quota" \
+			;; \
 		backup-list) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list \
 			;; \
@@ -407,6 +415,7 @@ clickhouse:
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
 			echo "  make [clickhouse|ch] backup [full|incremental]  One-shot backup to S3"; \
 			echo "  make [clickhouse|ch] backup-status    Show recent backups and S3 prefixes"; \
+			echo "  make [clickhouse|ch] dev-usage        Size of dev_* databases vs quota (DEV_DB_QUOTA_GB, default 20)"; \
 			echo "  make [clickhouse|ch] backup-list      List all backup files in S3 with sizes"; \
 			echo "  make [clickhouse|ch] backup-restart   Recreate backup sidecar (reload loop script/env)"; \
 			echo "  make [clickhouse|ch] version          Show server version"; \
@@ -414,7 +423,7 @@ clickhouse:
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|backup-restart|version|restore|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|dev-usage|backup-restart|version|restore|help]"; \
 			exit 1 \
 			;; \
 	esac

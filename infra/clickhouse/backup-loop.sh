@@ -11,7 +11,7 @@
 #   backup-loop.sh list             # every object in the bucket, with sizes
 set -euo pipefail
 
-BACKUP_DATABASES=(dlt envio zapalytics dev_fron dev_chebin)
+BACKUP_DATABASES=(dlt envio zapalytics)
 KEEP_FULLS="${CLICKHOUSE_BACKUP_KEEP_FULLS:-2}"
 KEEP_INCREMENTAL_DAYS="${CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS:-1}"
 FULL_HOUR="${CLICKHOUSE_BACKUP_FULL_HOUR:-0}" # UTC hour for the daily full

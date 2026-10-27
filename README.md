@@ -194,6 +194,7 @@ make infra ps         # Check service status
 make [clickhouse|ch] backup [full|incremental]  # One-shot backup to RustFS/S3
 make [clickhouse|ch] backup-status
 make [clickhouse|ch] backup-list
+make [clickhouse|ch] dev-usage        # dev_* database sizes vs 20 GiB quota (DEV_DB_QUOTA_GB to change; exits 1 if over)
 make [clickhouse|ch] backup-restart  # Recreate backup sidecar (reload loop script/env)
 make [clickhouse|ch] restore BACKUP=inc-YYYY-MM-DD-HH
 # Retention: 2 fulls (~100GB each) + today's hourly incrementals; override with CLICKHOUSE_BACKUP_KEEP_FULLS
