@@ -421,7 +421,6 @@ clickhouse:
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
 		;; \
-		;; \
 		dev-usage) \
 			QUOTA_GB="$${DEV_DB_QUOTA_GB:-20}"; \
 			LIMIT=$$(($$QUOTA_GB * 1073741824)); \
