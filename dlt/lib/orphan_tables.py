@@ -221,23 +221,36 @@ def _client(host: str, port: int, user: str, password: str, secure: bool = False
     return clickhouse_connect.get_client(host=host, port=port, username=user, password=password, secure=secure)
 
 
+_TABLES_WITH_PARTS_SQL = """
+    SELECT t.name, t.engine, coalesce(t.total_rows, 0), coalesce(t.total_bytes, 0),
+           coalesce(p.last_part_write, t.metadata_modification_time)
+    FROM system.tables AS t
+    LEFT JOIN (
+        SELECT table, max(modification_time) AS last_part_write
+        FROM system.parts
+        WHERE database = %(database)s AND active
+        GROUP BY table
+    ) AS p ON p.table = t.name
+    WHERE t.database = %(database)s AND NOT t.is_temporary
+    ORDER BY t.name
+"""
+_TABLES_SQL = """
+    SELECT name, engine, coalesce(total_rows, 0), coalesce(total_bytes, 0), metadata_modification_time
+    FROM system.tables
+    WHERE database = %(database)s AND NOT is_temporary
+    ORDER BY name
+"""
+
+
 def list_tables(client, database: str) -> list[TableInfo]:
-    result = client.query(
-        """
-        SELECT t.name, t.engine, coalesce(t.total_rows, 0), coalesce(t.total_bytes, 0),
-               coalesce(p.last_part_write, t.metadata_modification_time)
-        FROM system.tables AS t
-        LEFT JOIN (
-            SELECT table, max(modification_time) AS last_part_write
-            FROM system.parts
-            WHERE database = %(database)s AND active
-            GROUP BY table
-        ) AS p ON p.table = t.name
-        WHERE t.database = %(database)s AND NOT t.is_temporary
-        ORDER BY t.name
-        """,
-        parameters={"database": database},
-    )
+    """Last write comes from system.parts when the user may read it, else from table metadata."""
+    parameters = {"database": database}
+    try:
+        result = client.query(_TABLES_WITH_PARTS_SQL, parameters=parameters)
+    except Exception as exc:
+        if "ACCESS_DENIED" not in str(exc):
+            raise
+        result = client.query(_TABLES_SQL, parameters=parameters)
     return [
         TableInfo(database, str(name), str(engine), int(rows), int(size), _utc(last_write))
         for name, engine, rows, size, last_write in result.result_rows
