@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -40,6 +40,8 @@ help:
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
 	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
+	@echo "  make orphans             List ClickHouse tables no dbt model or dlt pipeline uses (read-only)"
+	@echo "  make orphans sql         Same, plus write DROP statements to dlt/orphan_tables_cleanup.sql (run by hand)"
 
 
 infra: ensure-dirs
@@ -530,6 +532,24 @@ reimport-prices:
 	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
 	echo "=== dbt reimport int_beefy_oracle_price+ since $$SINCE ===" && \
 	$(MAKE) dbt reimport 'int_beefy_oracle_price+' $$SINCE
+
+# Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.
+# Read-only: `sql` only writes a file of DROP statements, nothing is ever executed for you.
+# Runs in the dlt container (clickhouse-connect + dlt creds); the dbt manifest is copied
+# from the dbt container and dbt credentials are passed through from .env.
+orphans:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		""|list|sql) ;; \
+		*) echo "Usage: make orphans [list|sql]"; exit 1 ;; \
+	esac && \
+	echo "Refreshing dbt manifest..." && \
+	$(DC) exec -T dbt /app/run_dbt_with_lock.sh parse --quiet && \
+	$(DC) exec -T dbt cat /app/dbt/target/manifest.json > $(ROOT_DIR)/dlt/.dbt_manifest.json && \
+	set -a && . $(ROOT_DIR)/.env && set +a && \
+	OUT=""; [ "$$SUBCMD" = "sql" ] && OUT="--sql-out /app/dlt/orphan_tables_cleanup.sql"; \
+	$(DC) exec -T -e DBT_CLICKHOUSE_HOST="$${DBT_CLICKHOUSE_HOST:-clickhouse}" -e DBT_CLICKHOUSE_USER="$${DBT_CLICKHOUSE_USER:-dbt}" -e DBT_CLICKHOUSE_PASSWORD \
+		dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/orphan_tables.py --manifest /app/dlt/.dbt_manifest.json $$OUT
 
 # Prevent make from treating command arguments as targets
 run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:

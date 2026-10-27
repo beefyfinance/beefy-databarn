@@ -16,3 +16,4 @@ _local
 *.duckdb
 *.wal
 orphan_tables_cleanup.sql
+.dbt_manifest.json
