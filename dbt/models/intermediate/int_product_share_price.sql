@@ -46,7 +46,6 @@ select
   toStartOfFiveMinutes(moo.date_time) as date_time,
   cast({{ to_decimal('moo.price') }} as Decimal(76, 20)) as share_to_usd,
   cast('api' as String) as price_source,
-  cast({{ to_decimal('moo.price') }} as Nullable(Decimal(76, 20))) as api_share_usd,
   toUInt64(toUnixTimestamp(moo.date_time)) as __rmt_version
 from {{ ref('stg_beefy_api__mootokenprices') }} moo
 inner join {{ ref('int_chain_keys') }} c
@@ -69,6 +68,5 @@ select
   corr.date_time as date_time,
   corr.share_to_usd as share_to_usd,
   corr.price_source as price_source,
-  cast(NULL as Nullable(Decimal(76, 20))) as api_share_usd,
   toUInt64(10000000000) + toUInt64(toUnixTimestamp(corr.date_time)) as __rmt_version
 from {{ ref('int_mootoken_price_corrections') }} corr

@@ -14,12 +14,6 @@ models:
           arguments:
             to: ref('int_product_keys')
             columns: ["chain_id", "product_address"]
-      - dbt_utils.expression_is_true:
-          name: int_product_share_price_api_rows_match_snapshot
-          config:
-            where: "price_source = 'api'"
-          arguments:
-            expression: "share_to_usd = api_share_usd"
     columns:
       - name: chain_id
         description: "Chain ID where the product exists"
@@ -61,9 +55,6 @@ models:
           - accepted_values:
               arguments:
                 values: ['api', 'interpolated']
-      - name: api_share_usd
-        description: "Original moo-token snapshot price of the slot (PPFS-adjusted). NULL on correction rows."
-        data_type: Nullable(Decimal(76, 20))
       - name: __rmt_version
         description: "ReplacingMergeTree version: snapshot unix time for api rows, 1e10 + slot unix time for corrections, so corrections always win"
         data_type: UInt64
