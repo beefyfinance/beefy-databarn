@@ -51,11 +51,16 @@ def test_dbt_classification():
         table("old_mart", "analytics"),
         table("chain__dbt_backup", "analytics"),
         table("chain__dbt_tmp", "analytics", last_write=NOW - timedelta(minutes=5)),
+        table("chain__dbt_new_data_c0b04d53_a6d0_4047_9ee2_e0952f6bb1a3", "analytics", last_write=None),
         table(".inner_id.abc", "analytics"),
     ]
     orphans = classify_dbt_tables(tables, expected, NOW)
-    assert kinds(orphans) == {"old_mart": "removed-model", "chain__dbt_backup": "dbt-leftover"}
-    assert {o.table.name: o.confidence for o in orphans} == {"old_mart": "review", "chain__dbt_backup": "high"}
+    assert kinds(orphans) == {
+        "old_mart": "removed-model",
+        "chain__dbt_backup": "dbt-leftover",
+        "chain__dbt_new_data_c0b04d53_a6d0_4047_9ee2_e0952f6bb1a3": "dbt-leftover",
+    }
+    assert {o.table.name: o.confidence for o in orphans}["old_mart"] == "review"
 
 
 def test_dlt_classification():

@@ -19,7 +19,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Literal
 
-DBT_LEFTOVER_SUFFIXES = ("__dbt_tmp", "__dbt_backup", "__dbt_new_data")
+# dbt-clickhouse names scratch relations `<model>__dbt_tmp`, `__dbt_backup` and `__dbt_new_data_<uuid>`.
+DBT_LEFTOVER = re.compile(r"__dbt_(tmp|backup|new_data)(_[0-9a-f_]+)?$")
 # dlt/.migrations/*.sql and ensure_table_engines leave these behind.
 DLT_LEFTOVER_SUFFIXES = ("___engine_swap", "_old", "_new", "_bak", "_backup", "_tmp")
 DLT_INTERNAL_TABLES = frozenset({"_dlt_loads", "_dlt_version", "_dlt_pipeline_state", "dlt_sentinel_table"})
@@ -90,7 +91,7 @@ def classify_dbt_tables(tables: Iterable[TableInfo], expected: DbtExpectations, 
     for table in tables:
         if table.name.startswith(".") or (table.database, table.name) in expected.relations:
             continue
-        if table.name.endswith(DBT_LEFTOVER_SUFFIXES):
+        if DBT_LEFTOVER.search(table.name):
             if _written_within(table, now, IN_PROGRESS_WINDOW):
                 continue  # a dbt run may be using it right now
             orphans.append(Orphan(table, "dbt-leftover", "temporary/backup relation from an interrupted dbt run", "high"))
@@ -270,7 +271,7 @@ def last_dlt_load(client, table: TableInfo) -> datetime | None:
 
 
 def _utc(value: datetime | None) -> datetime | None:
-    if value is None:
+    if value is None or value.year < 2000:  # ClickHouse reports 1970-01-01 for "never"
         return None
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
