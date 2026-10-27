@@ -39,7 +39,7 @@ models:
         data_type: DateTime('UTC')
         tests:
           - not_null
-      - name: share_to_usd
+      - name: share_token_price_usd
         description: "USD value of one vault share. Latest moo snapshot of the slot, or the interpolated correction when one exists for the slot (after FINAL)."
         data_type: Decimal(76, 20)
         tests:

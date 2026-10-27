@@ -29,8 +29,8 @@ models:
           name: int_mootoken_price_corrections_price_between_anchors
           arguments:
             expression: |
-              share_to_usd >= least(from_price, to_price)
-              and share_to_usd <= greatest(from_price, to_price)
+              share_token_price_usd >= least(from_price, to_price)
+              and share_token_price_usd <= greatest(from_price, to_price)
     columns:
       - name: chain_id
         description: "Chain ID where the product exists"
@@ -52,7 +52,7 @@ models:
         data_type: DateTime('UTC')
         tests:
           - not_null
-      - name: share_to_usd
+      - name: share_token_price_usd
         description: "Interpolated USD value of one vault share"
         data_type: Decimal(76, 20)
         tests:

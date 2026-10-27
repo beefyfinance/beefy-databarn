@@ -38,7 +38,7 @@ models:
         data_type: DateTime('UTC')
         tests:
           - not_null
-      - name: share_to_usd
+      - name: share_token_price_usd
         description: "USD value of one vault share at the end of the hour"
         data_type: Decimal(76, 20)
         tests:

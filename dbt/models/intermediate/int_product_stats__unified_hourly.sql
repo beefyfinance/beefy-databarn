@@ -108,7 +108,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__tvl_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_tvl }}') and date_hour < now() + INTERVAL 1 DAY
@@ -161,7 +161,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__apy_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy }}') and date_hour < now() + INTERVAL 1 DAY
@@ -214,7 +214,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__apy_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_apy_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -267,7 +267,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__lps_breakdown_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_lps_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
@@ -320,7 +320,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__yield_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_yield }}') and date_hour < now() + INTERVAL 1 DAY
@@ -373,7 +373,7 @@ SELECT
   avg_native_price,
   harvest_txn_count,
   harvest_vault_count,
-  NULL AS share_to_usd
+  NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__harvest_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_harvest }}') and date_hour < now() + INTERVAL 1 DAY
@@ -426,7 +426,7 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  cast(share_to_usd as Nullable(Decimal(76, 20))) AS share_to_usd
+  cast(share_token_price_usd as Nullable(Decimal(76, 20))) AS share_token_price_usd
 FROM {{ ref('int_product_stats__share_price_hourly') }}
 {% if is_incremental() %}
 WHERE date_hour >= toDateTime('{{ threshold_share_price }}') and date_hour < now() + INTERVAL 1 DAY

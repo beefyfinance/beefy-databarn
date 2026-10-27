@@ -36,7 +36,7 @@ SELECT
   chain_id,
   product_address,
   toStartOfHour(date_time) as date_hour,
-  argMax(share_to_usd, date_time) as share_to_usd
+  argMax(share_token_price_usd, date_time) as share_token_price_usd
 FROM {{ ref('int_product_share_price') }} FINAL
 {% if is_incremental() %}
 WHERE

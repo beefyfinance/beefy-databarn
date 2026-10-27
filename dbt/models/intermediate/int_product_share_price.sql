@@ -45,7 +45,7 @@ select
   pk.product_address as product_address,
   pk.beefy_key as beefy_key,
   toStartOfFiveMinutes(moo.date_time) as date_time,
-  cast({{ to_decimal('moo.price') }} as Decimal(76, 20)) as share_to_usd,
+  cast({{ to_decimal('moo.price') }} as Decimal(76, 20)) as share_token_price_usd,
   cast('api' as String) as price_source,
   (toUInt64(toUnixTimestamp(now())) * 2 + 0) * 300
     + toUInt64(toUnixTimestamp(moo.date_time) - toUnixTimestamp(toStartOfFiveMinutes(moo.date_time))) as __rmt_version
@@ -68,7 +68,7 @@ select
   corr.product_address as product_address,
   corr.beefy_key as beefy_key,
   corr.date_time as date_time,
-  corr.share_to_usd as share_to_usd,
+  corr.share_token_price_usd as share_token_price_usd,
   corr.price_source as price_source,
   (toUInt64(toUnixTimestamp(now())) * 2 + 1) * 300 as __rmt_version
 from {{ ref('int_mootoken_price_corrections') }} corr

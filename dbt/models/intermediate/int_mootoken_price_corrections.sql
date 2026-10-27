@@ -159,7 +159,7 @@ select
       * (toUnixTimestamp(date_time) - toUnixTimestamp(from_time))
       / (toUnixTimestamp(to_time) - toUnixTimestamp(from_time))
     as Decimal(76, 20)
-  ) as share_to_usd,
+  ) as share_token_price_usd,
   cast('interpolated' as String) as price_source,
   cast(from_price as Decimal(76, 20)) as from_price,
   from_time,

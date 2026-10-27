@@ -286,7 +286,7 @@ models:
         description: "1 if product had at least one harvest in the hour; sum at chain level = vaults with harvests"
         data_type: Nullable(UInt8)
         codec: ZSTD(3)
-      - name: share_to_usd
+      - name: share_token_price_usd
         description: "USD value of one vault share at the end of the hour (moo-token price, PPFS-adjusted, corrections applied). Not the want token price."
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)

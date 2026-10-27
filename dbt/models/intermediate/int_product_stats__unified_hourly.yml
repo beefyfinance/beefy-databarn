@@ -259,7 +259,7 @@ models:
                 min_value: 0
                 max_value: 1000000000000
                 inclusive: true
-      - name: share_to_usd
+      - name: share_token_price_usd
         description: "USD value of one vault share at the end of the hour (source = 'share_price')"
         tests:
           - dbt_utils.accepted_range:
