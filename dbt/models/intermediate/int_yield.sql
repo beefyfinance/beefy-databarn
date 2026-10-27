@@ -34,7 +34,7 @@ SELECT
   h.harvest_amount as underlying_amount_compounded,
   h.want_price as underlying_token_price_usd,
   toDecimal256(h.harvest_amount * h.want_price, 20) as underlying_amount_compounded_usd
-FROM {{ ref('stg_beefy_db__harvests') }} h
+FROM {{ ref('int_harvests') }} h
 INNER JOIN {{ ref('int_product_keys') }} p
   ON h.network_id = p.chain_id
   AND h.vault_beefy_key = p.beefy_key
@@ -42,6 +42,9 @@ WHERE
   h.txn_timestamp IS NOT NULL
   AND toDate(h.txn_timestamp) > '1970-01-01'
   {% if is_incremental() %}
-  AND h.txn_timestamp >= toDateTime('{{ threshold }}')
-  AND h.txn_timestamp < now() + INTERVAL 1 DAY
+  AND (
+    (h.txn_timestamp >= toDateTime('{{ threshold }}') AND h.txn_timestamp < now() + INTERVAL 1 DAY)
+    -- corrected harvests are re-emitted every run so new price corrections reach older rows
+    OR h.is_want_price_corrected
+  )
   {% endif %}

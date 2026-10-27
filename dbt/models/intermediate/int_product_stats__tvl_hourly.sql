@@ -28,7 +28,8 @@
 
 -- Materialized intermediate: Hourly tvl aggregations
 -- Incremental on date_hour; only loads hours we don't already have (with 1-day lookback for late data).
--- Combines tvl staging data with product information and aggregates to hourly
+-- Combines tvl staging data with product information and aggregates to hourly, then applies
+-- int_product_tvl_corrections (beefy-db TVL is computed with its own, possibly mispriced, prices).
 
 WITH tvl_with_product AS (
   SELECT
@@ -49,10 +50,18 @@ WITH tvl_with_product AS (
     {% endif %}
 )
 
+-- Hourly rows from int_product_tvl_corrections (priority 1) override the raw hourly TVL (priority 0).
+-- All corrected rows are always re-emitted so incremental runs refresh them.
 SELECT
   chain_id,
   product_address,
-  toStartOfHour(date_time) as date_hour,
-  argMax(tvl_usd, date_time) as tvl_usd
-FROM tvl_with_product
-GROUP BY chain_id, product_address, toStartOfHour(date_time)
+  date_hour,
+  argMax(tvl_usd, (priority, date_time)) as tvl_usd
+FROM (
+  SELECT chain_id, product_address, toStartOfHour(date_time) as date_hour, date_time, tvl_usd, 0 as priority
+  FROM tvl_with_product
+  UNION ALL
+  SELECT chain_id, product_address, date_hour, date_hour as date_time, tvl_usd, 1 as priority
+  FROM {{ ref('int_product_tvl_corrections') }}
+)
+GROUP BY chain_id, product_address, date_hour

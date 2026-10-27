@@ -33,3 +33,6 @@ models:
         tests:
           - not_null
           - unique
+      - name: beefy_native_price_oracle_key
+        description: "Beefy oracle key (price_oracles.oracle_id) of the chain's native gas token, from beefy-ui chain config. Used to correct harvest native_price."
+        data_type: Nullable(String)

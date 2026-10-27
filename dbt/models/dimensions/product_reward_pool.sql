@@ -15,7 +15,7 @@ SELECT
   chain_dim.chain_id as chain_id,
   vaults.earn_contract_address as reward_pool_address,
   vaults.id as beefy_key,
-  coalesce(vaults.oracle_id, vaults.id) as beefy_price_oracle_key,
+  coalesce(vaults.oracle_id, vaults.id) as beefy_wants_price_oracle_key,
   vaults.name as display_name,
   vaults.platform_id as platform_id,
   toBool(ifNull(vaults.status = 'active', false)) as is_active,

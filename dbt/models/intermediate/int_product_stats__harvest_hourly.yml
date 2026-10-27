@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_product_stats__harvest_hourly
-    description: "Hourly harvest aggregations per product (fees, amounts, counts). Source: stg_beefy_db__harvests joined to int_product_keys. One row per (chain_id, product_address, date_hour)."
+    description: "Hourly harvest aggregations per product (fees, amounts, counts). Source: int_harvests (price-corrected stg_beefy_db__harvests) joined to int_product_keys. One row per (chain_id, product_address, date_hour)."
     tests:
       - keys_match:
           name: int_product_stats__harvest_hourly_in_int_product_keys

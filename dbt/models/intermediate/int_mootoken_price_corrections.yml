@@ -1,0 +1,91 @@
+version: 2
+
+models:
+  - name: int_mootoken_price_corrections
+    description: "Hardcoded vault share (moo token) price corrections, fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good price before and the first good price after a bad period; one row is generated per 5-minute slot strictly between them, linearly interpolated. Overrides int_product_share_price on the same 5-minute grid."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address", "date_time"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+              - date_time
+      - keys_match:
+          name: int_mootoken_price_corrections_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address", "beefy_key"]
+            to_where: "share_token_symbol is not null"
+      - dbt_utils.expression_is_true:
+          name: int_mootoken_price_corrections_strictly_between_anchors
+          arguments:
+            expression: "date_time > from_time and date_time < to_time"
+      - dbt_utils.expression_is_true:
+          name: int_mootoken_price_corrections_price_between_anchors
+          arguments:
+            expression: |
+              share_to_usd >= least(from_price, to_price)
+              and share_to_usd <= greatest(from_price, to_price)
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy vault/product identifier, hardcoded for review; keys_match checks it against (chain_id, product_address)"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product share-token contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: date_time
+        description: "5-minute slot (toStartOfFiveMinutes grid) strictly between from_time and to_time"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: share_to_usd
+        description: "Interpolated USD value of one vault share"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      - name: price_source
+        description: "Always interpolated"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['interpolated']
+      - name: from_price
+        description: "Hardcoded anchor: last good share price before the bad period"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: from_time
+        description: "Hardcoded anchor timestamp of from_price (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: to_price
+        description: "Hardcoded anchor: first good share price after the bad period"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: to_time
+        description: "Hardcoded anchor timestamp of to_price (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null

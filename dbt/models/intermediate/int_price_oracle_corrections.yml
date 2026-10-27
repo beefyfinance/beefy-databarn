@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: int_price_oracle_corrections
+    description: "Hardcoded Beefy API oracle price corrections (/prices, /lps), fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good price before and the first good price after a bad period; one row is generated per 5-minute slot strictly between them, linearly interpolated. Oracle prices (wants tokens, native gas tokens), not vault shares. Consumed by int_harvests and int_product_stats__lps_breakdown_hourly."
+    config:
+      meta:
+        primary_key: ["beefy_price_oracle_key", "date_time"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - beefy_price_oracle_key
+              - date_time
+      - keys_match:
+          name: int_price_oracle_corrections_in_price_oracles
+          arguments:
+            to: ref('stg_beefy_db__price_oracles')
+            columns: ["beefy_price_oracle_id", "beefy_price_oracle_key"]
+            to_columns: ["id", "oracle_id"]
+      - dbt_utils.expression_is_true:
+          name: int_price_oracle_corrections_strictly_between_anchors
+          arguments:
+            expression: "date_time > from_time and date_time < to_time"
+      - dbt_utils.expression_is_true:
+          name: int_price_oracle_corrections_price_between_anchors
+          arguments:
+            expression: |
+              price >= least(from_price, to_price)
+              and price <= greatest(from_price, to_price)
+    columns:
+      - name: beefy_price_oracle_id
+        description: "Numeric beefy-db price oracle id (stg_beefy_db__price_oracles.id), hardcoded for review; keys_match checks it against the oracle key"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_price_oracle_key
+        description: "Beefy API oracle key (stg_beefy_db__price_oracles.oracle_id): token symbol or LP vault id"
+        data_type: String
+        tests:
+          - not_null
+      - name: date_time
+        description: "5-minute slot (toStartOfFiveMinutes grid) strictly between from_time and to_time"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: price
+        description: "Interpolated USD price of the oracle"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: price_source
+        description: "Always interpolated"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['interpolated']
+      - name: from_price
+        description: "Hardcoded anchor: last good price before the bad period"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: from_time
+        description: "Hardcoded anchor timestamp of from_price (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: to_price
+        description: "Hardcoded anchor: first good price after the bad period"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: to_time
+        description: "Hardcoded anchor timestamp of to_price (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null

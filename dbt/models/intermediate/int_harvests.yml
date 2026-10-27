@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: int_harvests
+    description: "Harvest events from stg_beefy_db__harvests with want_price and native_price replaced by int_price_oracle_corrections inside known-bad windows (matched on the harvest's 5-minute slot). Applies the < $30M harvest USD sanity check on the corrected price. Read by int_yield, int_product_stats__harvest_hourly and the harvests mart."
+    tests:
+      # Corrections are unique per (oracle key, slot), so the joins must not fan out harvests
+      # (rows can only be dropped by the sanity cap).
+      - dbt_utils.fewer_rows_than:
+          name: int_harvests_no_fanout
+          arguments:
+            compare_model: ref('stg_beefy_db__harvests')
+      - dbt_utils.expression_is_true:
+          name: int_harvests_usd_below_sanity_cap
+          arguments:
+            expression: "harvest_amount * want_price < 30000000"
+    columns:
+      - name: network_id
+        description: "Network ID where the harvest occurred"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: txn_timestamp
+        description: "Harvest transaction timestamp"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: vault_beefy_key
+        description: "Beefy vault id of the harvested product"
+        data_type: String
+        tests:
+          - not_null
+      - name: want_price
+        description: "USD price of the beefy wants token at harvest time; from int_price_oracle_corrections when is_want_price_corrected"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: native_price
+        description: "USD price of the chain's native gas token at harvest time; from int_price_oracle_corrections when is_native_price_corrected"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: is_want_price_corrected
+        description: "True when want_price comes from int_price_oracle_corrections"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: is_native_price_corrected
+        description: "True when native_price comes from int_price_oracle_corrections"
+        data_type: Bool
+        tests:
+          - not_null

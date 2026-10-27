@@ -1,0 +1,119 @@
+{{
+  config(
+    materialized='table',
+    tags=['intermediate'],
+    engine='MergeTree()',
+    order_by=['chain_id', 'product_address', 'date_time'],
+  )
+}}
+
+-- Hardcoded vault share (moo token) price corrections. Fabricated from the `windows` below only:
+-- no source tables, so it is correct by construction.
+-- Grain is (chain_id, product_address, date_time), on the same 5-minute grid as
+-- int_product_share_price (beefy_api dlt snapshots run every 5 minutes, see infra/dlt/scheduler.py).
+--
+-- HOW TO EDIT: add a row to `windows` with the product (chain_id, beefy_key for review, product_address), the last good snapshot before the bad window
+-- (from_time, from_price) and the first good snapshot after it (to_time, to_price), both UTC.
+-- One row is generated per 5-minute slot strictly between from_time and to_time, linearly
+-- interpolated between the two anchors. The anchors themselves stay raw snapshots.
+--
+-- Removing a window does not delete corrected rows already written to int_product_share_price:
+-- reimport it (make dbt reimport int_product_share_price <since>) or full refresh.
+
+with windows as (
+  select
+    chain_id,
+    beefy_key,
+    product_address,
+    toDateTime(from_time, 'UTC') as from_time,
+    from_price,
+    toDateTime(to_time, 'UTC') as to_time,
+    to_price
+  from values(
+    'chain_id Int64, beefy_key String, product_address String, from_time String, from_price Float64, to_time String, to_price Float64',
+    -- PYPLc incident: aerodrome-cow-base-usdc-pyplc-vault (mooCowAerodromeBasePYPLc-USDC), bad 2026-10-22 21:30 to
+    -- 2026-10-23 07:30. Anchors from dbt/analyses/price_corrections_2026_10_23_0715.sql.
+    (8453, 'aerodrome-cow-base-usdc-pyplc-vault', '0x7818b61cfa261d9940173698a15fedb2dc238fab', '2026-10-22 21:15:00', 623215456389.8915, '2026-10-23 07:45:00', 634638097917.1578),
+    -- API-wide single-slot glitch at 2026-10-22 11:50 (moo prices outside 0.5x-2x of their median).
+    (143, 'curve-monad-aznd-ausd', '0x70ab0bc107a0a4341f004fe22ccb94a752fd983b', '2026-10-22 11:45:00', 0.19720173353262446, '2026-10-22 11:55:00', 0.1972017456749479),
+    (10, 'curve-op-f-seth', '0x92651e1bbfe0f8423119afc4b0610c747fa125a1', '2026-10-22 11:45:00', 564.6291826673321, '2026-10-22 11:55:00', 564.6291826673321),
+    (42161, 'curve-arb-crvusd-mim', '0x5abaa1fe55c8c3fc55f3f7c814bc19e423022764', '2026-10-22 11:45:00', 0.04461664560194429, '2026-10-22 11:55:00', 0.04461666645898418),
+    (42161, 'pancake-cow-arb-arb-usdc-vault', '0x76126c8da90bac6a9ebb7b6dd0902d3e935449d8', '2026-10-22 11:45:00', 124890201029.62497, '2026-10-22 11:55:00', 124846756510.19537),
+    (42161, 'mim-arb-usdc', '0x88cd2e60a549525e13be59daed9e2f8ebb74174a', '2026-10-22 11:45:00', 0.09928623801784203, '2026-10-22 11:55:00', 0.09928623801784203),
+    (42161, 'mim-arb-usdt', '0x2651d82bf8cd7b2eb021d97a34f059b47ba9a272', '2026-10-22 11:45:00', 0.10026431849811898, '2026-10-22 11:55:00', 0.10026431849811898),
+    (1, 'convex-aleth-frxeth', '0x26f44884d9744c0edab6283930df325c200020a3', '2026-10-22 11:45:00', 3358.640462915408, '2026-10-22 11:55:00', 3355.962389207879),
+    (8453, 'baseswap-cow-usdz-usdc-vault', '0xa9e9ff6d6cd31f76e85c685364be77a33bb7a94e', '2026-10-22 11:45:00', 860229802385.743, '2026-10-22 11:55:00', 860212205765.9017),
+    (59144, 'lynex-ichi-stone-lynx', '0x5ab215b3c42f97165ab43e7fa7609cc8f8d68817', '2026-10-22 11:45:00', 776.076478444379, '2026-10-22 11:55:00', 775.5975048200467),
+    (143, 'curve-monad-cbbtc', '0xda1da785ab148d544a6ad93e810b5eabf718d204', '2026-10-22 11:45:00', 83213.17209895475, '2026-10-22 11:55:00', 83129.49803839033),
+    (143, 'curve-monad-mubond-ausd', '0x2aee91c4b3454a0e90f12a62badce251e6e7c2ec', '2026-10-22 11:45:00', 0.39015480221441534, '2026-10-22 11:55:00', 0.39015870671033187),
+    (10, 'curve-op-crvusd-susd', '0x8cff638fcba43ce672b7c7ef1735d991ea473db3', '2026-10-22 11:45:00', 0.016242873504873103, '2026-10-22 11:55:00', 0.016242959913961037),
+    (8453, 'aerodrome-cow-base-weth-toshi-vault', '0x18d978b5dfd02c80a918c96e917f51273928ca36', '2026-10-22 11:45:00', 0.00019093765963548162, '2026-10-22 11:55:00', 0.00019163378873905722),
+    (8453, 'aerodrome-cow-usdz-weth-vault', '0xe025c78f41b43f24e641ddff6e2529d6332d3113', '2026-10-22 11:45:00', 2920.7287670173296, '2026-10-22 11:55:00', 2920.6924454977),
+    (252, 'curve-fraxtal-fxs-cvxfxs', '0xda86d4168e63111055b6ffef0aba1ca5a9ad98b1', '2026-10-22 11:45:00', 0.17455609215155315, '2026-10-22 11:55:00', 0.17455609215155315),
+    (1, 'stakedao-susd-susde', '0x0f59726bc1101a18cb332e176f4b0674d65ff453', '2026-10-22 11:45:00', 0.011302595591638372, '2026-10-22 11:55:00', 0.01130260967524487),
+    (1, 'curve-susd-susde', '0x856c718ac2fa2e23e99e878ea1e034194cd2bae2', '2026-10-22 11:45:00', 0.011454632341125249, '2026-10-22 11:55:00', 0.011454646614177236),
+    (10, 'curve-op-f-mim', '0x5990002594b13e174885ba4d4ec15b8a8a4485bb', '2026-10-22 11:45:00', 0.05707177126429468, '2026-10-22 11:55:00', 0.05707177553783975),
+    (1, 'stakedao-ynethx-weth', '0xc24391ab15d086e49ac81a5cd995ac9f16fcd78d', '2026-10-22 11:45:00', 2142.616634169814, '2026-10-22 11:55:00', 2142.616634169814),
+    (42161, 'spell-mim-crv', '0xda2307a45d298e855415675bf388e2bd64351d5b', '2026-10-22 11:45:00', 0.06121899691887667, '2026-10-22 11:55:00', 0.06121916816820331),
+    (1, 'stakedao-mim-2pool', '0xf15e182a37a8be577ee7840df30cca16184627f4', '2026-10-22 11:45:00', 0.04340740221983021, '2026-10-22 11:55:00', 0.04340740219892493),
+    (143, 'curve-monad-mon-lsts', '0x189518d8130060c75072c954caf962d12eea19f8', '2026-10-22 11:45:00', 0.4433827940303511, '2026-10-22 11:55:00', 0.4429199232183041),
+    (1, 'convex-cvxcrv', '0x5bcd31a28d77a1a5ef5e0146ab91e6f43d7100b7', '2026-10-22 11:45:00', 0.29177060146310857, '2026-10-22 11:55:00', 0.2930420929745241),
+    (1, 'convex-mim', '0xd5bad7c89028b3f7094e40dcce83d4e6b3fd9aa4', '2026-10-22 11:45:00', 0.06737740627760554, '2026-10-22 11:55:00', 0.0673780426368527),
+    (1, 'stakedao-frxusd-mubond', '0xc2578655ae7397c7efc4bc8e0b876c08275694d3', '2026-10-22 11:45:00', 0.9230816547992151, '2026-10-22 11:55:00', 0.9230907170676782),
+    (1, 'stakedao-crv-sdcrv', '0xdf8ba5860deed6308463501e63fbb8659dc82f4c', '2026-10-22 11:45:00', 0.2648093312244549, '2026-10-22 11:55:00', 0.26644741982074077),
+    (8453, 'aero-cow-usdz-usdc-vault', '0xff6630c8032ad9605e535b0f2099e07f9d777ec8', '2026-10-22 11:45:00', 787489170142.3973, '2026-10-22 11:55:00', 787473060020.7124),
+    (8453, 'aerodrome-cow-base-cbbtc-lbtc-vault', '0x06f315940905b0dc700251b0fd92787e3cccfee4', '2026-10-22 11:45:00', 878647895372815, '2026-10-22 11:55:00', 877533079488610),
+    (42161, 'ramses-zero-weth-vault', '0xda42da88ecda377e3ba4930a393be4043ec45c34', '2026-10-22 11:45:00', 1294.1972187126821, '2026-10-22 11:55:00', 1287.5858884592774),
+    (42161, 'curve-arb-tricrvarb', '0xe47ccbd0f9e80ed02ef68f35ea5074b7165c68ed', '2026-10-22 11:45:00', 1.9409547457045753, '2026-10-22 11:55:00', 1.943406812819431),
+    (1, 'stakedao-mim', '0x526193e6e5ad5c5bc6410318323fe2fecbcf6ef9', '2026-10-22 11:45:00', 0.052052852931711455, '2026-10-22 11:55:00', 0.05205285253307542),
+    (146, 'swapx-ichi-ws-sts', '0x4d95b4b19cddea709798c78539e2f1dd1fcc366b', '2026-10-22 11:45:00', 0.00005485278476962109, '2026-10-22 11:55:00', 0.00005484862722368375),
+    (1, 'stakedao-frxusd-aznd', '0xb1dfa5239a3619cfde62e4a0053b81080dfc63e2', '2026-10-22 11:45:00', 1.3252818697332933, '2026-10-22 11:55:00', 1.3252818697332933),
+    (143, 'curve-monad-bitcoin', '0x2b59b672569a6bb4d0058b569a13af87c6bb9a3b', '2026-10-22 11:45:00', 102258.80089596448, '2026-10-22 11:55:00', 102136.15737099476),
+    (146, 'swapx-ichi-ws-sts-sts', '0x5555636503ae6ede5d0109c5627b8f4b1250b096', '2026-10-22 11:45:00', 0.0000560794703363043, '2026-10-22 11:55:00', 0.00005607511610608224),
+    (8453, 'aerodrome-cow-base-msusd-mseth-v2-vault', '0x5bf3101a7f695c1c4a28246bafb2e717a11806f4', '2026-10-22 11:45:00', 4838.530451345133, '2026-10-22 11:55:00', 4837.9385700893345),
+    (42161, 'pancake-cow-arb-rseth-weth-vault', '0x70a9dc4c4c4ea1a621c174e3f438582fa7c99bfa', '2026-10-22 11:45:00', 2775.448071316469, '2026-10-22 11:55:00', 2774.5824841877425),
+    (42161, 'ramses-cl-arb-usdc-vault', '0x31d102b2c131acd87c093678285e569fc4dddfef', '2026-10-22 11:45:00', 167243901542.697, '2026-10-22 11:55:00', 167166195069.86972),
+    -- aerodrome-cow-base-up-cbbtc-vault-v2: spike at 2026-10-23 20:25 (anchors are the nearest good slots, 15 min each side).
+    (8453, 'aerodrome-cow-base-up-cbbtc-vault-v2', '0xe3e988a0c9220ce4580064c8a9d32ef060cc7749', '2026-10-23 20:10:00', 1197354024104330.2, '2026-10-23 20:40:00', 1151919298696242.2)
+  )
+),
+
+points as (
+  select
+    chain_id,
+    beefy_key,
+    product_address,
+    from_time,
+    from_price,
+    to_time,
+    to_price,
+    toDateTime(
+      arrayJoin(
+        range(
+          toUInt32(toUnixTimestamp(toStartOfFiveMinutes(from_time)) + 300),
+          toUInt32(toUnixTimestamp(toStartOfFiveMinutes(to_time))),
+          300
+        )
+      ),
+      'UTC'
+    ) as date_time
+  from windows
+)
+
+select
+  chain_id,
+  beefy_key,
+  product_address,
+  date_time,
+  cast(
+    from_price + (to_price - from_price)
+      * (toUnixTimestamp(date_time) - toUnixTimestamp(from_time))
+      / (toUnixTimestamp(to_time) - toUnixTimestamp(from_time))
+    as Decimal(76, 20)
+  ) as share_to_usd,
+  cast('interpolated' as String) as price_source,
+  cast(from_price as Decimal(76, 20)) as from_price,
+  from_time,
+  cast(to_price as Decimal(76, 20)) as to_price,
+  to_time
+from points

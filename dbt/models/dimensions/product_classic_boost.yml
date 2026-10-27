@@ -53,8 +53,8 @@ models:
         data_type: String
         tests:
           - not_null
-      - name: beefy_price_oracle_key
-        description: "Oracle ID used for price lookups (inherited from the underlying classic vault, defaults to beefy_key if null)"
+      - name: beefy_wants_price_oracle_key
+        description: "Beefy API oracleId of the beefy wants token of the staked classic vault, not the boost receipt or vault share (defaults to boost id if null)"
         data_type: String
         tests:
           - not_null

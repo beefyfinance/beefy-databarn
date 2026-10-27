@@ -23,7 +23,16 @@ services:
     networks:
       - frontend_network
     labels:
-      - "traefik.enable=false"
+      # Global guard against CVE-2026-111497 (HTTP2Shell, Brotli decoder RCE): no backend needs
+      # Brotli-encoded request bodies, and ClickHouse bundles an unpatched Brotli 1.2.0 decoder.
+      # Highest-priority catch-all router on any host; noop@internal answers without reaching a backend.
+      # Remove once ClickHouse ships Brotli >= 1.2.1 and CLICKHOUSE_VERSION is bumped.
+      - "traefik.enable=true"
+      - "traefik.http.routers.block-brotli-requests.rule=HeaderRegexp(`Content-Encoding`, `(?i)(^|[\\s,])br([\\s,;]|$$)`)"
+      - "traefik.http.routers.block-brotli-requests.priority=2147483646"
+      - "traefik.http.routers.block-brotli-requests.entrypoints=websecure"
+      - "traefik.http.routers.block-brotli-requests.tls=true"
+      - "traefik.http.routers.block-brotli-requests.service=noop@internal"
     healthcheck:
       test: ['CMD', 'traefik', 'healthcheck', '--ping']
     logging:

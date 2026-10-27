@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: int_product_tvl_corrections
+    description: "Hardcoded product TVL (USD) corrections for beefy_db.tvls, fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good hourly TVL before and the first good one after a bad period; one row is generated per hour strictly between them, linearly interpolated. Overrides int_product_stats__tvl_hourly on the same hourly grain."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address", "date_hour"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+              - date_hour
+      - keys_match:
+          name: int_product_tvl_corrections_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address", "beefy_key"]
+      - dbt_utils.expression_is_true:
+          name: int_product_tvl_corrections_strictly_between_anchors
+          arguments:
+            expression: "date_hour > from_hour and date_hour < to_hour"
+      - dbt_utils.expression_is_true:
+          name: int_product_tvl_corrections_tvl_between_anchors
+          arguments:
+            expression: |
+              tvl_usd >= least(from_tvl_usd, to_tvl_usd) - 1e-6
+              and tvl_usd <= greatest(from_tvl_usd, to_tvl_usd) + 1e-6
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy vault/product identifier, hardcoded for review; keys_match checks it against (chain_id, product_address)"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: date_hour
+        description: "Hour start strictly between from_hour and to_hour"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: tvl_usd
+        description: "Interpolated product TVL in USD"
+        data_type: Float64
+        tests:
+          - not_null
+      - name: tvl_source
+        description: "Always interpolated"
+        data_type: String
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['interpolated']
+      - name: from_tvl_usd
+        description: "Hardcoded anchor: last good hourly TVL before the bad period"
+        data_type: Float64
+      - name: from_hour
+        description: "Hardcoded anchor hour of from_tvl_usd (UTC)"
+        data_type: DateTime('UTC')
+      - name: to_tvl_usd
+        description: "Hardcoded anchor: first good hourly TVL after the bad period"
+        data_type: Float64
+      - name: to_hour
+        description: "Hardcoded anchor hour of to_tvl_usd (UTC)"
+        data_type: DateTime('UTC')

@@ -37,11 +37,7 @@ WHERE
   AND t.txn_timestamp IS NOT NULL
   AND t.harvest_amount > 0
   AND t.want_price > 0
-  -- price is off for some harvests in the feed
-  -- biggest real harvest we saw was this ($9M)
-  -- https://etherscan.io/tx/0x31b8083e467ed217523655f9b26b71f154fd1358e633b275011123c268a88901
-  -- next biggest harvest is bugged and shows as $32M
-  AND toDecimal256(t.harvest_amount * t.want_price, 20) < 30_000_000.00
+  -- The < $30M harvest USD sanity check lives in int_harvests, applied after price corrections.
   AND (t.network_id, t.txn_hash) NOT IN (
     -- armads: "this one doesnt even have any large transfers in the tx 😅, same for the other avax transactions"
     (43114 /* avax */, '0xfd904cb8742ea0caa10bc8a1475f487a2af885938997ff00dcbc195533961162'),

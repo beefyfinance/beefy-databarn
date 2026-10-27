@@ -12,7 +12,7 @@ select
   chain_dim.chain_id as chain_id,
   boost.boost_contract_address as boost_address,
   boost.id as beefy_key,
-  coalesce(classic_vault.beefy_price_oracle_key, boost.id) as beefy_price_oracle_key,
+  coalesce(classic_vault.beefy_wants_price_oracle_key, boost.id) as beefy_wants_price_oracle_key,
   boost.id as display_name,
   toBool(ifNull(boost.status = 'active', false)) as is_active,
   {{ to_representation_evm_address('boost.underlying_token_address') }} as underlying_token_representation_address,
