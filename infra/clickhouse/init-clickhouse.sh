@@ -174,6 +174,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON dbt.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt_test__audit.*        FROM dbt;
+    REVOKE ALL PRIVILEGES ON dev_*.*                  FROM dbt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dbt;
     GRANT ${READ_PERM}                ON system.parts               TO dbt;
     GRANT ${READ_PERM}                ON dlt.*                      TO dbt;
@@ -182,6 +183,7 @@ clickhouse-client \
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM}, CREATE DATABASE ON dbt_test__audit.* TO dbt;
+    GRANT SHOW                        ON dev_*.*                    TO dbt; -- daily dev DB size alert reads system.parts
 
     -- grafana: R on warehouse + project DBs
     REVOKE ALL PRIVILEGES ON dlt.*           FROM grafana;
@@ -320,7 +322,7 @@ clickhouse-client \
             load_balancing = 'random'
         TO zapalytics;
 
-    -- Human / Play users (create-user.sql). Do not DROP and do not `TO envio`
+    -- Human / Play users (create-user.sql). Do not DROP and do not use "TO envio"
     -- (that would unassign existing people). Limits only; assignments stay.
     CREATE SETTINGS PROFILE IF NOT EXISTS external_profile;
     ALTER SETTINGS PROFILE external_profile
@@ -407,6 +409,15 @@ clickhouse-client \
         FOR INTERVAL 1 DAY MAX
             written_bytes  = ${ZAPALYTICS_QUOTA_WRITTEN_BYTES_PER_DAY:-1073741824}
         TO zapalytics;
+
+    -- Developer sandboxes (dev_<user>): daily write cap, shared via role.
+    -- create-dev-db.sql does GRANT dev_role TO <user>. Caps growth rate, not stored size
+    -- (ClickHouse has no per-database disk quota; see make clickhouse dev-usage).
+    CREATE ROLE IF NOT EXISTS dev_role;
+    CREATE QUOTA OR REPLACE dev_quota
+        FOR INTERVAL 1 DAY MAX
+            written_bytes = ${DEV_QUOTA_WRITTEN_BYTES_PER_DAY:-1073741824}
+        TO dev_role;
 SQL
 
 echo "✓ Databases analytics, dbt, dbt_test__audit, dlt, envio & zapalytics initialized"

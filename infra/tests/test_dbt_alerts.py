@@ -161,3 +161,26 @@ def test_alert_run_failed_sends_database_error(dbt_alerts, tmp_path, monkeypatch
         )
     ]
     assert "Not enough privileges" in sent[0][2]
+
+
+def test_alert_dev_db_sizes_lists_each_database(dbt_alerts, tmp_path, monkeypatch):
+    monkeypatch.setattr(dbt_alerts, "ALERT_STATE_PATH", tmp_path / "state.json")
+    sent: list[tuple] = []
+    monkeypatch.setattr(
+        dbt_alerts,
+        "notify_once_per_day",
+        lambda key, title, description, state_path, **kwargs: sent.append(
+            (key, title, description)
+        )
+        or True,
+    )
+
+    dbt_alerts.alert_dev_db_sizes([("dev_fron", 39.94), ("dev_other", 21.0)], 20)
+
+    assert sent == [
+        (
+            "dev_db_size",
+            "Dev databases over 20 GB (prod)",
+            "• `dev_fron`: 39.9 GB\n• `dev_other`: 21.0 GB",
+        )
+    ]

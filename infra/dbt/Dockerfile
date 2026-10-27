@@ -34,6 +34,7 @@ RUN mkdir -p /app/dbt/logs
 COPY infra/discord_webhook.py /app/infra/dbt/discord_webhook.py
 COPY infra/dbt/alerts.py /app/infra/dbt/alerts.py
 COPY infra/dbt/run_tests.py /app/infra/dbt/run_tests.py
+COPY infra/dbt/check_dev_db_sizes.py /app/infra/dbt/check_dev_db_sizes.py
 COPY infra/dbt/scheduler.py /app/infra/dbt/scheduler.py
 COPY infra/dbt/run_dbt_with_lock.sh /app/run_dbt_with_lock.sh
 COPY infra/dbt/run_dbt_batched.py /app/infra/dbt/run_dbt_batched.py

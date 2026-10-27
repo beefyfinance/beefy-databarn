@@ -131,3 +131,20 @@ def alert_test_exception(exc: BaseException) -> None:
         "dbt test lock/infra error (prod)",
         f"dbt test raised {type(exc).__name__}: {exc}",
     )
+
+
+def alert_dev_db_sizes(oversized: list[tuple[str, float]], limit_gb: float) -> None:
+    lines = [f"• {as_inline_code(db)}: {size_gb:.1f} GB" for db, size_gb in oversized]
+    _alert(
+        "dev_db_size",
+        f"Dev databases over {limit_gb:g} GB (prod)",
+        "\n".join(lines),
+    )
+
+
+def alert_dev_db_size_exception(exc: BaseException) -> None:
+    _alert(
+        "dev_db_size_check",
+        "Dev database size check failed (prod)",
+        f"{type(exc).__name__}: {exc}",
+    )

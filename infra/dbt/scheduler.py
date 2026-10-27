@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scheduler for dbt models using APScheduler.
-Runs dbt models every 30 minutes, tests once per day, and regenerates docs daily (tests live in the catalog).
+Runs dbt models every 30 minutes, tests once per day, checks dev database sizes daily, and regenerates docs daily (tests live in the catalog).
 """
 import logging
 import subprocess
@@ -11,6 +11,7 @@ import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 import alerts
+from check_dev_db_sizes import check_dev_db_sizes
 from run_tests import run_dbt_tests
 
 # Configure logging
@@ -100,6 +101,16 @@ if __name__ == "__main__":
         trigger=CronTrigger(hour=6, minute=15),
         id="dbt_test",
         name="dbt Test",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Alert when a dev_* database grows past DEV_DB_MAX_SIZE_GB
+    scheduler.add_job(
+        check_dev_db_sizes,
+        trigger=CronTrigger(hour=7, minute=0),
+        id="dev_db_sizes",
+        name="Dev DB sizes",
         max_instances=1,
         coalesce=True,
     )

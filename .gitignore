@@ -16,6 +16,7 @@ ENV/
 # dbt
 dbt/.venv
 dbt/target/
+dbt/dist/
 dbt/dbt_packages/
 dbt/logs/
 dbt/.dbt/
