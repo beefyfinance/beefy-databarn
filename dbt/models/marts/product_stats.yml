@@ -8,6 +8,10 @@ models:
         enforced: true
       meta:
         primary_key: ["chain_id", "product_address", "date_hour"]
+        # make dbt reimport/refresh run this model one month at a time (a single run
+        # over months of unified_hourly FINAL needs ~30 GiB); see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2021-07-31"
     tests:
       - relationships_multi_key:
           name: relationships_product_stats_product

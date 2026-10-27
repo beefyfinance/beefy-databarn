@@ -24,6 +24,7 @@
   {% set max_date = '2021-07-31 19:30:00' %}
 {% endif %}
 {% set since = incremental_since_var() %}
+{% set until = incremental_until_var() %}
 
 SELECT
   hs.chain_id as chain_id,
@@ -82,10 +83,11 @@ INNER JOIN {{ ref('product') }} p
   ON hs.chain_id = p.chain_id
   AND hs.product_address = p.product_address
 {% if is_incremental() %}
+  WHERE (
   {% if since is not none %}
-  WHERE hs.date_hour >= toDateTime('{{ since }}')
+  hs.date_hour >= toDateTime('{{ since }}')
   {% else %}
-  WHERE hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
+  hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
   {% endif %}
      -- Re-load keys that already violate uniqueness in the test window.
      -- delete+insert only covers the 1-day lookback, so a one-off join
@@ -97,6 +99,14 @@ INNER JOIN {{ ref('product') }} p
        GROUP BY date_hour, chain_id, product_address
        HAVING count() > 1
      )
+  )
+  {% if until is not none %}
+  -- Batched reimport (meta.batch): cap the window so one run never reads all of unified_hourly.
+  AND hs.date_hour < toDateTime('{{ until }}')
+  {% endif %}
+{% elif since is not none and until is not none %}
+-- First batch of a batched full refresh: only that window.
+WHERE hs.date_hour >= toDateTime('{{ since }}') AND hs.date_hour < toDateTime('{{ until }}')
 {% endif %}
 -- Grain is (chain_id, product_address, date_hour). CoalescingMergeTree FINAL
 -- should already be unique; keep one row if a join ever fans out.

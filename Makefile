@@ -116,10 +116,10 @@ dbt:
 			MODEL="$(word 3,$(MAKECMDGOALS))" && \
 			if [ -n "$$MODEL" ]; then \
 				echo "Refreshing dbt model: $$MODEL..."; \
-				$(UV) dbt run --select $$MODEL --full-refresh --show-all-deprecations; \
+				$(UV) python $(ROOT_DIR)/infra/dbt/run_dbt_batched.py refresh "$$MODEL"; \
 			else \
 				echo "Refreshing all dbt models (full-refresh)..."; \
-				$(UV) dbt run --full-refresh --show-all-deprecations; \
+				$(UV) python $(ROOT_DIR)/infra/dbt/run_dbt_batched.py refresh beefy_databarn; \
 			fi; \
 			echo "dbt refresh completed successfully"; \
 			;; \
@@ -128,7 +128,7 @@ dbt:
 			SINCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$MODEL" ] && [ -n "$$SINCE" ]; then \
 				echo "Reimporting dbt model: $$MODEL since $$SINCE..."; \
-				$(UV) dbt run --select $$MODEL --vars '{"incremental_since": "'"$$SINCE"'"}' --show-all-deprecations; \
+				$(UV) python $(ROOT_DIR)/infra/dbt/run_dbt_batched.py reimport "$$MODEL" "$$SINCE"; \
 			else \
 				echo "Usage: make dbt reimport <model> <since>"; \
 				echo "  since: YYYY-MM-DD; delete+insert from that timestamp (not a full refresh)"; \

@@ -36,6 +36,7 @@ COPY infra/dbt/alerts.py /app/infra/dbt/alerts.py
 COPY infra/dbt/run_tests.py /app/infra/dbt/run_tests.py
 COPY infra/dbt/scheduler.py /app/infra/dbt/scheduler.py
 COPY infra/dbt/run_dbt_with_lock.sh /app/run_dbt_with_lock.sh
+COPY infra/dbt/run_dbt_batched.py /app/infra/dbt/run_dbt_batched.py
 COPY infra/dbt/publish_docs.sh /app/publish_docs.sh
 RUN chmod +x /app/infra/dbt/scheduler.py /app/run_dbt_with_lock.sh /app/publish_docs.sh
 

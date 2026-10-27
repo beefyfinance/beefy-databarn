@@ -187,10 +187,10 @@ dbt:
 			MODEL="$(word 3,$(MAKECMDGOALS))" && \
 			if [ -n "$$MODEL" ]; then \
 				echo "Refreshing dbt model: $$MODEL..."; \
-				$(DC) exec dbt /app/run_dbt_with_lock.sh run --full-refresh --select $$MODEL; \
+				$(DC) exec dbt /app/run_dbt_with_lock.sh batched refresh "$$MODEL"; \
 			else \
 				echo "Refreshing all dbt models (full-refresh)..."; \
-				$(DC) exec dbt /app/run_dbt_with_lock.sh run --full-refresh; \
+				$(DC) exec dbt /app/run_dbt_with_lock.sh batched refresh beefy_databarn; \
 			fi && \
 			echo "dbt refresh completed successfully"; \
 		;; \
@@ -199,10 +199,11 @@ dbt:
 			SINCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$MODEL" ] && [ -n "$$SINCE" ]; then \
 				echo "Reimporting dbt model: $$MODEL since $$SINCE..."; \
-				$(DC) exec dbt /app/run_dbt_with_lock.sh run --select $$MODEL --vars '{"incremental_since": "'"$$SINCE"'"}'; \
+				$(DC) exec dbt /app/run_dbt_with_lock.sh batched reimport "$$MODEL" "$$SINCE"; \
 			else \
 				echo "Usage: make dbt reimport <model> <since>"; \
 				echo "  since: YYYY-MM-DD; delete+insert from that timestamp (not a full refresh)"; \
+				echo "  models with meta.batch = month run one month at a time (infra/dbt/run_dbt_batched.py)"; \
 				exit 1; \
 			fi && \
 			echo "dbt reimport completed successfully"; \
