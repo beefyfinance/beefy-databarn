@@ -1,3 +1,4 @@
+-- depends_on: {{ ref('int_mootoken_price_corrections') }}
 {{
   config(
     materialized='incremental',
