@@ -2,12 +2,11 @@
   config(
     materialized='incremental',
     tags=['intermediate'],
-    unique_key=['chain_id', 'product_address', 'date_time'],
     order_by=['chain_id', 'product_address', 'date_time'],
     engine='ReplacingMergeTree(__rmt_version)',
     partition_by='toYYYYMM(date_time)',
     on_schema_change='append_new_columns',
-    incremental_strategy='delete+insert',
+    incremental_strategy='append',
   )
 }}
 
@@ -33,9 +32,11 @@
 -- Grain is a 5-minute slot: beefy_api dlt snapshots run every 5 minutes (infra/dlt/scheduler.py)
 -- and are bucketed with toStartOfFiveMinutes.
 -- Raw snapshots and int_mootoken_price_corrections rows are a plain union all. ReplacingMergeTree
--- keeps the highest __rmt_version per (chain_id, product_address, date_time): corrections always win,
--- otherwise the latest snapshot of the slot. Read with FINAL.
--- delete+insert still clears keys in the batch, so a reimport also drops corrections whose window was removed.
+-- keeps the highest __rmt_version per (chain_id, product_address, date_time). Read with FINAL.
+-- Append only (no delete step): __rmt_version = (run time * 2 + is_correction) * 300 + seconds into the slot,
+-- so the latest run wins; within a run corrections beat snapshots and the latest snapshot of the slot wins.
+-- After removing a window, make dbt reimport int_product_share_price+ <since> re-inserts the raw snapshots
+-- with a newer version.
 -- All corrected rows are always re-emitted. Incremental runs load new snapshots with a 1-day lookback.
 -- Boost receipts are not in /mootokenprices and are omitted.
 
@@ -46,7 +47,8 @@ select
   toStartOfFiveMinutes(moo.date_time) as date_time,
   cast({{ to_decimal('moo.price') }} as Decimal(76, 20)) as share_to_usd,
   cast('api' as String) as price_source,
-  toUInt64(toUnixTimestamp(moo.date_time)) as __rmt_version
+  (toUInt64(toUnixTimestamp(now())) * 2 + 0) * 300
+    + toUInt64(toUnixTimestamp(moo.date_time) - toUnixTimestamp(toStartOfFiveMinutes(moo.date_time))) as __rmt_version
 from {{ ref('stg_beefy_api__mootokenprices') }} moo
 inner join {{ ref('int_chain_keys') }} c
   on {{ normalize_network_beefy_key('moo.chain_id') }} = c.beefy_key
@@ -60,7 +62,7 @@ where moo.date_time >= toDateTime('{{ threshold }}')
 
 union all
 
--- Corrections outrank any snapshot: version offset well above any unix timestamp.
+-- Same run, is_correction = 1: outranks every snapshot of the run.
 select
   corr.chain_id as chain_id,
   corr.product_address as product_address,
@@ -68,5 +70,5 @@ select
   corr.date_time as date_time,
   corr.share_to_usd as share_to_usd,
   corr.price_source as price_source,
-  toUInt64(10000000000) + toUInt64(toUnixTimestamp(corr.date_time)) as __rmt_version
+  (toUInt64(toUnixTimestamp(now())) * 2 + 1) * 300 as __rmt_version
 from {{ ref('int_mootoken_price_corrections') }} corr

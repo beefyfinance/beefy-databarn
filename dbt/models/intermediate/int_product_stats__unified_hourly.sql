@@ -2,11 +2,10 @@
   config(
     materialized='incremental',
     tags=['intermediate', 'product_stats'],
-    unique_key=['chain_id', 'product_address', 'date_hour', 'source'],
     order_by=['date_hour', 'chain_id', 'product_address'],
     engine='CoalescingMergeTree',
     on_schema_change='append_new_columns',
-    incremental_strategy='delete+insert',
+    incremental_strategy='append',
   )
 }}
 
@@ -58,7 +57,10 @@
 
 -- Materialized intermediate: Unified hourly stats from all sources
 -- Incremental on date_hour with per-source max so each sub-table can progress independently.
--- One row per (chain_id, product_address, date_hour, source); unique_key dedup on incremental load.
+-- One row per (chain_id, product_address, date_hour, source) per insert. Append only: CoalescingMergeTree folds
+-- all sources of an hour into one row and keeps the latest non-NULL value per column, so a reload simply
+-- overwrites. (delete+insert on (..., source) was unsafe: a merged row keeps only one source value, so a
+-- harvest reload could delete an hour's tvl/apy that the 1-day branches would never re-insert.)
 -- Thresholds are pre-computed in one query (above) and reused in each branch.
 
 -- TVL data (incremental: only hours we don't already have TVL for)

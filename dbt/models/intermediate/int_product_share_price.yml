@@ -56,7 +56,7 @@ models:
               arguments:
                 values: ['api', 'interpolated']
       - name: __rmt_version
-        description: "ReplacingMergeTree version: snapshot unix time for api rows, 1e10 + slot unix time for corrections, so corrections always win"
+        description: "ReplacingMergeTree version: (run unix time * 2 + is_correction) * 300 + seconds into the 5-minute slot. Latest run wins; within a run corrections win, then the latest raw value of the slot."
         data_type: UInt64
         tests:
           - not_null

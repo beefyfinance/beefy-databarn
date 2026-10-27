@@ -18,7 +18,7 @@
 -- interpolated between the two anchors. The anchors themselves stay raw snapshots.
 --
 -- Removing a window does not delete corrected rows already written to int_product_share_price:
--- reimport it (make dbt reimport int_product_share_price <since>) or full refresh.
+-- reimport from the window start (make dbt reimport int_product_share_price+ <since>).
 
 with windows as (
   select
