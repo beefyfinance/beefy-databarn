@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans _orphans-scan
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -535,19 +535,26 @@ reimport-prices:
 
 # Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.
 # Read-only: `sql` only writes a file of DROP statements, nothing is ever executed for you.
-# Runs in the dlt container (clickhouse-connect + dlt creds); the dbt manifest is copied
-# from the dbt container and dbt credentials are passed through from .env.
+# Holds dbt's run lock for the whole scan (same lock file as run_dbt_with_lock.sh, shared via
+# the dbt/ bind mount) so in-flight __dbt_tmp / __dbt_backup tables are never reported.
+# Runs in the dlt container (clickhouse-connect + dlt creds); the dbt manifest is copied from
+# the dbt container and dbt credentials are passed through from .env.
+ORPHANS_LOCKFILE ?= $(ROOT_DIR)/dbt/.dbt_run.lock
 orphans:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
 	case "$$SUBCMD" in \
 		""|list|sql) ;; \
 		*) echo "Usage: make orphans [list|sql]"; exit 1 ;; \
 	esac && \
-	echo "Refreshing dbt manifest..." && \
+	echo "Waiting for dbt run lock (fails if dbt is still running after $${DBT_RUN_LOCK_TIMEOUT:-30}s)..." && \
+	flock -x -w "$${DBT_RUN_LOCK_TIMEOUT:-30}" "$(ORPHANS_LOCKFILE)" $(MAKE) -s _orphans-scan ORPHANS_MODE="$$SUBCMD"
+
+_orphans-scan:
+	@echo "Refreshing dbt manifest..." && \
 	$(DC) exec -T -w /app/dbt -e DBT_PROFILES_DIR=/app/dbt -e DBT_PROJECT_DIR=/app/dbt dbt uv run dbt parse --quiet && \
 	$(DC) exec -T dbt cat /app/dbt/target/manifest.json > $(ROOT_DIR)/dlt/.dbt_manifest.json && \
 	set -a && . $(ROOT_DIR)/.env && set +a && \
-	OUT=""; [ "$$SUBCMD" = "sql" ] && OUT="--sql-out /app/dlt/orphan_tables_cleanup.sql"; \
+	OUT=""; [ "$(ORPHANS_MODE)" = "sql" ] && OUT="--sql-out /app/dlt/orphan_tables_cleanup.sql"; \
 	$(DC) exec -T -e DBT_CLICKHOUSE_HOST="$${DBT_CLICKHOUSE_HOST:-clickhouse}" -e DBT_CLICKHOUSE_USER="$${DBT_CLICKHOUSE_USER:-dbt}" -e DBT_CLICKHOUSE_PASSWORD \
 		dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/orphan_tables.py --manifest /app/dlt/.dbt_manifest.json $$OUT
 
