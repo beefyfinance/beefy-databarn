@@ -683,6 +683,63 @@ services:
         max-size: "1G"
         max-file: "3"
 
+  mcp:
+    build:
+      context: ../..
+      dockerfile: infra/mcp/Dockerfile
+    image: beefy-databarn-mcp:latest
+    # Public endpoint, metadata only (dbt manifest/catalog/column lineage); no database
+    # access and no secrets. Locked down accordingly.
+    volumes:
+      - dbt_data:/app/dbt/target:ro
+    environment:
+      # Empty = public. Set to require "Authorization: Bearer <token>".
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-120}
+      MCP_RATE_BURST: ${MCP_RATE_BURST:-30}
+    networks:
+      - frontend_network
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=beefy-databarn_frontend_network"
+      - "traefik.http.routers.mcp.rule=Host(`${MCP_DOMAIN_NAME}`) && (PathPrefix(`/mcp`) || Path(`/ready`))"
+      - "traefik.http.routers.mcp.entrypoints=websecure"
+      - "traefik.http.routers.mcp.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mcp.middlewares=mcp-ratelimit,mcp-inflight,mcp-bodylimit"
+      # Edge limits (the app has its own per-client bucket as a second layer)
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.average=60"
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.period=1m"
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.burst=30"
+      - "traefik.http.middlewares.mcp-inflight.inflightreq.amount=20"
+      - "traefik.http.middlewares.mcp-bodylimit.buffering.maxRequestBodyBytes=65536"
+      - "traefik.http.services.mcp.loadbalancer.server.port=8090"
+      - "traefik.http.services.mcp.loadbalancer.server.scheme=http"
+      - "traefik.http.services.mcp.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.mcp.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.mcp.loadbalancer.healthcheck.timeout=5s"
+      - "traefik.http.routers.mcp.service=mcp"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "local"
+      options:
+        max-size: "100M"
+        max-file: "3"
+
 
 volumes:
   clickhouse_data:

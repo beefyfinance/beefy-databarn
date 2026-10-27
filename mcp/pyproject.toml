@@ -1,0 +1,20 @@
+[project]
+name = "beefy-databarn-mcp"
+version = "0.1.0"
+description = "Beefy Databarn - MCP server exposing dbt models, columns and column lineage"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastmcp>=2.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+# This is a data project, not a Python package - disable building
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = []
