@@ -421,6 +421,9 @@ clickhouse:
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
 		;; \
+		backup-list) \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list; \
+		;; \
 		backup-restart) \
 			echo "Recreating clickhouse-backup..."; \
 			$(DC) up -d --force-recreate clickhouse-backup; \
@@ -443,12 +446,13 @@ clickhouse:
 			echo "  make clickhouse version  Show server version"; \
 			echo "  make clickhouse backup [full|incremental]  One-shot backup to S3"; \
 			echo "  make clickhouse backup-status    Show recent backups"; \
+			echo "  make clickhouse backup-list      List all backup files in S3 with sizes"; \
 			echo "  make clickhouse backup-restart   Recreate backup sidecar (reload loop script/env)"; \
 			echo "  make clickhouse restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make clickhouse [client|version|backup [full|incremental]|backup-status|backup-restart|restore|help]"; \
+			echo "Usage: make clickhouse [client|version|backup [full|incremental]|backup-status|backup-list|backup-restart|restore|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -560,7 +564,7 @@ _orphans-scan:
 		dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/orphan_tables.py --manifest /app/dlt/.dbt_manifest.json $$OUT
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-list backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

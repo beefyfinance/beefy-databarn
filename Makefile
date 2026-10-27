@@ -381,6 +381,9 @@ clickhouse:
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status \
 			;; \
+		backup-list) \
+			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list \
+			;; \
 		backup-restart) \
 			echo "Recreating clickhouse-backup..."; \
 			$(DC) up -d --force-recreate clickhouse-backup; \
@@ -404,13 +407,14 @@ clickhouse:
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
 			echo "  make [clickhouse|ch] backup [full|incremental]  One-shot backup to S3"; \
 			echo "  make [clickhouse|ch] backup-status    Show recent backups and S3 prefixes"; \
+			echo "  make [clickhouse|ch] backup-list      List all backup files in S3 with sizes"; \
 			echo "  make [clickhouse|ch] backup-restart   Recreate backup sidecar (reload loop script/env)"; \
 			echo "  make [clickhouse|ch] version          Show server version"; \
 			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-restart|version|restore|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|backup-restart|version|restore|help]"; \
 			exit 1 \
 			;; \
 	esac

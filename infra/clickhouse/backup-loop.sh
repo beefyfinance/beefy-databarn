@@ -8,6 +8,7 @@
 #   backup-loop.sh once [auto|full|incremental]
 #   backup-loop.sh restore <prefix> # e.g. inc-2026-09-15-14 or full-2026-09-15
 #   backup-loop.sh status
+#   backup-loop.sh list             # every object in the bucket, with sizes
 set -euo pipefail
 
 BACKUP_DATABASES=(dlt envio zapalytics dev_fron dev_chebin)
@@ -219,6 +220,11 @@ restore_from() {
   echo "Restore finished. Re-run init-clickhouse.sh (or restart ClickHouse with ALWAYS_RUN_INITDB_SCRIPTS) so .env service users win."
 }
 
+list_files() {
+  echo "=== ${S3_BUCKET} (all objects) ==="
+  mc_cmd ls --recursive --summarize "${MC_ALIAS}/${S3_BUCKET}/"
+}
+
 sleep_until_next_hour() {
   local now next
   now="$(date -u +%s)"
@@ -250,6 +256,9 @@ case "$cmd" in
     wait_for_clickhouse
     show_status
     ;;
+  list)
+    list_files
+    ;;
   daemon)
     wait_for_clickhouse
     echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, keep ${KEEP_FULLS} fulls + ${KEEP_INCREMENTAL_DAYS}d incrementals)"
@@ -262,7 +271,7 @@ case "$cmd" in
     done
     ;;
   *)
-    echo "Usage: backup-loop.sh [daemon|once [auto|full|incremental]|restore <prefix>|status]" >&2
+    echo "Usage: backup-loop.sh [daemon|once [auto|full|incremental]|restore <prefix>|status|list]" >&2
     exit 1
     ;;
 esac
