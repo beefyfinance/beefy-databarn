@@ -15,3 +15,4 @@ _local
 # ignore duckdb
 *.duckdb
 *.wal
+orphan_tables_cleanup.sql

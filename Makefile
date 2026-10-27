@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev reimport-prices
+.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev reimport-prices orphans
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -27,6 +27,10 @@ help: ## Show this help message
 	@$(MAKE) -s --no-print-directory test
 	@echo "Dependencies:"
 	@echo "  make deps-check          Check for outdated dependencies"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make orphans             List ClickHouse tables no dbt model or dlt pipeline uses (read-only)"
+	@echo "  make orphans sql         Same, plus write DROP statements to dlt/orphan_tables_cleanup.sql (run by hand)"
 	@echo ""
 	@echo "Workflows:"
 	@echo "  make setup               Initial setup (copy .env, install deps)"
@@ -567,6 +571,23 @@ reimport-prices:
 	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
 	echo "=== dbt reimport int_beefy_oracle_price+ since $$SINCE ===" && \
 	$(MAKE) dbt reimport 'int_beefy_oracle_price+' $$SINCE
+
+# Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.
+# Read-only: `sql` only writes a file of DROP statements, nothing is ever executed for you.
+orphans:
+	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		""|list|sql) ;; \
+		*) echo "Usage: make orphans [list|sql]"; exit 1 ;; \
+	esac && \
+	echo "Refreshing dbt manifest..." && \
+	(cd dbt && unset VIRTUAL_ENV && $(UV) dbt parse --quiet) && \
+	cd dlt && unset VIRTUAL_ENV && . ../infra/dlt/set_dlt_env.sh && \
+	if [ "$$SUBCMD" = "sql" ]; then \
+		$(UV) ./orphan_tables.py --sql-out orphan_tables_cleanup.sql; \
+	else \
+		$(UV) ./orphan_tables.py; \
+	fi
 
 # Catch-all target to prevent "No rule to make target" errors
 # This allows arguments to be passed to targets without make complaining
