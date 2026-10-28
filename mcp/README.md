@@ -8,6 +8,24 @@ It reads `manifest.json`, `catalog.json` and `docglow/.docglow-column-lineage-ca
 from the dbt `target/` directory and reloads them when they change, so the existing
 `publish_docs.sh` run keeps it fresh with no redeploy.
 
+## What agents are told (and what the server enforces)
+
+The server is opinionated so agents recommend what people should actually use:
+
+- **Layers and audiences** live in `layers.py`. `marts`, `dimensions` and `api` are
+  *primary* (recommended, marts first). `data_quality` is *operational*. `staging` and
+  `intermediate` are *internal*: hidden from `search`, `list_models`, `model_graph` and
+  `column_lineage` unless the caller passes `include_internal=true` or asks for that layer.
+- **Per-model override**: add `meta: {audience: primary | operational | internal}` to a
+  model's yml to promote or hide it regardless of folder. Unknown folders default to primary.
+- **Sources are described as raw tables**: dlt tables as `<pipeline>.<table>` (from the
+  `<pipeline>___<table>` source naming) and Envio tables as `envio <Table>`. `get_model`
+  returns `sources`, `uses` and `used_by` (skipping internal models), and `column_lineage`
+  returns `origins` (the raw source columns).
+- **Answers come from your dbt docs**: model and column descriptions are returned verbatim,
+  so documentation quality in the yml files is what agents will say. The server instructions
+  tell agents not to invent beyond them.
+
 ## Tools
 
 | Tool | Purpose |

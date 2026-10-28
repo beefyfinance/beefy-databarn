@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from layers import audience_of
+
 logger = logging.getLogger("mcp.store")
 
 TARGET_DIR = Path(os.environ.get("MCP_DBT_TARGET_DIR", "/app/dbt/target"))
@@ -43,6 +45,7 @@ class Snapshot:
     reverse_lineage: dict[tuple[str, str], list[tuple[str, str, str]]] = field(default_factory=dict)
     # [(kind, name, node, lowercase head text, [(column, lowercase text)])]
     search_index: list = field(default_factory=list)
+    _origins: dict[str, list[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for child_uid, cols in self.lineage.items():
@@ -64,6 +67,47 @@ class Snapshot:
                         [(c["name"], f"{c['name']} {c['description'] or ''}".lower()) for c in cols],
                     )
                 )
+
+    def node(self, uid: str) -> dict:
+        return self.models.get(_short(uid)) or self.sources.get(_short(uid)) or {}
+
+    def parents(self, uid: str) -> list[str]:
+        return self.node(uid).get("depends_on", {}).get("nodes", [])
+
+    def audience(self, uid: str) -> str:
+        return audience_of(self.node(uid)) if self.node(uid) else "internal"
+
+    def nearest_primary(self, uid: str, direction: str) -> list[str]:
+        """Closest `primary` models up- or downstream, looking through internal/operational ones."""
+        step = self.parents if direction == "upstream" else (lambda u: self.children.get(u, []))
+        found, seen, stack = [], {uid}, list(step(uid))
+        while stack:
+            u = stack.pop()
+            if u in seen:
+                continue
+            seen.add(u)
+            if self.audience(u) == "primary":
+                found.append(u)
+            elif not u.startswith("source."):
+                stack.extend(step(u))
+        return sorted(found, key=_short)
+
+    def origins(self, uid: str) -> list[str]:
+        """Raw source tables a model ultimately derives from (dlt load-metadata tables excluded)."""
+        if uid not in self._origins:
+            found, seen, stack = set(), set(), [uid]
+            while stack:
+                u = stack.pop()
+                if u in seen:
+                    continue
+                seen.add(u)
+                if u.startswith("source."):
+                    if not self.node(u).get("name", "").split("___")[-1].startswith("_dlt"):
+                        found.add(u)
+                else:
+                    stack.extend(self.parents(u))
+            self._origins[uid] = sorted(found, key=_short)
+        return self._origins[uid]
 
     def resolve(self, name: str) -> tuple[str, dict] | None:
         """Find a model or source by short name, schema-qualified name or unique_id."""

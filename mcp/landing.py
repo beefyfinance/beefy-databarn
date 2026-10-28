@@ -1,7 +1,7 @@
 """Human/agent-readable info page served on GET / (HTML) and GET / or /llms.txt (plain text)."""
 import html
 
-LAYERS = "source -> staging (stg_*) -> intermediate (int_*) -> dimensions / marts -> api (api_*)"
+LAYERS = "Recommended: marts (analysis-ready facts) and dimensions (chain, product, token, ...), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
 
 EXAMPLES = [
     "Which models hold daily revenue, and what are their columns?",
