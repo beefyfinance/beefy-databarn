@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: asset_price_1d
+    description: "Daily (UTC) OHLC USD price of assets, aggregated from asset_price_1h. avg_price is weighted by 5-minute sample count. Join facts with ASOF on asset_id and date_day."
+    config:
+      contract:
+        enforced: true
+      meta:
+        # make dbt reimport/refresh run this model one month at a time (full price history
+        # in one run is heavy); see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-01-01"
+        primary_key: ["asset_id", "date_day"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - asset_id
+              - date_day
+    columns:
+      - name: asset_id
+        description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
+        data_type: UInt64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('asset')
+                field: asset_id
+      - name: date_day
+        description: "UTC day"
+        data_type: Date
+        tests:
+          - not_null
+      - name: open
+        description: "First price of the day"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: high
+        description: "Highest price of the day"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: low
+        description: "Lowest price of the day"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: close
+        description: "Last price of the day"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: avg_price
+        description: "Average of the 5-minute prices of the day, sample-weighted"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: sample_count
+        description: "Number of 5-minute prices in the day"
+        data_type: UInt64
+        tests:
+          - not_null

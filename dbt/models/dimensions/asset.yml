@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: asset
-    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_source tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a vault id prices the vault want token, NOT the share token) or 'beefy_api_share' (a vault share token without beefy_db oracle, priced from moo-token price snapshots). Prices: asset_price_5m, asset_price_1h, asset_price_latest."
+    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_source tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a vault id prices the vault want token, NOT the share token) or 'beefy_api_share' (a vault share token without beefy_db oracle, priced from moo-token price snapshots). Prices: asset_price_5m, asset_price_1h, asset_price_1d, asset_price_latest."
     config:
       contract:
         enforced: true

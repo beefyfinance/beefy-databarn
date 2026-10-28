@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: token
-    description: "Dimension table for token reference data, one row per (chain_id, representation_address): API token list, vault want tokens and vault share tokens. asset_id links a token to its price series (asset dimension, asset_price_5m / asset_price_1h); the same token on several chains shares one asset."
+    description: "Dimension table for token reference data, one row per (chain_id, representation_address): API token list, vault want tokens and vault share tokens. asset_id links a token to its price series (asset dimension, asset_price_5m / asset_price_1h / asset_price_1d); the same token on several chains shares one asset."
     config:
       contract:
         enforced: true
