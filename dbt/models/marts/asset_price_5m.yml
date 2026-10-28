@@ -28,6 +28,12 @@ models:
               arguments:
                 to: ref('asset')
                 field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: asset
+                field: asset_id
+                kind: one_to_many
       - name: date_time
         description: "Start of the 5-minute slot (UTC)"
         data_type: DateTime('UTC')

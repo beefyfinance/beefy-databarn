@@ -28,6 +28,12 @@ models:
               arguments:
                 to: ref('asset')
                 field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: asset
+                field: asset_id
+                kind: one_to_many
       - name: date_hour
         description: "Start of the hour (UTC)"
         data_type: DateTime('UTC')

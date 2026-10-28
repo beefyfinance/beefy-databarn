@@ -75,3 +75,9 @@ models:
                 field: asset_id
               config:
                 where: "asset_id is not null"
+        meta:
+          docglow:
+            relationships:
+              - to: asset
+                field: asset_id
+                kind: one_to_many

@@ -45,6 +45,12 @@ models:
       - name: share_token_address
         description: "Vault share token (product) address, for source 'beefy_api_share'"
         data_type: Nullable(String)
+        meta:
+          docglow:
+            relationships:
+              - to: token
+                field: representation_address
+                kind: one_to_one
       - name: token_count
         description: "Number of tokens (chain, address) linked to this asset"
         data_type: UInt64

@@ -23,6 +23,12 @@ models:
               arguments:
                 to: ref('asset')
                 field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: asset
+                field: asset_id
+                kind: one_to_many
       - name: date_time
         description: "Time of the latest price (UTC)"
         data_type: DateTime('UTC')

@@ -28,6 +28,12 @@ models:
               arguments:
                 to: ref('asset')
                 field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: asset
+                field: asset_id
+                kind: one_to_many
       - name: date_day
         description: "UTC day"
         data_type: Date
