@@ -41,6 +41,11 @@ uv run dbt docs generate
 echo "Generating Docglow static site..."
 rm -rf "$DOCGLOW_OUT"
 mkdir -p "$DOCGLOW_OUT"
+# Seed docglow's column-lineage cache from the previous run so only changed models are re-analyzed.
+LINEAGE_CACHE=".docglow-column-lineage-cache.json"
+if [ -f "$DBT_DIR/target/docglow/$LINEAGE_CACHE" ]; then
+  cp "$DBT_DIR/target/docglow/$LINEAGE_CACHE" "$DOCGLOW_OUT/$LINEAGE_CACHE"
+fi
 uv run docglow generate \
   --project-dir "$DBT_DIR" \
   --output-dir "$DOCGLOW_OUT" \
@@ -59,7 +64,6 @@ fi
 
 # Persist docglow's column-lineage cache next to manifest/catalog (target is a shared volume)
 # so the MCP server can serve column lineage. DOCGLOW_OUT is wiped on every run.
-LINEAGE_CACHE=".docglow-column-lineage-cache.json"
 if [ -f "$DOCGLOW_OUT/$LINEAGE_CACHE" ]; then
   mkdir -p "$DBT_DIR/target/docglow"
   cp "$DOCGLOW_OUT/$LINEAGE_CACHE" "$DBT_DIR/target/docglow/$LINEAGE_CACHE.tmp"
