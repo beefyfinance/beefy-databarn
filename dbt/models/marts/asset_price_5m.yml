@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: asset_price_5m
+    description: "USD price of assets (price series) in 5-minute slots, latest price of the slot. Covers beefy_db oracle series and beefy_api vault share price series (see asset.asset_kind). Tokens map to it with token.asset_id, so the same token on several chains shares one series. Join facts with: INNER JOIN token t ON (chain_id, token address) then ASOF LEFT JOIN asset_price_5m p ON t.asset_id = p.asset_id AND f.date_time >= p.date_time (consider SETTINGS join_algorithm = 'full_sorting_merge', or asset_price_1h when hourly is enough)."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ['asset_id', 'date_time']
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - asset_id
+              - date_time
+    columns:
+      - name: asset_id
+        description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
+        data_type: UInt64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('asset')
+                field: asset_id
+      - name: date_time
+        description: "Start of the 5-minute slot (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: price
+        description: "USD price"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: price_source
+        description: "'beefy_db' raw oracle price, 'api' share price snapshot, 'interpolated' hardcoded correction"
+        data_type: String
+        tests:
+          - not_null

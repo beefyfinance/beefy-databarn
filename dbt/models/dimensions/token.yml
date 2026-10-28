@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: token
-    description: "Dimension table for token reference data. Provides token metadata for joining with fact tables."
+    description: "Dimension table for token reference data, one row per (chain_id, representation_address): API token list, vault want tokens and vault share tokens. asset_id links a token to its price series (asset dimension, asset_price_5m / asset_price_1h); the same token on several chains shares one asset."
     config:
       contract:
         enforced: true
@@ -57,13 +57,21 @@ models:
         tests:
           - not_null
 
-      # - name: oracle
-      #   description: "Oracle used for price data"
-      # - name: oracle_id
-      #   description: "Oracle identifier"
-      # - name: type
-      #   description: "Token type"
-      # - name: bridge
-      #   description: "Bridge information"
-      # - name: staked
-      #   description: "Whether token is staked"
+      - name: token_kind
+        description: "'token' for plain tokens, 'lp' for LP tokens (oracle type lps, e.g. vault wants), 'share' for Beefy vault share (moo) tokens."
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["token", "lp", "share"]
+      - name: asset_id
+        description: "Price series of this token (foreign key to asset.asset_id). beefy_db oracle first (token list oracle, then vault want oracle); vault share tokens without an oracle use the beefy_api share price. Null when no price source is known. A want oracle never prices a share token."
+        data_type: Nullable(UInt64)
+        tests:
+          - relationships:
+              arguments:
+                to: ref('asset')
+                field: asset_id
+              config:
+                where: "asset_id is not null"

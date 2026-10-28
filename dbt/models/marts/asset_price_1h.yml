@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: asset_price_1h
+    description: "Hourly OHLC USD price of assets, aggregated from asset_price_5m. Join facts with ASOF on asset_id and date_hour."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ['asset_id', 'date_hour']
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - asset_id
+              - date_hour
+    columns:
+      - name: asset_id
+        description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
+        data_type: UInt64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('asset')
+                field: asset_id
+      - name: date_hour
+        description: "Start of the hour (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: open
+        description: "First 5-minute price of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: high
+        description: "Highest 5-minute price of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: low
+        description: "Lowest 5-minute price of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: close
+        description: "Last 5-minute price of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: avg_price
+        description: "Average of the 5-minute prices of the hour"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+      - name: sample_count
+        description: "Number of 5-minute prices in the hour"
+        data_type: UInt64
+        tests:
+          - not_null
