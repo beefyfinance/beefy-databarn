@@ -11,6 +11,7 @@ from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse, PlainTextResponse
 
+from landing import render_html, render_text
 from store import ArtifactsUnavailable, Snapshot, _short, store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -40,6 +41,14 @@ comes from (or what depends on it). Schemas are the live ClickHouse types from t
 """
 
 mcp = FastMCP("beefy-databarn", instructions=INSTRUCTIONS)
+
+TOOLS: list[tuple[str, str]] = []  # (name, docstring) for the info page
+
+
+def tool(fn):
+    """Register `fn` as an MCP tool and remember its docs for the info page."""
+    TOOLS.append((fn.__name__, fn.__doc__ or ""))
+    return mcp.tool(fn)
 
 UNAVAILABLE = {"error": "Documentation is temporarily unavailable, retry shortly."}
 
@@ -74,7 +83,7 @@ class _Budget:
         return True
 
 
-@mcp.tool
+@tool
 def search(query: str, limit: int = 20) -> list[dict] | dict:
     """Search models, sources and columns by name or description (case-insensitive,
     all words must match). Returns matching models with the columns that matched."""
@@ -104,7 +113,7 @@ def search(query: str, limit: int = 20) -> list[dict] | dict:
     return [h[1] for h in hits[: max(1, min(limit, MAX_RESULTS))]]
 
 
-@mcp.tool
+@tool
 def list_models(layer: str | None = None, tag: str | None = None) -> list[dict] | dict:
     """List models, optionally filtered by layer (staging, intermediate, dimensions,
     marts, api, data_quality, ...) or dbt tag."""
@@ -128,7 +137,7 @@ def list_models(layer: str | None = None, tag: str | None = None) -> list[dict] 
     return out
 
 
-@mcp.tool
+@tool
 def get_model(name: str) -> dict:
     """Full documentation for a model or source: description, ClickHouse columns with
     types/descriptions/tests, primary key, model-level tests, parents and children."""
@@ -185,7 +194,7 @@ def _downstream(s: Snapshot, uid: str, col: str, depth: int, seen: set, budget: 
     return out
 
 
-@mcp.tool
+@tool
 def column_lineage(model: str, column: str, direction: str = "upstream", depth: int = 3) -> dict:
     """Column-level lineage. direction='upstream' shows which source columns feed
     `model.column` (with transformation: passthrough/aggregated/...); 'downstream'
@@ -213,7 +222,7 @@ def column_lineage(model: str, column: str, direction: str = "upstream", depth: 
     return out
 
 
-@mcp.tool
+@tool
 def model_graph(name: str, direction: str = "upstream", depth: int = 2) -> dict:
     """Model-level dependency graph around `name`. direction='upstream' (parents) or
     'downstream' (children)."""
@@ -250,7 +259,7 @@ def model_graph(name: str, direction: str = "upstream", depth: int = 2) -> dict:
     return result
 
 
-@mcp.tool
+@tool
 def freshness() -> dict:
     """When the documentation artifacts were generated and how many models are indexed."""
     s = _snap()
@@ -310,6 +319,47 @@ class Guard:
         await self.app(scope, receive, send)
 
 
+class Landing:
+    """GET / -> info page (HTML for browsers, plain text otherwise); GET /llms.txt -> plain text.
+    MCP clients that ask for text/event-stream still reach the MCP endpoint."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] != "GET" or scope["path"] not in ("/", "/llms.txt"):
+            return await self.app(scope, receive, send)
+        headers = dict(scope["headers"])
+        accept = headers.get(b"accept", b"").decode()
+        if scope["path"] == "/" and "text/event-stream" in accept:
+            return await self.app(scope, receive, send)
+        host = headers.get(b"x-forwarded-host", headers.get(b"host", b"localhost")).decode().split(",")[0].strip()
+        proto = headers.get(b"x-forwarded-proto", b"https").decode().split(",")[0].strip()
+        url = f"{proto if proto in ('http', 'https') else 'https'}://{host}/"
+        snap = _snap()
+        stats = (
+            {"models": len(snap.models), "sources": len(snap.sources), "lineage": len(snap.lineage), "generated_at": snap.generated_at}
+            if snap
+            else None
+        )
+        wants_html = scope["path"] == "/" and "text/html" in accept
+        body, ctype = (render_html if wants_html else render_text)(url, TOOLS, stats), "text/html" if wants_html else "text/plain"
+        data = body.encode()
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", f"{ctype}; charset=utf-8".encode()),
+                    (b"content-length", str(len(data)).encode()),
+                    (b"cache-control", b"public, max-age=60"),
+                    (b"vary", b"Accept"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": data})
+
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_request):
     """Liveness: process is up. Deliberately independent of artifacts so a missing
@@ -325,7 +375,7 @@ async def ready(_request):
 
 def build_app():
     # Public by default. Set MCP_AUTH_TOKEN to require a bearer token.
-    middleware = [Middleware(Guard, token=os.environ.get("MCP_AUTH_TOKEN", ""))]
+    middleware = [Middleware(Guard, token=os.environ.get("MCP_AUTH_TOKEN", "")), Middleware(Landing)]
     # Stateless + JSON responses: no in-memory sessions, survives restarts/replicas.
     return mcp.http_app(path="/", middleware=middleware, stateless_http=True, json_response=True)
 

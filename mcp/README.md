@@ -30,6 +30,14 @@ Prod (set `MCP_DOMAIN_NAME` in `.env`; the endpoint is public):
 claude mcp add --transport http databarn https://$MCP_DOMAIN_NAME/
 ```
 
+## Info page
+
+`GET /` returns an info page (what this is, how to connect, tools, live model counts and
+docs freshness): HTML for browsers, plain text for everything else. `GET /llms.txt` always
+returns the plain-text version. MCP clients (`Accept: text/event-stream`) and all `POST`s
+still reach the MCP endpoint. Source: `landing.py`; tool descriptions come from the tools'
+docstrings, so they never drift.
+
 ## Resilience
 
 - **Last good snapshot**: artifacts are swapped in atomically; missing, half-written or
