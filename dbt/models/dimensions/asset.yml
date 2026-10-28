@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: asset
-    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_kind tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a vault id prices the vault want token, NOT the share token) or 'beefy_api_share' (a vault share token without beefy_db oracle, priced from moo-token price snapshots). Prices: asset_price_5m, asset_price_1h, asset_price_latest."
+    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_source tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a vault id prices the vault want token, NOT the share token) or 'beefy_api_share' (a vault share token without beefy_db oracle, priced from moo-token price snapshots). Prices: asset_price_5m, asset_price_1h, asset_price_latest."
     config:
       contract:
         enforced: true
@@ -15,30 +15,35 @@ models:
         tests:
           - not_null
           - unique
-      - name: asset_kind
-        description: "Price source of the series: 'beefy_db_oracle' or 'beefy_api_share'"
+      - name: asset_source
+        description: "Price source of the series: 'beefy_db_oracle' (beefy_db prices, preferred) or 'beefy_api_share' (moo-token price snapshots, for share tokens without beefy_db oracle)"
         data_type: String
         tests:
           - not_null
           - accepted_values:
               arguments:
                 values: ["beefy_db_oracle", "beefy_api_share"]
+      - name: asset_kinds
+        description: "Distinct token.token_kind of the tokens linked to this asset, sorted (native, erc20, lp_token, beefy_classic_vault, beefy_clm_manager, beefy_reward_pool). Empty when no token is linked (oracle priced but unmapped). Filter with has(asset_kinds, 'lp_token')."
+        data_type: Array(LowCardinality(String))
+        tests:
+          - not_null
       - name: symbol
         description: "Display symbol, from the linked tokens (falls back to the oracle key)"
         data_type: String
         tests:
           - not_null
       - name: beefy_price_oracle_id
-        description: "beefy_db price_oracles.id, for kind 'beefy_db_oracle'"
+        description: "beefy_db price_oracles.id, for source 'beefy_db_oracle'"
         data_type: Nullable(String)
       - name: beefy_price_oracle_key
-        description: "beefy_db price_oracles.oracle_id (token symbol, LP oracle id or vault id), for kind 'beefy_db_oracle'"
+        description: "beefy_db price_oracles.oracle_id (token symbol, LP oracle id or vault id), for source 'beefy_db_oracle'"
         data_type: Nullable(String)
       - name: chain_id
-        description: "Chain of the share token, for kind 'beefy_api_share'"
+        description: "Chain of the share token, for source 'beefy_api_share'"
         data_type: Nullable(Int64)
       - name: share_token_address
-        description: "Vault share token (product) address, for kind 'beefy_api_share'"
+        description: "Vault share token (product) address, for source 'beefy_api_share'"
         data_type: Nullable(String)
       - name: token_count
         description: "Number of tokens (chain, address) linked to this asset"

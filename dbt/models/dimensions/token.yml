@@ -58,13 +58,13 @@ models:
           - not_null
 
       - name: token_kind
-        description: "'token' for plain tokens, 'lp' for LP tokens (oracle type lps, e.g. vault wants), 'share' for Beefy vault share (moo) tokens."
+        description: "Single kind of this token contract: 'native', 'erc20', 'lp_token' (oracle type lps, e.g. vault wants), or a Beefy share token 'beefy_classic_vault', 'beefy_clm_manager', 'beefy_reward_pool' ('beefy_' || product.product_type). Share kinds win over the token list."
         data_type: String
         tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["token", "lp", "share"]
+                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool"]
       - name: asset_id
         description: "Price series of this token (foreign key to asset.asset_id). beefy_db oracle first (token list oracle, then vault want oracle); vault share tokens without an oracle use the beefy_api share price. Null when no price source is known. A want oracle never prices a share token."
         data_type: Nullable(UInt64)

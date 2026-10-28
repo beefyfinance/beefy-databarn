@@ -24,7 +24,7 @@ with api_tokens as (
     cast(tokens.symbol as String) as symbol,
     cast(tokens.name as String) as name,
     cast(tokens.decimals as Int64) as decimals,
-    if(tokens.oracle = 'lps', 'lp', 'token') as token_kind,
+    multiIf(tokens.type = 'native', 'native', tokens.oracle = 'lps', 'lp_token', 'erc20') as token_kind,
     cast(nullIf(tokens.oracle_id, '') as Nullable(String)) as beefy_price_oracle_key,
     1 as source_priority
   from {{ ref('stg_beefy_api__tokens') }} tokens
@@ -55,7 +55,7 @@ want_tokens as (
     cast(ifNull(w.token, 'Unknown') as String) as symbol,
     cast(ifNull(w.token, 'Unknown') as String) as name,
     cast(w.token_decimals as Int64) as decimals,
-    if(w.oracle = 'lps', 'lp', 'token') as token_kind,
+    multiIf(ifNull(w.token_address, '') = '', 'native', w.oracle = 'lps', 'lp_token', 'erc20') as token_kind,
     cast(nullIf(w.oracle_id, '') as Nullable(String)) as beefy_price_oracle_key,
     2 as source_priority
   from vault_wants w
@@ -63,21 +63,26 @@ want_tokens as (
     on w.network = chain_dim.beefy_key
 ),
 
--- Vault share (moo) tokens: the product contract is the share token, always 18 decimals.
+-- Vault share tokens: the product contract is the share token, always 18 decimals.
+-- token_kind is 'beefy_' || product_type (beefy_classic_vault, beefy_clm_manager, beefy_reward_pool).
+-- Boost receipts have no share_token_symbol and are left out.
 share_tokens as (
   select
-    chain_id,
-    product_address as representation_address,
-    cast(product_address as Nullable(String)) as erc20_address,
+    pk.chain_id as chain_id,
+    pk.product_address as representation_address,
+    cast(pk.product_address as Nullable(String)) as erc20_address,
     false as is_native,
-    cast(share_token_symbol as String) as symbol,
-    cast(beefy_key as String) as name,
+    cast(pk.share_token_symbol as String) as symbol,
+    cast(pk.beefy_key as String) as name,
     cast(18 as Int64) as decimals,
-    'share' as token_kind,
+    concat('beefy_', p.product_type) as token_kind,
     cast(null as Nullable(String)) as beefy_price_oracle_key,
     3 as source_priority
-  from {{ ref('int_product_keys') }}
-  where share_token_symbol is not null
+  from {{ ref('int_product_keys') }} pk
+  inner join {{ ref('product') }} p
+    on pk.chain_id = p.chain_id
+    and pk.product_address = p.product_address
+  where pk.share_token_symbol is not null
 ),
 
 unioned as (
@@ -117,7 +122,8 @@ tokens as (
     argMin(symbol, source_priority) as symbol,
     argMin(name, source_priority) as name,
     argMin(decimals, source_priority) as decimals,
-    if(max(token_kind = 'share'), 'share', argMin(token_kind, source_priority)) as token_kind,
+    -- A share token is a share even when the token list also lists it (e.g. mooBIFI).
+    if(max(source_priority = 3), argMinIf(token_kind, source_priority, source_priority = 3), argMin(token_kind, source_priority)) as token_kind,
     -- Several vaults can declare different oracles for one want: lowest priority, then alphabetical.
     nullIf(argMinIf(ifNull(priced_oracle_key, ''), (source_priority, ifNull(priced_oracle_key, '')), priced_oracle_key is not null), '') as beefy_price_oracle_key
   from priced
@@ -135,7 +141,7 @@ select
   t.token_kind as token_kind,
   cast(multiIf(
     t.beefy_price_oracle_key is not null, {{ asset_id_from_beefy_price_oracle_id('o.id') }},
-    t.token_kind = 'share', {{ asset_id_from_share_token('t.chain_id', 't.representation_address') }},
+    startsWith(t.token_kind, 'beefy_'), {{ asset_id_from_share_token('t.chain_id', 't.representation_address') }},
     null
   ) as Nullable(UInt64)) as asset_id
 from tokens t

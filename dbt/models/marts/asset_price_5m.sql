@@ -55,7 +55,7 @@ FROM {{ ref('int_beefy_oracle_price') }} p FINAL
 INNER JOIN (
   SELECT asset_id, assumeNotNull(beefy_price_oracle_key) as beefy_price_oracle_key
   FROM {{ ref('asset') }}
-  WHERE asset_kind = 'beefy_db_oracle'
+  WHERE asset_source = 'beefy_db_oracle'
 ) a
   ON p.beefy_price_oracle_key = a.beefy_price_oracle_key
 {{ time_filter }}
@@ -72,7 +72,7 @@ FROM {{ ref('int_product_share_price') }} p FINAL
 INNER JOIN (
   SELECT asset_id, assumeNotNull(chain_id) as chain_id, assumeNotNull(share_token_address) as share_token_address
   FROM {{ ref('asset') }}
-  WHERE asset_kind = 'beefy_api_share'
+  WHERE asset_source = 'beefy_api_share'
 ) a
   ON p.chain_id = a.chain_id
   AND p.product_address = a.share_token_address
