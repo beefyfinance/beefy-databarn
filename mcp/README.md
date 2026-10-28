@@ -26,6 +26,17 @@ The server is opinionated so agents recommend what people should actually use:
   so documentation quality in the yml files is what agents will say. The server instructions
   tell agents not to invent beyond them.
 
+## Links in answers
+
+Every model, source and tool result carries URLs so agents can cite them: the public
+docglow site (`MCP_DOCS_URL`) and the GitHub repo (`MCP_REPO_URL` / `MCP_REPO_BRANCH`).
+Both are configured via env and nothing is hardcoded: links depending on an unset URL are
+simply omitted. In prod compose, `MCP_DOCS_URL` defaults to `https://$DBT_DOCS_WEBAPP_DOMAIN_NAME`. `get_model` returns `links.docs`,
+`lineage_upstream`, `lineage_downstream`, `sql_definition` (the model's SQL on GitHub) and
+`dbt_spec` (its yml: descriptions, columns, tests); sources get `docs` and `dbt_spec`; `column_lineage` / `model_graph` return a ready-made lineage view link;
+`list_layers` and `freshness` return the site home, layers page, ERD and repo. The server
+instructions tell agents to copy these verbatim and never guess URLs.
+
 ## Tools
 
 | Tool | Purpose |

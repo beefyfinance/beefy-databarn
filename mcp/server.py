@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 
 from landing import render_html, render_text
 from layers import LAYERS, audience_of, layer_of, rank_of, source_info
+import links
 from store import ArtifactsUnavailable, Snapshot, _short, store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -42,6 +43,11 @@ HOW TO ANSWER
   (e.g. dlt `beefy_api` pipeline, table `vaults`) or Envio indexer tables. Every model
   returned by get_model has a `sources` list; use it instead of naming internal models.
 - Use each model's own description and column descriptions when explaining it; do not invent.
+- ALWAYS CITE LINKS when present. Models, sources and tool results carry URLs (`docs`, `sql_definition`,
+  `dbt_spec`, `lineage_*`, `links`): the public docs site (docglow) and the GitHub repo. When you mention
+  a model, link its docs page, and link its `sql_definition` on GitHub when discussing how it is built, and its `dbt_spec`
+  when citing its documented columns or tests.
+  Copy URLs verbatim from tool results; never construct or guess them.
 
 TOOLS
 `list_layers` explains the layers. `search` finds models/columns; `get_model` gives the full
@@ -82,11 +88,20 @@ def _visible(node: dict, include_internal: bool) -> bool:
 
 def _brief(s: Snapshot, uid: str) -> dict:
     node = s.node(uid)
-    return {"name": _short(uid), "layer": layer_of(node), "description": (node.get("description") or "")[:160]}
+    return {
+        "name": _short(uid),
+        "layer": layer_of(node),
+        "description": (node.get("description") or "")[:160],
+        **links.present(docs=links.doc_url(uid)),
+    }
 
 
 def _sources(s: Snapshot, uid: str) -> list[dict]:
-    return [source_info(s.node(u)) for u in s.origins(uid)]
+    return [_source(s, u) for u in s.origins(uid)]
+
+
+def _source(s: Snapshot, uid: str) -> dict:
+    return {**source_info(s.node(uid)), **links.present(docs=links.doc_url(uid))}
 
 
 class _Budget:
@@ -104,7 +119,7 @@ class _Budget:
 
 
 @tool
-def list_layers() -> list[dict]:
+def list_layers() -> dict:
     """Explain the warehouse layers (marts, dimensions, api, data_quality, intermediate,
     staging, sources): what each is for, whether to recommend it, and how many models it has."""
     s = _snap()
@@ -114,17 +129,20 @@ def list_layers() -> list[dict]:
             counts[layer_of(n)] = counts.get(layer_of(n), 0) + 1
         counts["source"] = len(s.sources)
     order = sorted(LAYERS.items(), key=lambda kv: kv[1]["rank"])
-    return [
-        {
-            "layer": name,
-            "title": d["title"],
-            "recommend": d["audience"] == "primary",
-            "audience": d["audience"],
-            "description": d["description"],
-            "models": counts.get(name, 0),
-        }
-        for name, d in order
-    ]
+    return {
+        "layers": [
+            {
+                "layer": name,
+                "title": d["title"],
+                "recommend": d["audience"] == "primary",
+                "audience": d["audience"],
+                "description": d["description"],
+                "models": counts.get(name, 0),
+            }
+            for name, d in order
+        ],
+        **({"links": ln} if (ln := links.global_links()) else {}),
+    }
 
 
 @tool
@@ -151,6 +169,7 @@ def search(query: str, limit: int = 20, include_internal: bool = False) -> dict:
             "layer": layer_of(node),
             "description": (node.get("description") or "")[:200],
             "matching_columns": matched[:10],
+            **links.present(docs=links.doc_url(node["unique_id"])),
         }
         if kind == "source":
             item.update(source_info(node))
@@ -186,6 +205,7 @@ def list_models(layer: str | None = None, tag: str | None = None, include_intern
                 "layer": layer_of(node),
                 "materialized": node["config"].get("materialized"),
                 "description": (node.get("description") or "")[:160],
+                **links.present(docs=links.doc_url(node["unique_id"])),
                 "_k": (rank_of(node), name),
             }
         )
@@ -221,6 +241,7 @@ def get_model(name: str, include_internal: bool = False) -> dict:
         "meta": {k: v for k, v in (node.get("meta") or {}).items()},
         "tags": node.get("tags", []),
         "file": node["original_file_path"],
+        **({"links": ln} if (ln := links.node_links(node)) else {}),
         "columns": s.columns(uid, node),
         "model_tests": [t for t in s.tests.get(uid, []) if not t["column"]],
     }
@@ -300,7 +321,7 @@ def _leaves(s: Snapshot, nodes: list[dict], key: str, acc: dict) -> None:
             _leaves(s, n[key], key, acc)
         elif "source_table" in n:
             acc[(n["model"], n["column"])] = {
-                "source": source_info(s.sources[n["model"]]),
+                "source": _source(s, s.sources[n["model"]]["unique_id"]),
                 "column": n["column"],
                 "transformation": n["transformation"],
             }
@@ -329,7 +350,12 @@ def column_lineage(model: str, column: str, direction: str = "upstream", depth: 
     depth, budget, collapse = max(1, min(depth, 8)), _Budget(), not include_internal
     walk = _downstream if direction == "downstream" else _upstream
     tree = walk(s, uid, column, depth, set(), budget, collapse)
-    out = {"model": _short(uid), "column": column, direction: tree}
+    out = {
+        "model": _short(uid),
+        "column": column,
+        direction: tree,
+        **({"links": ln} if (ln := links.present(model=links.doc_url(uid), lineage=links.lineage_url(uid, direction, depth))) else {}),
+    }
     if direction == "upstream":
         acc: dict = {}
         _leaves(s, tree, "upstream", acc)
@@ -379,7 +405,11 @@ def model_graph(name: str, direction: str = "upstream", depth: int = 2, include_
             out[label(n)] = walk(n, d - 1, seen | {n})
         return out
 
-    result = {"model": _short(uid), direction: walk(uid, max(1, min(depth, 6)), frozenset({uid}))}
+    result = {
+        "model": _short(uid),
+        direction: walk(uid, max(1, min(depth, 6)), frozenset({uid})),
+        **({"links": ln} if (ln := links.present(model=links.doc_url(uid), lineage=links.lineage_url(uid, direction, depth))) else {}),
+    }
     if budget.truncated:
         result["note"] = f"Truncated at {MAX_LINEAGE_NODES} nodes; lower `depth`."
     return result
@@ -397,6 +427,7 @@ def freshness() -> dict:
         "models": len(s.models),
         "sources": len(s.sources),
         "models_with_column_lineage": len(s.lineage),
+        **({"links": ln} if (ln := links.global_links()) else {}),
     }
 
 

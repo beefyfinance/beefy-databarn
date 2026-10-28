@@ -699,6 +699,10 @@ services:
       MCP_RATE_BURST: ${MCP_RATE_BURST:-30}
       # Cloudflare -> Traefik -> app: client IP is 2nd from the right in X-Forwarded-For
       MCP_TRUSTED_PROXY_HOPS: ${MCP_TRUSTED_PROXY_HOPS:-2}
+      # Links included in answers (docglow site + GitHub); set in .env, nothing hardcoded here
+      MCP_DOCS_URL: ${MCP_DOCS_URL:-https://${DBT_DOCS_WEBAPP_DOMAIN_NAME}}
+      MCP_REPO_URL: ${MCP_REPO_URL:-}
+      MCP_REPO_BRANCH: ${MCP_REPO_BRANCH:-main}
     networks:
       - frontend_network
     restart: unless-stopped

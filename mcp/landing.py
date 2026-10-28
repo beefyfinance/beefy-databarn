@@ -1,6 +1,8 @@
 """Human/agent-readable info page served on GET / (HTML) and GET / or /llms.txt (plain text)."""
 import html
 
+import links
+
 LAYERS = "Recommended: marts (analysis-ready facts) and dimensions (chain, product, token, ...), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
 
 EXAMPLES = [
@@ -43,6 +45,9 @@ def render_text(url: str, tools, stats) -> str:
         "",
     ]
     lines += [f"- {n}: {d}" for n, d in f["tools"]]
+    shown = [(l, u) for l, u in (("Docs site", links.site()), ("Layers", links.site("layers")), ("ERD", links.site("erd")), ("Source code", links.github())) if u]
+    if shown:
+        lines += ["", "## Links", ""] + [f"- {l}: {u}" for l, u in shown]
     lines += ["", "## Layers", "", LAYERS, "", "## Try asking", ""]
     lines += [f"- {e}" for e in EXAMPLES]
     if stats:
@@ -69,6 +74,8 @@ def render_html(url: str, tools, stats) -> str:
         if stats
         else "Documentation artifacts are not loaded yet."
     )
+    items = [(l, u) for l, u in (("Docs site", links.site()), ("Layers", links.site("layers")), ("ERD", links.site("erd")), ("Source code on GitHub", links.github())) if u]
+    link_block = "<h2>Links</h2><ul>" + "".join(f'<li><a href="{e(u)}">{e(l)}</a></li>' for l, u in items) + "</ul>" if items else ""
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Beefy Databarn MCP</title>
@@ -95,6 +102,7 @@ a{{color:var(--accent)}}
 <p>Other MCP clients (Cursor, VS Code, ...): add a remote/HTTP server with that URL, or use:</p>
 <pre><code>{e(f['json_config'])}</code></pre>
 <h2>Tools</h2><table>{rows}</table>
+{link_block}
 <h2>Layers</h2><p>{e(LAYERS)}</p>
 <h2>Try asking</h2><ul>{ex}</ul>
 <p class="muted">Plain-text version of this page: <a href="/llms.txt">/llms.txt</a></p>
