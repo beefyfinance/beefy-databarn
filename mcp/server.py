@@ -323,7 +323,7 @@ def build_app():
     # Public by default. Set MCP_AUTH_TOKEN to require a bearer token.
     middleware = [Middleware(Guard, token=os.environ.get("MCP_AUTH_TOKEN", ""))]
     # Stateless + JSON responses: no in-memory sessions, survives restarts/replicas.
-    return mcp.http_app(path="/mcp", middleware=middleware, stateless_http=True, json_response=True)
+    return mcp.http_app(path="/", middleware=middleware, stateless_http=True, json_response=True)
 
 
 app = build_app()

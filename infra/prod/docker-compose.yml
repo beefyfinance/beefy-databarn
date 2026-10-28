@@ -713,7 +713,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=beefy-databarn_frontend_network"
-      - "traefik.http.routers.mcp.rule=Host(`${MCP_DOMAIN_NAME}`) && (PathPrefix(`/mcp`) || Path(`/ready`))"
+      - "traefik.http.routers.mcp.rule=Host(`${MCP_DOMAIN_NAME}`)"
       - "traefik.http.routers.mcp.entrypoints=websecure"
       - "traefik.http.routers.mcp.tls.certresolver=letsencrypt"
       - "traefik.http.routers.mcp.middlewares=mcp-ratelimit,mcp-inflight,mcp-bodylimit"

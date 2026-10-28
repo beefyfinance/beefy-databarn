@@ -27,7 +27,7 @@ server-side change only.
 Prod (set `MCP_DOMAIN_NAME` in `.env`; the endpoint is public):
 
 ```bash
-claude mcp add --transport http databarn https://$MCP_DOMAIN_NAME/mcp
+claude mcp add --transport http databarn https://$MCP_DOMAIN_NAME/
 ```
 
 ## Resilience
