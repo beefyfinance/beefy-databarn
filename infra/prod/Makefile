@@ -589,13 +589,10 @@ mcp:
 			$(DC) up -d mcp; \
 			echo "✓ MCP server started"; \
 		;; \
-		deploy) \
-			echo "Rebuilding and redeploying MCP server..."; \
-			$(DC) up -d --build --no-deps mcp; \
-			echo "✓ MCP server redeployed"; \
-		;; \
 		restart) \
-			$(DC) restart mcp; \
+			echo "Restarting MCP server (rebuild image)..."; \
+			$(DC) up -d --force-recreate --build --no-deps mcp; \
+			echo "✓ MCP server restarted"; \
 		;; \
 		stop) \
 			$(DC) stop mcp; \
@@ -611,18 +608,17 @@ mcp:
 		;; \
 		help|"") \
 			echo "mcp (dbt models, columns and lineage for agents; picks up new dbt docs automatically):"; \
-			echo "  make mcp deploy          Rebuild image and redeploy the MCP server (after code changes)"; \
 			echo "  make mcp build           Build the MCP image"; \
 			echo "  make mcp start           Start the MCP server"; \
 			echo "  make mcp stop            Stop the MCP server"; \
-			echo "  make mcp restart         Restart the MCP server"; \
+			echo "  make mcp restart         Rebuild image and recreate the MCP server (code/config changes)"; \
 			echo "  make mcp logs            Follow MCP server logs"; \
 			echo "  make mcp ps              Show MCP server status"; \
 			echo "  make mcp check           Check it has loaded the dbt artifacts (/ready)"; \
 			echo "" \
 		;; \
 		*) \
-			echo "Usage: make mcp [deploy|build|start|stop|restart|logs|ps|check|help]"; \
+			echo "Usage: make mcp [build|start|stop|restart|logs|ps|check|help]"; \
 			exit 1; \
 		;; \
 	esac

@@ -57,6 +57,18 @@ else
   exit 1
 fi
 
+# Persist docglow's column-lineage cache next to manifest/catalog (target is a shared volume)
+# so the MCP server can serve column lineage. DOCGLOW_OUT is wiped on every run.
+LINEAGE_CACHE=".docglow-column-lineage-cache.json"
+if [ -f "$DOCGLOW_OUT/$LINEAGE_CACHE" ]; then
+  mkdir -p "$DBT_DIR/target/docglow"
+  cp "$DOCGLOW_OUT/$LINEAGE_CACHE" "$DBT_DIR/target/docglow/$LINEAGE_CACHE.tmp"
+  mv -f "$DBT_DIR/target/docglow/$LINEAGE_CACHE.tmp" "$DBT_DIR/target/docglow/$LINEAGE_CACHE"
+  echo "Persisted $LINEAGE_CACHE -> $DBT_DIR/target/docglow/"
+else
+  echo "Warning: $DOCGLOW_OUT/$LINEAGE_CACHE not found; MCP column lineage will be unavailable" >&2
+fi
+
 mkdir -p "$PUBLISH_DIR"
 TMP="$PUBLISH_DIR/index.html.tmp"
 cp "$SRC" "$TMP"

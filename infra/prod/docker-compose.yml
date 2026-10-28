@@ -697,6 +697,8 @@ services:
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
       MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-120}
       MCP_RATE_BURST: ${MCP_RATE_BURST:-30}
+      # Cloudflare -> Traefik -> app: client IP is 2nd from the right in X-Forwarded-For
+      MCP_TRUSTED_PROXY_HOPS: ${MCP_TRUSTED_PROXY_HOPS:-2}
     networks:
       - frontend_network
     restart: unless-stopped
@@ -721,7 +723,9 @@ services:
       - "traefik.http.middlewares.mcp-ratelimit.ratelimit.average=60"
       - "traefik.http.middlewares.mcp-ratelimit.ratelimit.period=1m"
       - "traefik.http.middlewares.mcp-ratelimit.ratelimit.burst=30"
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${MCP_TRUSTED_PROXY_HOPS:-2}"
       - "traefik.http.middlewares.mcp-inflight.inflightreq.amount=20"
+      - "traefik.http.middlewares.mcp-inflight.inflightreq.sourcecriterion.ipstrategy.depth=${MCP_TRUSTED_PROXY_HOPS:-2}"
       - "traefik.http.middlewares.mcp-bodylimit.buffering.maxRequestBodyBytes=65536"
       - "traefik.http.services.mcp.loadbalancer.server.port=8090"
       - "traefik.http.services.mcp.loadbalancer.server.scheme=http"

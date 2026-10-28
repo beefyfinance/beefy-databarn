@@ -22,6 +22,10 @@ MAX_NAME_CHARS = 200
 MAX_BODY_BYTES = 64 * 1024
 RATE_PER_MINUTE = int(os.environ.get("MCP_RATE_PER_MINUTE", "120"))
 RATE_BURST = int(os.environ.get("MCP_RATE_BURST", "30"))
+# Trusted proxies in front of the app, each appending to X-Forwarded-For (Traefik = 1,
+# Cloudflare + Traefik = 2). The client is the Nth entry from the right; anything a
+# client puts further left is ignored, so the header can't be spoofed.
+PROXY_HOPS = max(1, int(os.environ.get("MCP_TRUSTED_PROXY_HOPS", "1")))
 
 INSTRUCTIONS = """\
 Schema documentation for the Beefy Databarn ClickHouse warehouse (dbt project).
@@ -267,7 +271,7 @@ _EXEMPT = {"/health", "/ready"}
 
 class Guard:
     """Pure-ASGI protection for a public endpoint: optional bearer token, request size
-    limit, and a per-client token bucket (client = address appended by the trusted proxy)."""
+    limit, and a per-client token bucket (client = Nth-from-right X-Forwarded-For entry)."""
 
     def __init__(self, app, token: str = "") -> None:
         self.app, self.token = app, token
@@ -288,9 +292,9 @@ class Guard:
     @staticmethod
     def _client_ip(scope) -> str:
         headers = dict(scope["headers"])
-        xff = headers.get(b"x-forwarded-for", b"").decode()
-        if xff:
-            return xff.split(",")[-1].strip()
+        parts = [p.strip() for p in headers.get(b"x-forwarded-for", b"").decode().split(",") if p.strip()]
+        if parts:
+            return parts[-min(PROXY_HOPS, len(parts))]
         return (scope.get("client") or ("unknown", 0))[0]
 
     async def __call__(self, scope, receive, send):
