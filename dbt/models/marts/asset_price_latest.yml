@@ -7,7 +7,7 @@ models:
       contract:
         enforced: true
       meta:
-        primary_key: ['asset_id']
+        primary_key: ["asset_id"]
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
