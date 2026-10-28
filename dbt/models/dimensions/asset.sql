@@ -39,7 +39,7 @@ oracle_assets as (
 
 share_assets as (
   select
-    asset_id,
+    assumeNotNull(asset_id) as asset_id,
     'beefy_api_share' as asset_kind,
     cast(null as Nullable(String)) as beefy_price_oracle_id,
     cast(null as Nullable(String)) as beefy_price_oracle_key,
