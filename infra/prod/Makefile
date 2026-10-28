@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans _orphans-scan
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf mcp run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans _orphans-scan
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -37,6 +37,7 @@ help:
 	@$(MAKE) -s --no-print-directory clickhouse
 	@$(MAKE) -s --no-print-directory grafana
 	@$(MAKE) -s --no-print-directory superset
+	@$(MAKE) -s --no-print-directory mcp
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
 	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
@@ -572,8 +573,62 @@ _orphans-scan:
 	$(DC) exec -T -e DBT_CLICKHOUSE_HOST="$${DBT_CLICKHOUSE_HOST:-clickhouse}" -e DBT_CLICKHOUSE_USER="$${DBT_CLICKHOUSE_USER:-dbt}" -e DBT_CLICKHOUSE_PASSWORD \
 		dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/orphan_tables.py --manifest /app/dlt/.dbt_manifest.json $$OUT
 
+# MCP server commands - using subcommands
+# "mcp" is also an action word for `make dlt ... mcp`, so only run when it is the first goal.
+mcp:
+	@[ "$(word 1,$(MAKECMDGOALS))" = "mcp" ] || exit 0; \
+	SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		build) \
+			echo "Rebuilding MCP image..."; \
+			$(DC) build mcp; \
+			echo "✓ MCP image rebuilt"; \
+		;; \
+		start|up) \
+			echo "Starting MCP server..."; \
+			$(DC) up -d mcp; \
+			echo "✓ MCP server started"; \
+		;; \
+		deploy) \
+			echo "Rebuilding and redeploying MCP server..."; \
+			$(DC) up -d --build --no-deps mcp; \
+			echo "✓ MCP server redeployed"; \
+		;; \
+		restart) \
+			$(DC) restart mcp; \
+		;; \
+		stop) \
+			$(DC) stop mcp; \
+		;; \
+		logs) \
+			$(DC) logs -f --tail=200 mcp; \
+		;; \
+		ps) \
+			$(DC) ps mcp; \
+		;; \
+		check) \
+			$(DC) exec -T mcp curl -fsS http://localhost:8090/ready && echo; \
+		;; \
+		help|"") \
+			echo "mcp (dbt models, columns and lineage for agents; picks up new dbt docs automatically):"; \
+			echo "  make mcp deploy          Rebuild image and redeploy the MCP server (after code changes)"; \
+			echo "  make mcp build           Build the MCP image"; \
+			echo "  make mcp start           Start the MCP server"; \
+			echo "  make mcp stop            Stop the MCP server"; \
+			echo "  make mcp restart         Restart the MCP server"; \
+			echo "  make mcp logs            Follow MCP server logs"; \
+			echo "  make mcp ps              Show MCP server status"; \
+			echo "  make mcp check           Check it has loaded the dbt artifacts (/ready)"; \
+			echo "" \
+		;; \
+		*) \
+			echo "Usage: make mcp [deploy|build|start|stop|restart|logs|ps|check|help]"; \
+			exit 1; \
+		;; \
+	esac
+
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-list dev-usage backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-list dev-usage backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

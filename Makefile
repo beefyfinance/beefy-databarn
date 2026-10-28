@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse superset api test deps-check setup dev reimport-prices orphans
+.PHONY: help infra dbt dlt grafana clickhouse superset api mcp test deps-check setup dev reimport-prices orphans
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -24,6 +24,7 @@ help: ## Show this help message
 	@$(MAKE) -s --no-print-directory clickhouse
 	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory api
+	@$(MAKE) -s --no-print-directory mcp
 	@$(MAKE) -s --no-print-directory test
 	@echo "Dependencies:"
 	@echo "  make deps-check          Check for outdated dependencies"
@@ -490,6 +491,36 @@ api:
 			;; \
 	esac
 
+# MCP server commands - using subcommands
+# "mcp" is also an action word for `make dlt ... mcp`, so only run when it is the first goal.
+mcp:
+	@[ "$(word 1,$(MAKECMDGOALS))" = "mcp" ] || exit 0; \
+	cd mcp && unset VIRTUAL_ENV && \
+	SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
+	case "$$SUBCMD" in \
+		dev) \
+			echo "Starting MCP server on http://localhost:8090 (reads dbt/target; run 'make dbt docs' first)..."; \
+			MCP_DBT_TARGET_DIR=$(ROOT_DIR)/dbt/target $(UV) uvicorn --app-dir . server:app --host 0.0.0.0 --port 8090 --reload \
+			;; \
+		check) \
+			curl -fsS http://localhost:8090/ready && echo \
+			;; \
+		lock) \
+			uv lock \
+			;; \
+		help|"") \
+			echo "MCP server (dbt models, columns and lineage for agents):"; \
+			echo "  make mcp dev              Start MCP server locally on :8090 (auto-reload)"; \
+			echo "  make mcp check            Check the local server has loaded the dbt artifacts"; \
+			echo "  make mcp lock             Regenerate mcp/uv.lock"; \
+			echo "" \
+			;; \
+		*) \
+			echo "Usage: make mcp [dev|check|lock|help]"; \
+			exit 1 \
+			;; \
+	esac
+
 # Unit tests - using subcommands
 test:
 	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
@@ -538,6 +569,7 @@ setup: ## Initial setup (copy .env, install deps)
 	@cd dlt && uv sync || echo "Warning: dlt dependencies not installed"
 	@cd dbt && uv sync || echo "Warning: dbt dependencies not installed"
 	@cd api && uv sync || echo "Warning: api dependencies not installed"
+	@cd mcp && uv sync || echo "Warning: mcp dependencies not installed"
 	@echo "✓ Dependencies installed"
 	@echo ""
 	@echo "Next steps:"
