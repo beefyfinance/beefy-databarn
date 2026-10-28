@@ -109,6 +109,7 @@ class _Budget:
 
     def __init__(self, n: int = MAX_LINEAGE_NODES) -> None:
         self.left, self.truncated = n, False
+        self.gaps: dict[tuple[str, str], dict] = {}  # internal inputs whose lineage could not be traced
 
     def take(self) -> bool:
         if self.left <= 0:
@@ -276,6 +277,14 @@ def _upstream(s: Snapshot, uid: str, col: str, depth: int, seen: set, budget: _B
             seen.add(key)
             children = _upstream(s, src_uid, src_col, depth if hidden else depth - 1, seen, budget, collapse)
         if hidden:
+            if not children and src_col not in s.lineage.get(src_uid, {}):
+                budget.gaps[(src_uid, src_col)] = {
+                    "model": _short(src_uid),
+                    "column": src_col,
+                    "layer": layer_of(s.node(src_uid)),
+                    "transformation": e["transformation"],
+                    **links.present(sql_definition=links.node_links(s.node(src_uid)).get("sql_definition")),
+                }
             out.extend(children)  # splice through the internal model
             continue
         node = _lineage_node(s, src_uid, src_col, e["transformation"])
@@ -360,6 +369,12 @@ def column_lineage(model: str, column: str, direction: str = "upstream", depth: 
         acc: dict = {}
         _leaves(s, tree, "upstream", acc)
         out["origins"] = list(acc.values())
+    if budget.gaps:
+        out["untraced_inputs"] = list(budget.gaps.values())
+        out["untraced_note"] = (
+            "These inputs pass through internal models whose column lineage could not be traced, so "
+            "the origins above may be incomplete (e.g. corrections applied there). Read their SQL to confirm."
+        )
     if budget.truncated:
         out["note"] = f"Truncated at {MAX_LINEAGE_NODES} nodes; lower `depth` or query a downstream model."
     elif not tree and uid not in s.lineage:
