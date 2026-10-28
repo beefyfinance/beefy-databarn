@@ -22,6 +22,9 @@ The server is opinionated so agents recommend what people should actually use:
   `<pipeline>___<table>` source naming) and Envio tables as `envio <Table>`. `get_model`
   returns `sources`, `uses` and `used_by` (skipping internal models), and `column_lineage`
   returns `origins` (the raw source columns).
+- **Hardcoded data as an origin**: a model with `meta: {data_origin: hardcoded}` (the price
+  and TVL correction models) is reported as an origin of kind `hardcoded`, next to the dlt
+  tables, instead of an untraceable dead end.
 - **Answers come from your dbt docs**: model and column descriptions are returned verbatim,
   so documentation quality in the yml files is what agents will say. The server instructions
   tell agents not to invent beyond them.

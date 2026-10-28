@@ -12,7 +12,7 @@ from starlette.middleware import Middleware
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from landing import render_html, render_text
-from layers import LAYERS, audience_of, layer_of, rank_of, source_info
+from layers import LAYERS, audience_of, is_hardcoded_origin, layer_of, rank_of, source_info
 import links
 from store import ArtifactsUnavailable, Snapshot, _short, store
 
@@ -42,6 +42,8 @@ HOW TO ANSWER
 - Describe data origin in terms of raw SOURCE TABLES: dlt pipeline tables
   (e.g. dlt `beefy_api` pipeline, table `vaults`) or Envio indexer tables. Every model
   returned by get_model has a `sources` list; use it instead of naming internal models.
+  A source of kind `hardcoded` is not loaded data: it is a set of manual corrections
+  (e.g. price or TVL fixes for incident windows) maintained in dbt. Mention it as such.
 - Use each model's own description and column descriptions when explaining it; do not invent.
 - ALWAYS CITE LINKS when present. Models, sources and tool results carry URLs (`docs`, `sql_definition`,
   `dbt_spec`, `lineage_*`, `links`): the public docs site (docglow) and the GitHub repo. When you mention
@@ -83,7 +85,8 @@ def _clip(text: str, n: int) -> str:
 
 
 def _visible(node: dict, include_internal: bool) -> bool:
-    return include_internal or audience_of(node) == "primary"
+    # hardcoded correction models are real data origins, so they stay findable
+    return include_internal or audience_of(node) == "primary" or is_hardcoded_origin(node)
 
 
 def _brief(s: Snapshot, uid: str) -> dict:
@@ -97,11 +100,25 @@ def _brief(s: Snapshot, uid: str) -> dict:
 
 
 def _sources(s: Snapshot, uid: str) -> list[dict]:
-    return [_source(s, u) for u in s.origins(uid)]
+    return [_origin(s, u) for u in s.origins(uid)]
 
 
 def _source(s: Snapshot, uid: str) -> dict:
     return {**source_info(s.node(uid)), **links.present(docs=links.doc_url(uid))}
+
+
+def _origin(s: Snapshot, uid: str) -> dict:
+    """A raw source table, or a model of hardcoded data presented as an origin of kind `hardcoded`."""
+    if uid.startswith("source."):
+        return _source(s, uid)
+    node = s.node(uid)
+    return {
+        "id": _short(uid),
+        "kind": "hardcoded",
+        "table": _short(uid),
+        "description": node.get("description") or None,
+        **links.present(docs=links.doc_url(uid), sql_definition=links.node_links(node).get("sql_definition")),
+    }
 
 
 class _Budget:
@@ -262,7 +279,7 @@ def get_model(name: str, include_internal: bool = False) -> dict:
 
 def _hidden(s: Snapshot, uid: str, collapse: bool) -> bool:
     """Internal models are looked through (not listed, no depth spent) when collapsing."""
-    return collapse and s.audience(uid) == "internal" and not uid.startswith("source.")
+    return collapse and s.audience(uid) == "internal" and not uid.startswith("source.") and not is_hardcoded_origin(s.node(uid))
 
 
 def _upstream(s: Snapshot, uid: str, col: str, depth: int, seen: set, budget: _Budget, collapse: bool) -> list[dict]:
@@ -321,6 +338,8 @@ def _lineage_node(s: Snapshot, uid: str, col: str, transformation: str) -> dict:
         node["source_table"] = f"{info['kind']} {info['pipeline']}.{info['table']}" if "pipeline" in info else f"{info['kind']} {info['table']}"
     else:
         node["layer"] = layer_of(s.node(uid))
+        if is_hardcoded_origin(s.node(uid)):
+            node["origin"] = "hardcoded"  # manual corrections kept in dbt; nothing further up
     return node
 
 
@@ -331,6 +350,12 @@ def _leaves(s: Snapshot, nodes: list[dict], key: str, acc: dict) -> None:
         elif "source_table" in n:
             acc[(n["model"], n["column"])] = {
                 "source": _source(s, s.sources[n["model"]]["unique_id"]),
+                "column": n["column"],
+                "transformation": n["transformation"],
+            }
+        elif n.get("origin") == "hardcoded":
+            acc[(n["model"], n["column"])] = {
+                "source": _origin(s, s.resolve(n["model"])[0]),
                 "column": n["column"],
                 "transformation": n["transformation"],
             }
@@ -411,7 +436,12 @@ def model_graph(name: str, direction: str = "upstream", depth: int = 2, include_
         for n in neighbours(u):
             if n in seen:
                 continue
-            if not include_internal and s.audience(n) in ("internal", "operational") and not n.startswith("source."):
+            if (
+                not include_internal
+                and s.audience(n) in ("internal", "operational")
+                and not n.startswith("source.")
+                and not is_hardcoded_origin(s.node(n))
+            ):
                 # look through the hidden model without spending depth on it
                 out.update(walk(n, d, seen | {n}))
                 continue

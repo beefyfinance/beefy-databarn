@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from layers import audience_of
+from layers import audience_of, is_hardcoded_origin
 
 logger = logging.getLogger("mcp.store")
 
@@ -93,7 +93,7 @@ class Snapshot:
         return sorted(found, key=_short)
 
     def origins(self, uid: str) -> list[str]:
-        """Raw source tables a model ultimately derives from (dlt load-metadata tables excluded)."""
+        """Raw source tables (and hardcoded-data models) a model ultimately derives from; dlt load-metadata tables excluded."""
         if uid not in self._origins:
             found, seen, stack = set(), set(), [uid]
             while stack:
@@ -104,6 +104,8 @@ class Snapshot:
                 if u.startswith("source."):
                     if not self.node(u).get("name", "").split("___")[-1].startswith("_dlt"):
                         found.add(u)
+                elif is_hardcoded_origin(self.node(u)):
+                    found.add(u)  # manual data kept in dbt: an origin, nothing further up
                 else:
                     stack.extend(self.parents(u))
             self._origins[uid] = sorted(found, key=_short)

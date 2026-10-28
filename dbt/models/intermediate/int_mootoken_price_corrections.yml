@@ -5,6 +5,7 @@ models:
     description: "Hardcoded vault share (moo token) price corrections, fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good price before and the first good price after a bad period; one row is generated per 5-minute slot strictly between them, linearly interpolated. Overrides int_product_share_price on the same 5-minute grid."
     config:
       meta:
+        data_origin: hardcoded  # manual corrections kept in dbt (no source tables); shown as an origin by the MCP
         primary_key: ["chain_id", "product_address", "date_time"]
     tests:
       - dbt_utils.unique_combination_of_columns:

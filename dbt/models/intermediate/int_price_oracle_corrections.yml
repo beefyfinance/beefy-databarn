@@ -5,6 +5,7 @@ models:
     description: "Hardcoded Beefy API oracle price corrections (/prices, /lps), fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good price before and the first good price after a bad period; one row is generated per 5-minute slot strictly between them, linearly interpolated. Oracle prices (wants tokens, native gas tokens), not vault shares. Consumed by int_harvests and int_product_stats__lps_breakdown_hourly."
     config:
       meta:
+        data_origin: hardcoded  # manual corrections kept in dbt (no source tables); shown as an origin by the MCP
         primary_key: ["beefy_price_oracle_key", "date_time"]
     tests:
       - dbt_utils.unique_combination_of_columns:

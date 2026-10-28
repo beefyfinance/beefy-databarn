@@ -86,3 +86,9 @@ def source_info(node: dict) -> dict:
     else:
         info.update(table=name)
     return info
+
+
+def is_hardcoded_origin(node: dict) -> bool:
+    """A model with `meta: {data_origin: hardcoded}`: data maintained by hand in dbt (e.g.
+    price/TVL corrections), not loaded from a source. Treated as an origin in lineage."""
+    return node.get("resource_type") == "model" and (node.get("meta") or {}).get("data_origin") == "hardcoded"

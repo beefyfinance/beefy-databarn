@@ -5,6 +5,7 @@ models:
     description: "Hardcoded product TVL (USD) corrections for beefy_db.tvls, fabricated from the `windows` values() at the top of the model with no source tables. Each window gives the last good hourly TVL before and the first good one after a bad period; one row is generated per hour strictly between them, linearly interpolated. Overrides int_product_stats__tvl_hourly on the same hourly grain."
     config:
       meta:
+        data_origin: hardcoded  # manual corrections kept in dbt (no source tables); shown as an origin by the MCP
         primary_key: ["chain_id", "product_address", "date_hour"]
     tests:
       - dbt_utils.unique_combination_of_columns:
