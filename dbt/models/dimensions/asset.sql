@@ -10,7 +10,8 @@
 -- Dimension table: price series. One row per asset; tokens link to it with token.asset_id, so the same
 -- token on several chains shares one price series. asset_source, in priority order:
 --   beefy_db_oracle:  one asset per beefy_db price oracle (prices from int_beefy_oracle_price).
---                     An oracle named after a vault id prices that vault's want token, NOT its share token.
+--                     An oracle named after a classic vault id prices that vault's want token, NOT its share token.
+--                     A CLM oracle prices the CLM share: managers map to it, as does the pool lp_token that declares it.
 --   beefy_api_share:  one asset per vault share token with no beefy_db oracle (prices from int_product_share_price).
 -- '-rp' oracles duplicate their base oracle and are left out (as in int_beefy_oracle_price).
 

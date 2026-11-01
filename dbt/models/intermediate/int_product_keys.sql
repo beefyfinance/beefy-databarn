@@ -10,6 +10,7 @@
 -- Skinny product identity map. Grain is (chain_id, product_address).
 -- beefy_key is 1:1; beefy_wants_price_oracle_key is 1:many. It prices the beefy wants (deposit) token, NOT the vault share.
 -- Share prices come from share_token_symbol (/mootokenprices); see int_product_share_price.
+-- CLM managers are the exception: beefy_share_price_oracle_key is the beefy_db oracle of the manager's share.
 -- Join keys for API snapshots live here; display attributes stay on the product dimension.
 
 with classic_products as (
@@ -19,6 +20,7 @@ with classic_products as (
     vaults.id as beefy_key,
     coalesce(vaults.oracle_id, vaults.id) as beefy_wants_price_oracle_key,
     cast(nullIf(vaults.earned_token, '') as Nullable(String)) as share_token_symbol,
+    cast(null as Nullable(String)) as beefy_share_price_oracle_key,
     cast(nullIf(vaults.oracle, '') as Nullable(String)) as beefy_wants_price_oracle_type
   from {{ ref('stg_beefy_api__vaults') }} vaults
   inner join {{ ref('int_chain_keys') }} c
@@ -33,6 +35,7 @@ clm_products as (
     vaults.id as beefy_key,
     coalesce(vaults.oracle_id, vaults.id) as beefy_wants_price_oracle_key,
     cast(nullIf(vaults.earned_token, '') as Nullable(String)) as share_token_symbol,
+    cast(nullIf(vaults.oracle_id, '') as Nullable(String)) as beefy_share_price_oracle_key,
     cast(nullIf(vaults.oracle, '') as Nullable(String)) as beefy_wants_price_oracle_type
   from {{ ref('stg_beefy_api__clm_vaults') }} vaults
   inner join {{ ref('int_chain_keys') }} c
@@ -47,6 +50,7 @@ reward_pool_products as (
     vaults.id as beefy_key,
     coalesce(vaults.oracle_id, vaults.id) as beefy_wants_price_oracle_key,
     cast(nullIf(vaults.earned_token, '') as Nullable(String)) as share_token_symbol,
+    cast(null as Nullable(String)) as beefy_share_price_oracle_key,
     cast(nullIf(vaults.oracle, '') as Nullable(String)) as beefy_wants_price_oracle_type
   from {{ ref('stg_beefy_api__gov_vaults') }} vaults
   inner join {{ ref('int_chain_keys') }} c
@@ -62,6 +66,7 @@ boost_products as (
     coalesce(classic_products.beefy_wants_price_oracle_key, boosts.id) as beefy_wants_price_oracle_key,
     -- Boost earned token is the reward token, not the vault share token.
     cast(NULL as Nullable(String)) as share_token_symbol,
+    cast(null as Nullable(String)) as beefy_share_price_oracle_key,
     classic_products.beefy_wants_price_oracle_type as beefy_wants_price_oracle_type
   from {{ ref('stg_beefy_api__boosts') }} boosts
   inner join {{ ref('int_chain_keys') }} c
@@ -73,13 +78,13 @@ boost_products as (
 ),
 
 products as (
-  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_wants_price_oracle_type from classic_products
+  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from classic_products
   union all
-  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_wants_price_oracle_type from clm_products
+  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from clm_products
   union all
-  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_wants_price_oracle_type from reward_pool_products
+  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from reward_pool_products
   union all
-  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_wants_price_oracle_type from boost_products
+  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from boost_products
 )
 
 select
@@ -89,7 +94,8 @@ select
   p.beefy_wants_price_oracle_key as beefy_wants_price_oracle_key,
   p.beefy_wants_price_oracle_type as beefy_wants_price_oracle_type,
   o.id as beefy_wants_price_oracle_id,
-  p.share_token_symbol as share_token_symbol
+  p.share_token_symbol as share_token_symbol,
+  p.beefy_share_price_oracle_key as beefy_share_price_oracle_key
 from products p
 left join {{ ref('stg_beefy_db__price_oracles') }} o
   on p.beefy_wants_price_oracle_key = o.oracle_id

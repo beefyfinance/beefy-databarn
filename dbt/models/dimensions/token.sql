@@ -10,9 +10,9 @@
 -- Dimension table: Token reference data, one row per (chain_id, representation_address).
 -- Sources, in priority order: API token list, vault want tokens (vault configs), vault share tokens (int_product_keys).
 -- asset_id links the token to its price series (asset dimension); the same token on several chains shares one asset.
--- Price mapping: beefy_db oracle first (token list oracle_id, then vault oracle_id, only if the oracle exists in beefy_db),
--- else for vault share tokens the beefy_api share price (mootokenprices). A vault want oracle (often the vault id)
--- prices the want token, NOT the share token.
+-- Price mapping: beefy_db oracle first (a CLM manager's own oracle, then token list oracle_id, then vault oracle_id,
+-- only if the oracle exists in beefy_db), else for vault share tokens the beefy_api share price (mootokenprices).
+-- A classic vault want oracle (often the vault id) prices the want token, NOT the share token.
 -- beefy_db price_oracles.tokens is not usable for this: it lists an LP's constituent tokens, without chain.
 
 with api_tokens as (
@@ -66,6 +66,9 @@ want_tokens as (
 -- Vault share tokens: the product contract is the share token, always 18 decimals.
 -- token_kind is 'beefy_' || product_type (beefy_classic_vault, beefy_clm_manager, beefy_reward_pool).
 -- Boost receipts have no share_token_symbol and are left out.
+-- A CLM manager's own oracle prices its share (unlike a classic vault's, which prices the want). It is
+-- declared here because the API token list is not a reliable source: it omits some managers, and
+-- beefy_api___tokens is keyed on (chain, id), so managers whose LPs share an id collapse into one row.
 share_tokens as (
   select
     pk.chain_id as chain_id,
@@ -76,7 +79,7 @@ share_tokens as (
     cast(pk.beefy_key as String) as name,
     cast(18 as Int64) as decimals,
     concat('beefy_', p.product_type) as token_kind,
-    cast(null as Nullable(String)) as beefy_price_oracle_key,
+    pk.beefy_share_price_oracle_key as beefy_price_oracle_key,
     3 as source_priority
   from {{ ref('int_product_keys') }} pk
   inner join {{ ref('product') }} p
@@ -124,8 +127,9 @@ tokens as (
     argMin(decimals, source_priority) as decimals,
     -- A share token is a share even when the token list also lists it (e.g. mooBIFI).
     if(max(source_priority = 3), argMinIf(token_kind, source_priority, source_priority = 3), argMin(token_kind, source_priority)) as token_kind,
-    -- Several vaults can declare different oracles for one want: lowest priority, then alphabetical.
-    nullIf(argMinIf(ifNull(priced_oracle_key, ''), (source_priority, ifNull(priced_oracle_key, '')), priced_oracle_key is not null), '') as beefy_price_oracle_key
+    -- A token's own share oracle (CLM managers) wins. Otherwise several vaults can declare different oracles
+    -- for one want: lowest priority, then alphabetical.
+    nullIf(argMinIf(ifNull(priced_oracle_key, ''), (source_priority != 3, source_priority, ifNull(priced_oracle_key, '')), priced_oracle_key is not null), '') as beefy_price_oracle_key
   from priced
   group by chain_id, representation_address
 )
