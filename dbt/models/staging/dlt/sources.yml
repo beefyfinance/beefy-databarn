@@ -21,6 +21,8 @@ sources:
         description: "DLT load metadata for github_files pipeline (load_id, inserted_at)"
       - name: beefy_cctp_api____dlt_loads
         description: "DLT load metadata for beefy_cctp_api pipeline (load_id, inserted_at)"
+      - name: beefy_clm_subgraph____dlt_loads
+        description: "DLT load metadata for beefy_clm_subgraph pipeline (load_id, inserted_at)"
       - name: beefy_api___cow_vaults
         description: "COW vault configurations from Beefy API"
       - name: beefy_api___gov_vaults
@@ -84,3 +86,32 @@ sources:
       # beefy_cctp_api tables
       - name: beefy_cctp_api___messages
         description: "CCTP relay messages from Beefy CCTP API"
+      # beefy_clm_subgraph tables
+      - name: beefy_clm_subgraph___subgraph_status
+        description: "Subgraph status from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clms
+        description: "Clms from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___classics
+        description: "Classics from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___tokens
+        description: "Tokens from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_snapshots
+        description: "Clm snapshots from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___classic_snapshots
+        description: "Classic snapshots from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_position_interactions
+        description: "Clm position interactions from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___classic_position_interactions
+        description: "Classic position interactions from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_harvest_events
+        description: "Clm harvest events from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_manager_collection_events
+        description: "Clm manager collection events from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_deposit_events
+        description: "Clm deposit events from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_withdraw_events
+        description: "Clm withdraw events from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___clm_strategy_tvl_events
+        description: "Clm strategy tvl events from the Beefy CLM subgraph"
+      - name: beefy_clm_subgraph___transactions
+        description: "Transactions from the Beefy CLM subgraph"

@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__clm_position_interactions
+    description: "Beefy CLM subgraph clm position interactions, one row per (chain_key, subgraph_key)."
+    config:
+      meta:
+        primary_key: ["chain_key", "subgraph_key"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: subgraph_key
+        description: "Subgraph entity id, unique per chain"
+      - name: clm_address
+        description: "Clm address"
+      - name: trx_hash
+        description: "Transaction hash"
+      - name: log_index
+        description: "Log index within the transaction"
+      - name: block_timestamp
+        description: "Block time"
+      - name: block_number
+        description: "Block number"
+      - name: investor_address
+        description: "Investor address"
+      - name: investor_position_key
+        description: "Subgraph id of the investor position"
+      - name: interaction_type
+        description: "Position interaction type"
+      - name: manager_balance
+        description: "Manager balance (raw integer)"
+      - name: reward_pool_balances
+        description: "Reward pool balances (token order in the matching current-state *_order column)"
+      - name: total_balance
+        description: "Total balance (raw integer)"
+      - name: underlying_balance0
+        description: "Underlying balance0 (raw integer)"
+      - name: underlying_balance1
+        description: "Underlying balance1 (raw integer)"
+      - name: manager_balance_delta
+        description: "Manager balance delta (raw integer)"
+      - name: reward_pool_balances_delta
+        description: "Reward pool balances delta (token order in the matching current-state *_order column)"
+      - name: reward_balances_delta
+        description: "Reward balances delta (token order in the matching current-state *_order column)"
+      - name: claimed_reward_pool_address
+        description: "Claimed reward pool address"
+      - name: underlying_balance0_delta
+        description: "Underlying balance0 delta (raw integer)"
+      - name: underlying_balance1_delta
+        description: "Underlying balance1 delta (raw integer)"
+      - name: token0_to_native_price
+        description: "Token0 to native price (raw integer)"
+      - name: token1_to_native_price
+        description: "Token1 to native price (raw integer)"
+      - name: output_to_native_prices
+        description: "Output to native prices (token order in the matching current-state *_order column)"
+      - name: reward_to_native_prices
+        description: "Reward to native prices (token order in the matching current-state *_order column)"
+      - name: native_to_usd_price
+        description: "Native to usd price (raw integer)"

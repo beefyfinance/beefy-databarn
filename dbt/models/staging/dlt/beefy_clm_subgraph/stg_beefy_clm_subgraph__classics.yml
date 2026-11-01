@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__classics
+    description: "Beefy CLM subgraph classics, one row per (chain_key, classic_address)."
+    config:
+      meta:
+        primary_key: ["chain_key", "classic_address"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: classic_address
+        description: "Classic address"
+      - name: lifecycle
+        description: "Product lifecycle: RUNNING or PAUSED"
+      - name: vault_address
+        description: "Vault address"
+      - name: underlying_platform
+        description: "Underlying platform of the vault"
+      - name: vault_shares_token_address
+        description: "Vault shares token address"
+      - name: underlying_token_address
+        description: "Underlying token address"
+      - name: underlying_breakdown_tokens_order
+        description: "Underlying breakdown tokens order"
+      - name: boost_reward_tokens_order
+        description: "Boost reward tokens order"
+      - name: reward_tokens_order
+        description: "Reward tokens order"
+      - name: reward_pool_tokens_order
+        description: "Reward pool tokens order"
+      - name: erc4626_adapter_tokens_order
+        description: "Erc4626 adapter tokens order"
+      - name: vault_shares_total_supply
+        description: "Vault shares total supply (raw integer)"
+      - name: vault_underlying_total_supply
+        description: "Vault underlying total supply (raw integer)"
+      - name: vault_underlying_breakdown_balances
+        description: "Vault underlying breakdown balances (token order in the matching current-state *_order column)"
+      - name: vault_underlying_balance
+        description: "Vault underlying balance (raw integer)"
+      - name: reward_pools_total_supply
+        description: "Reward pools total supply (token order in the matching current-state *_order column)"
+      - name: erc4626_adapters_total_supply
+        description: "Erc4626 adapters total supply (token order in the matching current-state *_order column)"
+      - name: erc4626_adapter_vault_shares_balances
+        description: "Erc4626 adapter vault shares balances (token order in the matching current-state *_order column)"
+      - name: underlying_to_native_price
+        description: "Underlying to native price (raw integer)"
+      - name: underlying_breakdown_to_native_prices
+        description: "Underlying breakdown to native prices (token order in the matching current-state *_order column)"
+      - name: boost_reward_to_native_prices
+        description: "Boost reward to native prices (token order in the matching current-state *_order column)"
+      - name: reward_to_native_prices
+        description: "Reward to native prices (token order in the matching current-state *_order column)"
+      - name: native_to_usd_price
+        description: "Native to usd price (raw integer)"
+      - name: underlying_amount
+        description: "Underlying amount (raw integer)"
+      - name: total_call_fees
+        description: "Total call fees (raw integer)"
+      - name: total_beefy_fees
+        description: "Total beefy fees (raw integer)"
+      - name: total_strategist_fees
+        description: "Total strategist fees (raw integer)"

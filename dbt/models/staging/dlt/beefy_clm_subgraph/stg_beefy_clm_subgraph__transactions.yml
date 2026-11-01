@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__transactions
+    description: "Beefy CLM subgraph transactions, one row per (chain_key, trx_hash)."
+    config:
+      meta:
+        primary_key: ["chain_key", "trx_hash"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: trx_hash
+        description: "Transaction hash"
+      - name: block_number
+        description: "Block number"
+      - name: block_timestamp
+        description: "Block time"
+      - name: sender_address
+        description: "Transaction sender"

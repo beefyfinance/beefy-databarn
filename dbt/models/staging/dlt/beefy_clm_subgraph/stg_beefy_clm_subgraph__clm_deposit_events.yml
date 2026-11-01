@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__clm_deposit_events
+    description: "Beefy CLM subgraph clm deposit events, one row per (chain_key, subgraph_key)."
+    config:
+      meta:
+        primary_key: ["chain_key", "subgraph_key"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: subgraph_key
+        description: "Subgraph entity id, unique per chain"
+      - name: clm_address
+        description: "Clm address"
+      - name: trx_hash
+        description: "Transaction hash"
+      - name: log_index
+        description: "Log index within the transaction"
+      - name: block_timestamp
+        description: "Block time"
+      - name: block_number
+        description: "Block number"
+      - name: investor_address
+        description: "Investor address"
+      - name: shares
+        description: "Shares (raw integer)"
+      - name: amount0
+        description: "Amount0 (raw integer)"
+      - name: amount1
+        description: "Amount1 (raw integer)"
+      - name: fee0
+        description: "Fee0 (raw integer)"
+      - name: fee1
+        description: "Fee1 (raw integer)"

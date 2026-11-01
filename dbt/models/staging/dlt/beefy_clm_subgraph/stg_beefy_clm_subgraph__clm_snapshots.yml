@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__clm_snapshots
+    description: "Beefy CLM subgraph clm snapshots, one row per (chain_key, subgraph_key)."
+    config:
+      meta:
+        primary_key: ["chain_key", "subgraph_key"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: subgraph_key
+        description: "Subgraph entity id, unique per chain"
+      - name: clm_address
+        description: "Clm address"
+      - name: period_seconds
+        description: "Snapshot period in seconds, always 3600"
+      - name: period_start_at
+        description: "Start of the snapshot hour"
+      - name: last_updated_at
+        description: "Block time of the last write to this snapshot"
+      - name: manager_total_supply
+        description: "Manager total supply (raw integer)"
+      - name: reward_pools_total_supply
+        description: "Reward pools total supply (token order in the matching current-state *_order column)"
+      - name: token0_to_native_price
+        description: "Token0 to native price (raw integer)"
+      - name: token1_to_native_price
+        description: "Token1 to native price (raw integer)"
+      - name: output_to_native_prices
+        description: "Output to native prices (token order in the matching current-state *_order column)"
+      - name: reward_to_native_prices
+        description: "Reward to native prices (token order in the matching current-state *_order column)"
+      - name: native_to_usd_price
+        description: "Native to usd price (raw integer)"
+      - name: price_of_token0_in_token1
+        description: "Price of token0 in token1 (raw integer)"
+      - name: price_range_min1
+        description: "Price range min1 (raw integer)"
+      - name: price_range_max1
+        description: "Price range max1 (raw integer)"
+      - name: total_underlying_amount0
+        description: "Total underlying amount0 (raw integer)"
+      - name: total_underlying_amount1
+        description: "Total underlying amount1 (raw integer)"
+      - name: underlying_main_amount0
+        description: "Underlying main amount0 (raw integer)"
+      - name: underlying_main_amount1
+        description: "Underlying main amount1 (raw integer)"
+      - name: underlying_alt_amount0
+        description: "Underlying alt amount0 (raw integer)"
+      - name: underlying_alt_amount1
+        description: "Underlying alt amount1 (raw integer)"
+      - name: total_call_fees
+        description: "Total call fees (raw integer)"
+      - name: total_beefy_fees
+        description: "Total beefy fees (raw integer)"
+      - name: total_strategist_fees
+        description: "Total strategist fees (raw integer)"

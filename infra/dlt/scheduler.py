@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scheduler for DLT pipelines using APScheduler.
-Runs four separate DLT pipelines on different schedules.
+Runs five separate DLT pipelines on different schedules.
 """
 from __future__ import annotations
 import logging
@@ -37,6 +37,10 @@ async def beefy_cctp_api_pipeline():
     """Run the beefy_cctp_api pipeline."""
     await run_pipeline_script("beefy_cctp_api_pipeline.py")
 
+async def beefy_clm_subgraph_pipeline():
+    """Run the beefy_clm_subgraph pipeline."""
+    await run_pipeline_script("beefy_clm_subgraph_pipeline.py")
+
 async def optimize_replacing_tables():
     """Collapse ReplacingMergeTree duplicates. Slow; not run after every load."""
     # Daily at 05:00 UTC (1h before dbt tests); kill after 1h so tests start clean.
@@ -48,7 +52,7 @@ async def cleanup_pipeline_state():
 
 async def main():
     """Main async function to run the scheduler."""
-    logger.info("Starting DLT scheduler with 4 pipeline tasks, daily optimize, and state cleanup...")
+    logger.info("Starting DLT scheduler with 5 pipeline tasks, daily optimize, and state cleanup...")
 
     scheduler = AsyncIOScheduler()
 
@@ -88,6 +92,16 @@ async def main():
         trigger=CronTrigger(minute="3/5"),
         id="beefy_cctp_api_pipeline",
         name="Beefy CCTP API Pipeline",
+        max_instances=1,  # Prevent overlapping runs
+        coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    # Subgraph snapshots are hourly. Schedule beefy_clm_subgraph once an hour at :04.
+    scheduler.add_job(
+        beefy_clm_subgraph_pipeline,
+        trigger=CronTrigger(minute="4"),
+        id="beefy_clm_subgraph_pipeline",
+        name="Beefy CLM Subgraph Pipeline",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
     )

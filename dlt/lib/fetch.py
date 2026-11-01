@@ -75,11 +75,12 @@ def _retryable(exc: httpx.HTTPError) -> bool:
     return False
 
 
-async def _get(
+async def _request(
     url: str,
     *,
     params: Optional[Mapping[str, Any]] = None,
     headers: Optional[Mapping[str, str]] = None,
+    json_body: Optional[Mapping[str, Any]] = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> httpx.Response:
     limits = httpx.Limits(max_keepalive_connections=100, max_connections=200)
@@ -87,7 +88,10 @@ async def _get(
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
             async with httpx.AsyncClient(limits=limits, timeout=timeout_s) as client:
-                response = await client.get(url, params=params, headers=headers)
+                if json_body is None:
+                    response = await client.get(url, params=params, headers=headers)
+                else:
+                    response = await client.post(url, json=json_body, headers=headers)
                 response.raise_for_status()
                 await response.aread()
                 return response
@@ -114,12 +118,12 @@ async def _get(
 
 
 async def fetch_url_text(url: str) -> str:
-    response = await _get(url)
+    response = await _request(url)
     return response.text
 
 async def _fetch_url_json(url: str) -> Tuple[Any, Optional[str]]:
     """Fetch a URL and return the JSON payload and its ETag, if any."""
-    response = await _get(url)
+    response = await _request(url)
     payload = response.json()
     etag = response.headers.get("etag")
     return payload, etag
@@ -132,12 +136,25 @@ async def fetch_url_json_dict_with_params(
     headers: Optional[Mapping[str, str]] = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> Tuple[Dict[str, Any], Optional[str]]:
-    response = await _get(url, params=params, headers=headers, timeout_s=timeout_s)
+    response = await _request(url, params=params, headers=headers, timeout_s=timeout_s)
     payload = response.json()
     etag = response.headers.get("etag")
     if not isinstance(payload, dict):
         raise ValueError("Unexpected JSON payload; expected a dict.")
     return payload, etag
+
+async def post_url_json_dict(
+    url: str,
+    *,
+    json_body: Mapping[str, Any],
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> Dict[str, Any]:
+    response = await _request(url, json_body=json_body, timeout_s=timeout_s)
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Unexpected JSON payload; expected a dict.")
+    return payload
+
 
 async def fetch_url_json_list(url: str) -> AsyncIterator[Dict[str, Any]]:
     payload, _ = await _fetch_url_json(url)

@@ -179,12 +179,12 @@ make dbt run        # Run dbt models
    ```
 
 4. Access services:
-   - ClickHouse: http://localhost:18123
-   - Superset: http://localhost:8088
-   - Grafana: http://localhost:3000 (admin/changeme by default)
-   - Prometheus: http://localhost:9090
-   - RustFS Console: http://localhost:9001 (admin/changeme by default, or rustfsadmin/rustfsadmin)
-   - RustFS API: http://localhost:9002
+   - ClickHouse: http://localhost:28123
+   - Superset: http://localhost:18088
+   - Grafana: http://localhost:13000 (admin/changeme by default)
+   - Prometheus: http://localhost:19090
+   - RustFS Console: http://localhost:19001 (admin/changeme by default, or rustfsadmin/rustfsadmin)
+   - RustFS API: http://localhost:19002
 
 **Other useful commands:**
 ```bash
@@ -355,10 +355,10 @@ Services can be moved between nodes using Docker Swarm labels.
 
 ## Monitoring & BI
 
-- Superset: http://localhost:8088
-- Grafana: http://localhost:3000
-- Prometheus: http://localhost:9090
-- ClickHouse: http://localhost:18123
+- Superset: http://localhost:18088
+- Grafana: http://localhost:13000
+- Prometheus: http://localhost:19090
+- ClickHouse: http://localhost:28123
 
 **Note**: Superset supports ClickHouse as a native data source. After initial setup, you can configure ClickHouse connections through the Superset UI to query your dbt models and data.
 

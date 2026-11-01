@@ -263,7 +263,7 @@ dlt:
 			else \
 				echo "Usage: make dlt <action> <pipeline>"; \
 				echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, load-package, mcp"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api, beefy_clm_subgraph"; \
 				exit 1; \
 			fi \
 			;; \
@@ -273,7 +273,7 @@ dlt:
 				$(UV) dlt pipeline -v $$SOURCE drop $$RESOURCE; \
 			else \
 				echo "Usage: make dlt drop <pipeline> <resource>"; \
-				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
+				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api, beefy_clm_subgraph"; \
 				echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 				exit 1; \
 			fi \
@@ -295,7 +295,7 @@ dlt:
 			;; \
 		*) \
 			echo "Usage: make dlt [run <source> [resource]|optimize|cleanup-pipeline-state|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline>|help]"; \
-			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
+			echo "  source/pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api, beefy_clm_subgraph"; \
 			echo "  resource: e.g. feebatch_harvests, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, sync, trace, schema, drop, load-package, mcp"; \
 			exit 1 \
@@ -592,12 +592,12 @@ _print-urls:
 	@echo ""
 	@echo "Access services:"
 	echo "  - API: http://localhost:8080/docs" && \
-	echo "  - Superset: http://localhost:8088" && \
+	echo "  - Superset: http://localhost:$${SUPERSET_HOST_PORT:-18088}" && \
 	echo "  - Traefik Dashboard: http://localhost:8080" && \
-	echo "  - ClickHouse: http://localhost:$${CLICKHOUSE_HOST_HTTP_PORT:-18123} ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
-	echo "  - Grafana: http://localhost:3000 ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
-	echo "  - Prometheus: http://localhost:9090 (no auth)" && \
-	echo "  - RustFS: http://localhost:9001 ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
+	echo "  - ClickHouse: http://localhost:$${CLICKHOUSE_HOST_HTTP_PORT:-28123} ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
+	echo "  - Grafana: http://localhost:$${GRAFANA_HOST_PORT:-13000} ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
+	echo "  - Prometheus: http://localhost:$${PROMETHEUS_HOST_PORT:-19090} (no auth)" && \
+	echo "  - RustFS: http://localhost:$${RUSTFS_HOST_CONSOLE_PORT:-19001} ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
 
 # Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
 # product_stats.tvl_usd is built from tvls, not prices.

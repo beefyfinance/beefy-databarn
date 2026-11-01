@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__tokens
+    description: "Beefy CLM subgraph tokens, one row per (chain_key, token_address)."
+    config:
+      meta:
+        primary_key: ["chain_key", "token_address"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: token_address
+        description: "Token address"
+      - name: symbol
+        description: "Token symbol"
+      - name: name
+        description: "Token name"
+      - name: decimals
+        description: "Token decimals"

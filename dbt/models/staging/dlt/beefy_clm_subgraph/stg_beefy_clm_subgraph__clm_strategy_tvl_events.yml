@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__clm_strategy_tvl_events
+    description: "Beefy CLM subgraph clm strategy tvl events, one row per (chain_key, subgraph_key)."
+    config:
+      meta:
+        primary_key: ["chain_key", "subgraph_key"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: subgraph_key
+        description: "Subgraph entity id, unique per chain"
+      - name: clm_address
+        description: "Clm address"
+      - name: trx_hash
+        description: "Transaction hash"
+      - name: log_index
+        description: "Log index within the transaction"
+      - name: block_timestamp
+        description: "Block time"
+      - name: strategy_address
+        description: "Strategy address"
+      - name: underlying_amount0
+        description: "Underlying amount0 (raw integer)"
+      - name: underlying_amount1
+        description: "Underlying amount1 (raw integer)"

@@ -19,6 +19,10 @@ class _ScriptedClient:
     async def __aexit__(self, *args: object) -> bool:
         return False
 
+    async def post(self, url: str, **kwargs: Any) -> httpx.Response:
+        self.posted = kwargs.get("json")
+        return await self.get(url)
+
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         item = self._script.pop(0)
         if isinstance(item, Exception):
@@ -47,7 +51,7 @@ def test_read_timeout_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> 
     script: list[Any] = [httpx.ReadTimeout("timed out"), httpx.ReadTimeout("timed out"), 200]
     _install(monkeypatch, script, sleeps)
 
-    response = asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+    response = asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))
 
     assert response.status_code == 200
     assert sleeps == [1.0, 2.0]
@@ -60,7 +64,7 @@ def test_read_timeout_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> 
     _install(monkeypatch, script, sleeps)
 
     with pytest.raises(fetch.FetchError, match="ReadTimeout"):
-        asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+        asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))
 
     assert len(sleeps) == fetch._MAX_ATTEMPTS - 1
     assert script == []
@@ -72,7 +76,7 @@ def test_client_error_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     _install(monkeypatch, script, sleeps)
 
     with pytest.raises(fetch.FetchError, match="HTTP 404"):
-        asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+        asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))
 
     assert sleeps == []
 
@@ -86,7 +90,7 @@ def test_get_default_timeout_allows_large_json_payloads(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(fetch.httpx, "AsyncClient", factory)
 
-    asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+    asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))
 
     assert seen["timeout"] == fetch._DEFAULT_TIMEOUT_S
     assert fetch._DEFAULT_TIMEOUT_S == 30.0
@@ -97,7 +101,7 @@ def test_server_error_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     script: list[Any] = [503, 200]
     _install(monkeypatch, script, sleeps)
 
-    response = asyncio.run(fetch._get("https://api.beefy.finance/clm-vaults"))
+    response = asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))
 
     assert response.status_code == 200
     assert sleeps == [1.0]
@@ -109,7 +113,7 @@ def test_http_500_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None
     script: list[Any] = [500, 500, 500, 500, 200]
     _install(monkeypatch, script, sleeps)
 
-    response = asyncio.run(fetch._get("https://cctp-relay.beefy.com/v1/messages"))
+    response = asyncio.run(fetch._request("https://cctp-relay.beefy.com/v1/messages"))
 
     assert response.status_code == 200
     assert sleeps == [1.0, 2.0, 4.0, 8.0]
@@ -123,7 +127,7 @@ def test_http_500_raises_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None
     _install(monkeypatch, script, sleeps)
 
     with pytest.raises(fetch.FetchError, match=r'HTTP 500 Internal Server Error: \{"error":"relay exploded"') as raised:
-        asyncio.run(fetch._get("https://cctp-relay.beefy.com/v1/messages"))
+        asyncio.run(fetch._request("https://cctp-relay.beefy.com/v1/messages"))
 
     assert "Failed to reach https://cctp-relay.beefy.com/v1/messages" in str(raised.value)
     assert sleeps == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 32.0]

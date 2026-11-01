@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: stg_beefy_clm_subgraph__subgraph_status
+    description: "Indexing status of each chain's beefy-clm subgraph, one row per pipeline run."
+    config:
+      meta:
+        primary_key: ["chain_key", "loaded_at"]
+    columns:
+      - name: chain_key
+        description: "Subgraph chain slug, for example base"
+      - name: loaded_at
+        description: "When the pipeline read this status"
+      - name: deployment
+        description: "Subgraph deployment hash; a change means the subgraph was redeployed"
+      - name: has_indexing_errors
+        description: "True when the subgraph reports indexing errors"
+      - name: head_block_number
+        description: "Latest indexed block"
+      - name: head_block_timestamp
+        description: "Time of the latest indexed block"

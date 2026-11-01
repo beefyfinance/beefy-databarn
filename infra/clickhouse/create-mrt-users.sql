@@ -13,16 +13,13 @@ SETTINGS PROFILE 'envio_profile';
 -- Wildcard grants also cover databases created later. CREATE/DROP DATABASE is
 -- included because the envio indexer creates and resets its own databases.
 GRANT SELECT, INSERT, ALTER, CREATE TABLE, DROP TABLE, TRUNCATE, OPTIMIZE,
-      CREATE DATABASE, DROP DATABASE
+      CREATE DATABASE, DROP DATABASE, DROP VIEW
     ON envio_dev_mrt_*.* TO envio_dev_mrt;
 
 -------------------------------------------
 -- beefy_indexer_dev_mrt database: split into a worker (rw) and an api (ro) account
 -------------------------------------------
 CREATE DATABASE IF NOT EXISTS beefy_indexer_dev_mrt;
-
--- Replaced by the two accounts below. The database and its data are kept.
-DROP USER IF EXISTS beefy_indexer_dev_mrt;
 
 -- envio_profile caps max_rows_to_read at 1M and max_execution_time at 120s, too low for
 -- the stamping views and backfills. Own profile, not tied to init-clickhouse.sh.
@@ -62,3 +59,4 @@ HOST ANY
 SETTINGS PROFILE 'web_profile';
 
 GRANT SELECT ON beefy_indexer_dev_mrt.* TO beefy_indexer_api_dev_mrt;
+ALTER USER beefy_indexer_api_dev_mrt ADD SETTINGS output_format_arrow_compression_method = 'none';
