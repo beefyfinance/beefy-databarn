@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__price_feeds
+    description: "Databarn v1 price feeds, one row per price_feed_id."
+    config:
+      meta:
+        primary_key: ["price_feed_id"]
+    columns:
+      - name: price_feed_id
+        description: "databarn v1 numeric price feed id"
+      - name: price_feed_key
+        description: "databarn v1 price feed key"
+      - name: from_asset_key
+        description: "Asset being priced"
+      - name: to_asset_key
+        description: "Asset the price is expressed in"
+      - name: price_feed_data
+        description: "Raw price feed metadata JSON"

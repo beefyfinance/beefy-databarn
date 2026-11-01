@@ -86,6 +86,23 @@ sources:
       # beefy_cctp_api tables
       - name: beefy_cctp_api___messages
         description: "CCTP relay messages from Beefy CCTP API"
+      # databarn_v1 tables
+      - name: databarn_v1___products
+        description: "Databarn v1 products, one row per product_id."
+      - name: databarn_v1___price_feeds
+        description: "Databarn v1 price feeds, one row per price_feed_id."
+      - name: databarn_v1___investors
+        description: "Databarn v1 investors, one row per investor_id."
+      - name: databarn_v1___prices_raw
+        description: "Every price imported by databarn v1, one row per (price_feed_id, datetime, block_number)."
+      - name: databarn_v1___prices_1h
+        description: "Hourly databarn v1 prices, one row per (price_feed_id, datetime). The API keeps 6 months; this table keeps what was read."
+      - name: databarn_v1___prices_1d
+        description: "Daily databarn v1 prices, one row per (price_feed_id, datetime)."
+      - name: databarn_v1___vault_stats
+        description: "Databarn v1 vault metrics, one row per (product_id, datetime, block_number)."
+      - name: databarn_v1___investor_timeline
+        description: "Databarn v1 investor balance changes, one row per (product_id, investor_id, datetime, block_number)."
       # beefy_clm_subgraph tables
       - name: beefy_clm_subgraph___subgraph_status
         description: "Subgraph status from the Beefy CLM subgraph"

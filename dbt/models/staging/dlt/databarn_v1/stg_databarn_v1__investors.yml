@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__investors
+    description: "Databarn v1 investors, one row per investor_id."
+    config:
+      meta:
+        primary_key: ["investor_id"]
+    columns:
+      - name: investor_id
+        description: "databarn v1 numeric investor id"
+      - name: investor_address
+        description: "Investor address"

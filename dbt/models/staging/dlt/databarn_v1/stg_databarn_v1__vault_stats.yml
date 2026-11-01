@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__vault_stats
+    description: "Databarn v1 vault metrics, one row per (product_id, datetime, block_number)."
+    config:
+      meta:
+        primary_key: ["product_id", "datetime", "block_number"]
+    columns:
+      - name: datetime
+        description: "Block datetime, UTC"
+      - name: product_id
+        description: "Product"
+      - name: block_number
+        description: "Block number"
+      - name: vault_total_supply
+        description: "Vault share total supply"
+      - name: share_to_underlying_price
+        description: "Ratio from share token to underlying (ppfs)"
+      - name: staked_underlying
+        description: "Underlying staked in the vault"
+      - name: underlying_total_supply
+        description: "Underlying token total supply"
+      - name: underlying_capture_percentage
+        description: "Fraction of the underlying held by the vault"

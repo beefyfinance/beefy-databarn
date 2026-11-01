@@ -57,6 +57,17 @@ def get_beefy_timescaledb_url() -> str:
     return _with_postgres_connect_params(url, sslmode_env="BEEFY_TIMESCALEDB_SSLMODE")
 
 
+def get_databarn_v1_api() -> tuple[str, str]:
+    """Base URL and bearer token of the databarn v1 (beefy-bi) private API."""
+    url = os.environ.get("SOURCES__DATABARN_V1__API_URL")
+    api_key = os.environ.get("SOURCES__DATABARN_V1__API_KEY")
+    if not url or not api_key:
+        raise ValueError(
+            "databarn v1 API env not set. Source infra/dlt/set_dlt_env.sh or set DATABARN_V1_PRIVATE_API_URL / DATABARN_V1_PRIVATE_API_KEY."
+        )
+    return url.rstrip("/"), api_key
+
+
 def get_clickhouse_credentials() -> dict:
     """ClickHouse credentials dict (from DESTINATION__CLICKHOUSE__CREDENTIALS__* set by infra/dlt/set_dlt_env.sh)."""
     host = os.environ.get("DESTINATION__CLICKHOUSE__CREDENTIALS__HOST")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scheduler for DLT pipelines using APScheduler.
-Runs five separate DLT pipelines on different schedules.
+Runs six separate DLT pipelines on different schedules.
 """
 from __future__ import annotations
 import logging
@@ -41,6 +41,10 @@ async def beefy_clm_subgraph_pipeline():
     """Run the beefy_clm_subgraph pipeline."""
     await run_pipeline_script("beefy_clm_subgraph_pipeline.py")
 
+async def databarn_v1_pipeline():
+    """Run the databarn_v1 pipeline."""
+    await run_pipeline_script("databarn_v1_pipeline.py")
+
 async def optimize_replacing_tables():
     """Collapse ReplacingMergeTree duplicates. Slow; not run after every load."""
     # Daily at 05:00 UTC (1h before dbt tests); kill after 1h so tests start clean.
@@ -52,7 +56,7 @@ async def cleanup_pipeline_state():
 
 async def main():
     """Main async function to run the scheduler."""
-    logger.info("Starting DLT scheduler with 5 pipeline tasks, daily optimize, and state cleanup...")
+    logger.info("Starting DLT scheduler with 6 pipeline tasks, daily optimize, and state cleanup...")
 
     scheduler = AsyncIOScheduler()
 
@@ -102,6 +106,16 @@ async def main():
         trigger=CronTrigger(minute="4"),
         id="beefy_clm_subgraph_pipeline",
         name="Beefy CLM Subgraph Pipeline",
+        max_instances=1,  # Prevent overlapping runs
+        coalesce=True,   # Combine multiple pending runs into one
+    )
+
+    # Hourly: backfills advance by a capped number of rows per run. Schedule databarn_v1 at :24.
+    scheduler.add_job(
+        databarn_v1_pipeline,
+        trigger=CronTrigger(minute="24"),
+        id="databarn_v1_pipeline",
+        name="Databarn V1 Pipeline",
         max_instances=1,  # Prevent overlapping runs
         coalesce=True,   # Combine multiple pending runs into one
     )

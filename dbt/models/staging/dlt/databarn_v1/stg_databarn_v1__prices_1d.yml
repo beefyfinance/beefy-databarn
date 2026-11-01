@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__prices_1d
+    description: "Daily databarn v1 prices, one row per (price_feed_id, datetime)."
+    config:
+      meta:
+        primary_key: ["price_feed_id", "datetime"]
+    columns:
+      - name: datetime
+        description: "Bucket start, UTC"
+      - name: price_feed_id
+        description: "Price feed"
+      - name: price_avg
+        description: "Average price"
+      - name: price_high
+        description: "Highest price"
+      - name: price_low
+        description: "Lowest price"
+      - name: price_open
+        description: "First price"
+      - name: price_close
+        description: "Last price"

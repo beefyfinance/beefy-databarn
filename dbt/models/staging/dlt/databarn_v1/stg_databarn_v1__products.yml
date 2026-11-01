@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__products
+    description: "Databarn v1 products, one row per product_id."
+    config:
+      meta:
+        primary_key: ["product_id"]
+    columns:
+      - name: product_id
+        description: "databarn v1 numeric product id"
+      - name: product_key
+        description: "databarn v1 product key, for example beefy:vault:arbitrum:0x..."
+      - name: chain_key
+        description: "Beefy chain key"
+      - name: price_feed_1_id
+        description: "First price feed, resolves to price_feeds"
+      - name: price_feed_2_id
+        description: "Second price feed, resolves to price_feeds"
+      - name: pending_rewards_price_feed_id
+        description: "Pending rewards price feed"
+      - name: product_data
+        description: "Raw product metadata JSON"

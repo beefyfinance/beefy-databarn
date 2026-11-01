@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-import threading
-import time
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 import httpx
 
-from lib.fetch import FetchError, post_url_json_dict
+from lib.fetch import FetchError, RequestPacer, post_url_json_dict
 from .entities import INTEGER_FIELDS, TIMESTAMP_FIELDS, Entity
 
 GOLDSKY_BASE_URL = (
@@ -27,24 +24,7 @@ class SubgraphError(RuntimeError):
     """A subgraph answered with GraphQL errors."""
 
 
-class _RequestPacer:
-    """Space requests evenly across every resource; dlt may extract on several threads."""
-
-    def __init__(self, interval_s: float) -> None:
-        self._interval_s = interval_s
-        self._lock = threading.Lock()
-        self._next_slot = 0.0
-
-    async def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            slot = max(now, self._next_slot)
-            self._next_slot = slot + self._interval_s
-        if slot > now:
-            await asyncio.sleep(slot - now)
-
-
-_pacer = _RequestPacer(MIN_REQUEST_INTERVAL_S)
+_pacer = RequestPacer(MIN_REQUEST_INTERVAL_S)
 
 
 def subgraph_url(chain: str) -> str:

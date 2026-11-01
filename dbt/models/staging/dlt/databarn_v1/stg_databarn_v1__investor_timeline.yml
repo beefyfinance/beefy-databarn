@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__investor_timeline
+    description: "Databarn v1 investor balance changes, one row per (product_id, investor_id, datetime, block_number)."
+    config:
+      meta:
+        primary_key: ["product_id", "investor_id", "datetime", "block_number"]
+    columns:
+      - name: datetime
+        description: "Block datetime, UTC"
+      - name: investor_id
+        description: "Investor"
+      - name: product_id
+        description: "Product"
+      - name: block_number
+        description: "Block number"
+      - name: transaction_hash
+        description: "Transaction hash, when known"
+      - name: balance
+        description: "Share balance, approximate"
+      - name: balance_diff
+        description: "Share balance change, approximate"
+      - name: share_to_underlying_price
+        description: "Ratio from share token to underlying, approximate"
+      - name: underlying_balance
+        description: "Underlying balance, approximate"
+      - name: underlying_diff
+        description: "Underlying balance change, approximate"
+      - name: underlying_to_usd_price
+        description: "Underlying USD price, approximate"
+      - name: usd_balance
+        description: "USD balance, approximate"
+      - name: usd_diff
+        description: "USD balance change, approximate"
+      - name: pending_rewards
+        description: "Pending rewards, approximate"
+      - name: pending_rewards_diff
+        description: "Pending rewards change, approximate"
+      - name: pending_rewards_to_usd_price
+        description: "Pending rewards USD price, approximate"
+      - name: pending_rewards_usd_balance
+        description: "Pending rewards USD balance, approximate"
+      - name: pending_rewards_usd_diff
+        description: "Pending rewards USD change, approximate"

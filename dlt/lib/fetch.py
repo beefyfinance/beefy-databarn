@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import threading
+import time
 from typing import Any, AsyncIterator, Dict, Optional, Tuple, Mapping
 import httpx
 
@@ -18,6 +20,23 @@ _DEFAULT_TIMEOUT_S = 30.0
 
 class FetchError(RuntimeError):
     """A URL could not be fetched."""
+
+
+class RequestPacer:
+    """Space requests evenly across every resource; dlt may extract on several threads."""
+
+    def __init__(self, interval_s: float) -> None:
+        self._interval_s = interval_s
+        self._lock = threading.Lock()
+        self._next_slot = 0.0
+
+    async def wait(self) -> None:
+        with self._lock:
+            now = time.monotonic()
+            slot = max(now, self._next_slot)
+            self._next_slot = slot + self._interval_s
+        if slot > now:
+            await asyncio.sleep(slot - now)
 
 
 def _response_snippet(response: httpx.Response, *, max_chars: int = _RESPONSE_SNIPPET_CHARS) -> str:

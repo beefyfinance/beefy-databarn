@@ -51,6 +51,11 @@ export SOURCES__BEEFY_DB__CREDENTIALS="postgresql://${BEEFY_DB_USER}:${BEEFY_DB_
 : "${BEEFY_TIMESCALEDB_NAME:?BEEFY_TIMESCALEDB_NAME must be set}"
 export SOURCES__BEEFY_TIMESCALEDB__CREDENTIALS="postgresql://${BEEFY_TIMESCALEDB_USER}:${BEEFY_TIMESCALEDB_PASSWORD}@${BEEFY_TIMESCALEDB_HOST}:${BEEFY_TIMESCALEDB_PORT}/${BEEFY_TIMESCALEDB_NAME}?sslmode=${BEEFY_TIMESCALEDB_SSLMODE:-require}&gssencmode=disable&connect_timeout=10"
 
+# --- Source: databarn v1 (beefy-bi) private API ---
+# Optional: only databarn_v1_pipeline.py needs it, and it fails on its own when unset.
+export SOURCES__DATABARN_V1__API_URL="${DATABARN_V1_PRIVATE_API_URL:-https://db-core.beefy.com/api/v1}"
+export SOURCES__DATABARN_V1__API_KEY="${DATABARN_V1_PRIVATE_API_KEY:-}"
+
 # --- Runtime / load / extract / normalize (optional; defaults can come from .dlt/config.toml) ---
 export LOAD__TRUNCATE_STAGING_DATASET="${LOAD__TRUNCATE_STAGING_DATASET:-true}"
 export RUNTIME__LOG_LEVEL="${RUNTIME__LOG_LEVEL:-INFO}"

@@ -4,6 +4,7 @@ from beefy_db_pipeline import main as beefy_db_pipeline_main
 from github_files_pipeline import main as github_files_pipeline_main
 from beefy_cctp_api_pipeline import main as beefy_cctp_api_pipeline_main
 from beefy_clm_subgraph_pipeline import main as beefy_clm_subgraph_pipeline_main
+from databarn_v1_pipeline import main as databarn_v1_pipeline_main
 
 async def main():
     print("Running all pipelines ...")
@@ -13,6 +14,7 @@ async def main():
         beefy_db_pipeline_main(),
         beefy_cctp_api_pipeline_main(),
         beefy_clm_subgraph_pipeline_main(),
+        databarn_v1_pipeline_main(),
     )
 
 if __name__=='__main__':
