@@ -10,7 +10,10 @@
   )
 }}
 
-{% if is_incremental() %}
+{% set since = incremental_since_var() %}
+{% set until = incremental_until_var() %}
+{% set threshold = since %}
+{% if is_incremental() and since is none %}
   {% set threshold_sql %}
     SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }}
   {% endset %}
@@ -19,10 +22,6 @@
     {% set threshold = threshold_result.rows[0][0] | string %}
   {% else %}
     {% set threshold = '1900-01-01 00:00:00' %}
-  {% endif %}
-  {% set since = incremental_since_var() %}
-  {% if since is not none %}
-    {% set threshold = since %}
   {% endif %}
 {% endif %}
 
@@ -47,8 +46,11 @@ from (
   from {{ ref('stg_databarn_v1__vault_stats') }}
   where staked_underlying is not null
     and underlying_total_supply is not null
-    {% if is_incremental() %}
+    {% if threshold is not none %}
     and datetime >= toDateTime('{{ threshold }}')
+    {% endif %}
+    {% if until is not none %}
+    and datetime < toDateTime('{{ until }}')
     {% endif %}
   group by product_id, date_hour
 ) stats
@@ -60,8 +62,16 @@ inner join {{ ref('int_product_keys') }} pk
   on c.chain_id = pk.chain_id
   and {{ evm_address("splitByChar(':', p.product_key)[4]") }} = pk.product_address
 asof inner join (
+  -- The whole table does not fit in the asof hash table (30 GiB): only the wants, from 1 day before the window.
   select beefy_price_oracle_key, date_time, price
   from {{ ref('int_beefy_oracle_price') }} FINAL
+  where beefy_price_oracle_key in (select beefy_wants_price_oracle_key from {{ ref('int_product_keys') }})
+    {% if threshold is not none %}
+    and date_time >= toDateTime64('{{ threshold }}', 0) - interval 1 day
+    {% endif %}
+    {% if until is not none %}
+    and date_time < toDateTime('{{ until }}')
+    {% endif %}
 ) wants
   on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
   and stats.stats_datetime >= wants.date_time
