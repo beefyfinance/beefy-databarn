@@ -31,7 +31,6 @@ vaults as (
     JSONExtractString(p.product_data, 'vault', 'id') as beefy_key,
     nullIf(JSONExtractString(p.product_data, 'vault', 'want_price_feed_key'), '') as want_price_feed_key,
     nullIf(JSONExtractString(p.product_data, 'vault', 'want_address'), '') as want_address,
-    JSONExtract(p.product_data, 'vault', 'want_decimals', 'Nullable(Int64)') as want_decimals,
     JSONLength(p.product_data, 'vault', 'assets') > 1 as want_is_lp,
     nullIf(JSONExtractString(p.product_data, 'vault', 'token_name'), '') as share_token_symbol,
     nullIf(JSONExtractString(p.product_data, 'vault', 'platform_id'), '') as platform_id
@@ -51,10 +50,12 @@ select
   if(v.platform_id in (select id from {{ ref('stg_github_files___beefy_platforms') }}), v.platform_id, null) as platform_id,
   {{ to_representation_evm_address('v.want_address') }} as underlying_token_representation_address,
   v.want_address as want_address,
-  coalesce(v.want_decimals, 18) as want_decimals,
+  d.want_decimals as want_decimals,
   v.want_is_lp as want_is_lp,
   coalesce(v.share_token_symbol, v.beefy_key) as share_token_symbol
 from vaults v
+inner join {{ ref('int_databarn_v1__want_decimals') }} d
+  on v.databarn_v1_product_id = d.product_id
 where v.beefy_key != ''
   and v.beefy_key not in (select beefy_key from api_keys)
 order by v.databarn_v1_product_id

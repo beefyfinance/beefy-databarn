@@ -30,6 +30,7 @@
 -- Incremental on date_hour; only loads hours we don't already have (with 1-day lookback for late data).
 -- Combines tvl staging data with product information and aggregates to hourly, then applies
 -- int_product_tvl_corrections (beefy-db TVL is computed with its own, possibly mispriced, prices).
+-- Hours beefy-db missed fall back on databarn v1 staked want * want price, or on the CLM subgraph.
 
 WITH tvl_with_product AS (
   SELECT
@@ -50,7 +51,8 @@ WITH tvl_with_product AS (
     {% endif %}
 )
 
--- Hourly rows from int_product_tvl_corrections (priority 1) override the raw hourly TVL (priority 0).
+-- Hourly rows from int_product_tvl_corrections (priority 1) override the raw hourly TVL (priority 0),
+-- which overrides databarn v1 and the CLM subgraph (priority -1).
 -- All corrected rows are always re-emitted so incremental runs refresh them.
 SELECT
   chain_id,
@@ -63,5 +65,19 @@ FROM (
   UNION ALL
   SELECT chain_id, product_address, date_hour, date_hour as date_time, tvl_usd, 1 as priority
   FROM {{ ref('int_product_tvl_corrections') }}
+  UNION ALL
+  SELECT chain_id, product_address, date_hour, date_hour as date_time, staked_underlying * want_price_usd as tvl_usd, -1 as priority
+  FROM {{ ref('int_databarn_v1__vault_stats_hourly') }}
+  WHERE staked_underlying * want_price_usd between 0 and 1000000000
+    {% if is_incremental() %}
+    AND date_hour >= toDateTime('{{ threshold }}')
+    {% endif %}
+  UNION ALL
+  SELECT chain_id, product_address, date_hour, date_hour as date_time, assumeNotNull(tvl_usd) as tvl_usd, -1 as priority
+  FROM {{ ref('int_beefy_clm_subgraph__clm_stats_hourly') }}
+  WHERE tvl_usd between 0 and 1000000000
+    {% if is_incremental() %}
+    AND date_hour >= toDateTime('{{ threshold }}')
+    {% endif %}
 )
 GROUP BY chain_id, product_address, date_hour

@@ -45,7 +45,7 @@ models:
         tests:
           - not_null
       - name: price_source
-        description: "'beefy_db' raw oracle price, 'databarn_v1' share price derived from databarn v1 ppfs, 'api' share price snapshot, 'interpolated' hardcoded correction"
+        description: "'beefy_db' raw oracle price, 'databarn_v1' share price derived from databarn v1 ppfs, 'clm_subgraph' share price derived from CLM subgraph balances, 'api' share price snapshot, 'interpolated' hardcoded correction"
         data_type: String
         tests:
           - not_null

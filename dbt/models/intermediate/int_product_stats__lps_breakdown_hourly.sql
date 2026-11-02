@@ -30,6 +30,9 @@
 -- Inside a known-bad window it is replaced by int_price_oracle_corrections on the snapshot's 5-minute slot.
 -- Corrections are a tiny table: exact-key left join. join_use_nulls=0, so a miss has price_source = ''.
 -- Other breakdown columns (underlying_price, balances) are not corrected.
+-- API rows win over fallbacks for history (priority 0): CLM subgraph share price, supply and token balances,
+-- databarn v1 want price and want supply for classic vaults.
+-- Classic vaults have no underlying_liquidity or underlying_price, hence the ifNull in the range filters.
 -- Incremental on date_hour (1-day lookback), plus every hour touching a correction so new windows
 -- reach old hours. Removing a window needs a reimport.
 WITH breakdown AS (
@@ -43,7 +46,8 @@ WITH breakdown AS (
     lb.total_supply as total_supply,
     lb.underlying_liquidity as underlying_liquidity,
     lb.underlying_balances as underlying_balances,
-    lb.underlying_price as underlying_price
+    lb.underlying_price as underlying_price,
+    1 as priority
   FROM {{ ref('stg_beefy_api__lps_breakdown') }} lb
   INNER JOIN {{ ref('int_product_keys') }} p
     ON lb.vault_id = p.beefy_key
@@ -54,8 +58,8 @@ WITH breakdown AS (
   WHERE
     if(corr.price_source != '', toFloat64(corr.price), lb.price) between 0 and 1000000
     and lb.total_supply between 0 and 1000000000000
-    and lb.underlying_liquidity between 0 and 1000000000000
-    and lb.underlying_price between 0 and 1000000
+    and ifNull(lb.underlying_liquidity, 0) between 0 and 1000000000000
+    and ifNull(lb.underlying_price, 0) between 0 and 1000000
     {% if is_incremental() %}
     and (
       (lb.date_time >= toDateTime('{{ threshold }}') and lb.date_time < now() + INTERVAL 1 DAY)
@@ -64,18 +68,60 @@ WITH breakdown AS (
       )
     )
     {% endif %}
+
+  UNION ALL
+
+  SELECT
+    c.chain_id as chain_id,
+    c.product_address as product_address,
+    c.date_hour as date_time,
+    -- A share of a mixed-decimals pool can top the range: keep its supply and balances.
+    if(c.share_token_price_usd <= 1000000, c.share_token_price_usd, null) as price,
+    [c.token0_representation_address, c.token1_representation_address] as tokens,
+    cast([toDecimal256(c.balance0, 20), toDecimal256(c.balance1, 20)] as Array(Decimal(76, 20))) as balances,
+    cast(toDecimal256(c.manager_total_supply, 20) as Nullable(Decimal(76, 20))) as total_supply,
+    cast(null as Nullable(Decimal(76, 20))) as underlying_liquidity,
+    cast([] as Array(Decimal(76, 20))) as underlying_balances,
+    cast(null as Nullable(Decimal(76, 20))) as underlying_price,
+    0 as priority
+  FROM {{ ref('int_beefy_clm_subgraph__clm_stats_hourly') }} c
+  WHERE c.manager_total_supply between 0 and 1000000000000
+    {% if is_incremental() %}
+    AND c.date_hour >= toDateTime('{{ threshold }}')
+    {% endif %}
+
+  UNION ALL
+
+  SELECT
+    d.chain_id as chain_id,
+    d.product_address as product_address,
+    d.date_hour as date_time,
+    cast(d.want_price_usd as Nullable(Float64)) as price,
+    cast([] as Array(String)) as tokens,
+    cast([] as Array(Decimal(76, 20))) as balances,
+    cast(toDecimal256(d.underlying_total_supply, 20) as Nullable(Decimal(76, 20))) as total_supply,
+    cast(null as Nullable(Decimal(76, 20))) as underlying_liquidity,
+    cast([] as Array(Decimal(76, 20))) as underlying_balances,
+    cast(null as Nullable(Decimal(76, 20))) as underlying_price,
+    0 as priority
+  FROM {{ ref('int_databarn_v1__vault_stats_hourly') }} d
+  WHERE d.want_price_usd between 0 and 1000000
+    AND d.underlying_total_supply between 0 and 1000000000000
+    {% if is_incremental() %}
+    AND d.date_hour >= toDateTime('{{ threshold }}')
+    {% endif %}
 )
 
 SELECT
   chain_id,
   product_address,
   toStartOfHour(date_time) as date_hour,
-  argMax(price, date_time) as lp_price,
-  argMax(tokens, date_time) as breakdown_tokens,
-  argMax(balances, date_time) as breakdown_balances,
-  argMax(total_supply, date_time) as total_supply,
-  argMax(underlying_liquidity, date_time) as underlying_liquidity,
-  argMax(underlying_balances, date_time) as underlying_balances,
-  argMax(underlying_price, date_time) as underlying_price
+  argMax(price, (priority, date_time)) as lp_price,
+  argMax(tokens, (priority, date_time)) as breakdown_tokens,
+  argMax(balances, (priority, date_time)) as breakdown_balances,
+  argMax(total_supply, (priority, date_time)) as total_supply,
+  argMax(underlying_liquidity, (priority, date_time)) as underlying_liquidity,
+  argMax(underlying_balances, (priority, date_time)) as underlying_balances,
+  argMax(underlying_price, (priority, date_time)) as underlying_price
 FROM breakdown
 GROUP BY chain_id, product_address, toStartOfHour(date_time)

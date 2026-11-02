@@ -37,7 +37,7 @@ models:
       - name: want_address
         description: "Want (deposit) token address as declared. Null for a native-asset vault."
       - name: want_decimals
-        description: "Want token decimals, 18 when unknown"
+        description: "Want token decimals, see int_databarn_v1__want_decimals"
       - name: want_is_lp
         description: "True when the want token is built from several assets"
       - name: share_token_symbol

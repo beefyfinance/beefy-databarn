@@ -37,20 +37,11 @@ SELECT
   {{ quantiles('ps.beefy_performance_fee') }} as beefy_performance_fee_quantiles,
   {{ quantiles('ps.lp_fee') }} as lp_fee_quantiles,
   {{ quantiles('ps.compoundings_per_year') }} as compoundings_per_year_quantiles,
-  -- APR/APY quantiles: [min, p25, p50, p75, max] (excluding NULLs)
+  -- APY quantiles: [min, p25, p50, p75, max] (excluding NULLs)
   -- Access: apy_quantiles[0] for min, apy_quantiles[1] for p25, apy_quantiles[2] for p50, etc.
   {{ quantiles('ps.apy') }} as apy_quantiles,
   {{ quantiles('ps.total_apy') }} as total_apy_quantiles,
-  {{ quantiles('ps.vault_apr') }} as vault_apr_quantiles,
-  {{ quantiles('ps.trading_apr') }} as trading_apr_quantiles,
-  {{ quantiles('ps.clm_apr') }} as clm_apr_quantiles,
-  {{ quantiles('ps.reward_pool_apr') }} as reward_pool_apr_quantiles,
-  {{ quantiles('ps.reward_pool_trading_apr') }} as reward_pool_trading_apr_quantiles,
   {{ quantiles('ps.vault_apy') }} as vault_apy_quantiles,
-  {{ quantiles('ps.liquid_staking_apr') }} as liquid_staking_apr_quantiles,
-  {{ quantiles('ps.composable_pool_apr') }} as composable_pool_apr_quantiles,
-  {{ quantiles('ps.merkl_apr') }} as merkl_apr_quantiles,
-  {{ quantiles('ps.linea_ignition_apr') }} as linea_ignition_apr_quantiles,
   sum(ps.underlying_amount_compounded_usd) as underlying_amount_compounded_usd,
   -- Harvest metrics (sums and avg)
   sum(ps.harvest_call_fee) as harvest_call_fee,

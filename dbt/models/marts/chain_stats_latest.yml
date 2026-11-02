@@ -112,35 +112,8 @@ models:
       - name: total_apy_quantiles
         description: "Quantiles array for total APY: [min, p25, p50, p75, max] (latest value)"
         data_type: Array(Float64)
-      - name: vault_apr_quantiles
-        description: "Quantiles array for vault APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: trading_apr_quantiles
-        description: "Quantiles array for trading APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: clm_apr_quantiles
-        description: "Quantiles array for CLM APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: reward_pool_apr_quantiles
-        description: "Quantiles array for reward pool APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: reward_pool_trading_apr_quantiles
-        description: "Quantiles array for reward pool trading APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
       - name: vault_apy_quantiles
         description: "Quantiles array for vault APY: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: liquid_staking_apr_quantiles
-        description: "Quantiles array for liquid staking APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: composable_pool_apr_quantiles
-        description: "Quantiles array for composable pool APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: merkl_apr_quantiles
-        description: "Quantiles array for Merkl APR: [min, p25, p50, p75, max] (latest value)"
-        data_type: Array(Float64)
-      - name: linea_ignition_apr_quantiles
-        description: "Quantiles array for Linea Ignition APR: [min, p25, p50, p75, max] (latest value)"
         data_type: Array(Float64)
       - name: underlying_amount_compounded_usd
         description: "Total underlying amount compounded in USD across all products (latest value)"

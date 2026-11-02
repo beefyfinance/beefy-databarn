@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: int_databarn_v1__want_decimals
+    description: "Want token decimals of databarn v1 vaults, one row per product_id: CLM subgraph (on-chain), then databarn v1 metadata."
+    config:
+      meta:
+        primary_key: ["product_id"]
+    columns:
+      - name: product_id
+        description: "databarn v1 numeric product id"
+        tests:
+          - not_null
+          - unique
+      - name: chain_id
+        description: "Chain ID where the vault exists"
+        tests:
+          - not_null
+      - name: product_address
+        description: "Vault contract address"
+        tests:
+          - not_null
+      - name: want_address
+        description: "Want token address"
+      - name: databarn_want_decimals
+        description: "Decimals from databarn v1 product metadata"
+      - name: subgraph_want_decimals
+        description: "Decimals read on-chain by the CLM subgraph. Null when the subgraph does not know the token."
+      - name: want_decimals
+        description: "Decimals to use"
+        tests:
+          - not_null

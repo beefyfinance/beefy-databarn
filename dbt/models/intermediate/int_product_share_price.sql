@@ -83,7 +83,8 @@ select
   pk.product_address as product_address,
   pk.beefy_key as beefy_key,
   stats.date_time as date_time,
-  toDecimal256(toFloat64(stats.ppfs) * toFloat64(wants.price), 20) as share_token_price_usd,
+  -- databarn v1 scales ppfs as if the want had 18 decimals.
+  toDecimal256(toFloat64(stats.ppfs) * pow(10, wd.want_decimals - 18) * toFloat64(wants.price), 20) as share_token_price_usd,
   cast('databarn_v1' as String) as price_source,
   toUInt64(stats.seconds_into_slot) as __rmt_version
 from (
@@ -115,13 +116,11 @@ from (
   )
   group by product_id, date_time
 ) stats
-inner join {{ ref('stg_databarn_v1__products') }} p
-  on stats.product_id = p.product_id
-inner join {{ ref('int_chain_keys') }} c
-  on {{ normalize_network_beefy_key('p.chain_key') }} = c.beefy_key
+inner join {{ ref('int_databarn_v1__want_decimals') }} wd
+  on stats.product_id = wd.product_id
 inner join {{ ref('int_product_keys') }} pk
-  on c.chain_id = pk.chain_id
-  and {{ evm_address("splitByChar(':', p.product_key)[4]") }} = pk.product_address
+  on wd.chain_id = pk.chain_id
+  and wd.product_address = pk.product_address
 asof inner join (
   select beefy_price_oracle_key, date_time, price
   from {{ ref('int_beefy_oracle_price') }} FINAL
@@ -129,3 +128,23 @@ asof inner join (
   on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
   and stats.stats_datetime >= wants.date_time
 where stats.stats_datetime < wants.date_time + interval 1 day
+
+union all
+
+-- CLM subgraph: lowest priority, hourly.
+select
+  c.chain_id as chain_id,
+  c.product_address as product_address,
+  pk.beefy_key as beefy_key,
+  c.date_hour as date_time,
+  toDecimal256(assumeNotNull(c.share_token_price_usd), 20) as share_token_price_usd,
+  cast('clm_subgraph' as String) as price_source,
+  toUInt64(0) as __rmt_version
+from {{ ref('int_beefy_clm_subgraph__clm_stats_hourly') }} c
+inner join {{ ref('int_product_keys') }} pk
+  on c.chain_id = pk.chain_id
+  and c.product_address = pk.product_address
+where c.share_token_price_usd > 0
+  {% if is_incremental() %}
+  and c.date_hour >= toDateTime('{{ threshold }}')
+  {% endif %}

@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: databarn_v1_want_decimals_mismatch
+    description: "Data quality view of databarn v1 vaults whose want decimals disagree between the CLM subgraph, databarn v1 metadata, the token dimension and the scale implied by the median ppfs."
+    columns:
+      - name: chain_id
+        description: "Chain ID where the vault exists"
+      - name: product_address
+        description: "Vault contract address"
+      - name: beefy_key
+        description: "Beefy vault id. Empty when the vault is not a product."
+      - name: want_address
+        description: "Want token address"
+      - name: want_decimals
+        description: "Decimals used for share prices"
+      - name: databarn_want_decimals
+        description: "Decimals from databarn v1 metadata"
+      - name: subgraph_want_decimals
+        description: "Decimals read on-chain by the CLM subgraph"
+      - name: token_want_decimals
+        description: "Decimals of the want in the token dimension"
+      - name: implied_want_decimals
+        description: "Decimals implied by the median ppfs. An estimate."
+      - name: median_ppfs
+        description: "Median ppfs, as stored by databarn v1"
