@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List, Optional
 
@@ -9,6 +11,8 @@ import httpx
 
 from lib.fetch import FetchError, RequestPacer, post_url_json_dict
 from .entities import INTEGER_FIELDS, TIMESTAMP_FIELDS, Entity
+
+logger = logging.getLogger(__name__)
 
 GOLDSKY_BASE_URL = (
     "https://api.goldsky.com/api/public/project_clu2walwem1qm01w40v3yhw1f/subgraphs"
@@ -18,6 +22,11 @@ PAGE_SIZE = 1000
 # Goldsky public endpoints allow 50 requests per 10 seconds.
 MIN_REQUEST_INTERVAL_S = 0.2
 _ID_START = "0x"
+# graph-node aborts a query when a reorg lands mid-execution; the same query then succeeds.
+# One try plus retries, backoff doubling: 1s, 2s, 4s, 8s, 16s.
+_REORG_ERROR = "chain was reorganized"
+_REORG_MAX_ATTEMPTS = 6
+_REORG_BACKOFF_S = 1.0
 
 
 class SubgraphError(RuntimeError):
@@ -32,12 +41,27 @@ def subgraph_url(chain: str) -> str:
 
 
 async def query_subgraph(chain: str, query: str) -> Dict[str, Any]:
-    await _pacer.wait()
-    payload = await post_url_json_dict(subgraph_url(chain), json_body={"query": query})
-    # graph-node reports query failures as HTTP 200.
-    if payload.get("errors"):
-        raise SubgraphError(f"{SUBGRAPH_NAME}-{chain}: {payload['errors']}")
-    return payload["data"]
+    attempt = 0
+    while True:
+        attempt += 1
+        await _pacer.wait()
+        payload = await post_url_json_dict(subgraph_url(chain), json_body={"query": query})
+        # graph-node reports query failures as HTTP 200.
+        errors = payload.get("errors")
+        if not errors:
+            return payload["data"]
+        if attempt >= _REORG_MAX_ATTEMPTS or _REORG_ERROR not in str(errors):
+            raise SubgraphError(f"{SUBGRAPH_NAME}-{chain}: {errors}")
+        delay = _REORG_BACKOFF_S * (2 ** (attempt - 1))
+        logger.warning(
+            "%s-%s reorged during query; retry %s/%s in %.0fs",
+            SUBGRAPH_NAME,
+            chain,
+            attempt,
+            _REORG_MAX_ATTEMPTS - 1,
+            delay,
+        )
+        await asyncio.sleep(delay)
 
 
 async def fetch_subgraph_status(chain: str) -> Optional[Dict[str, Any]]:
