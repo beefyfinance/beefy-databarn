@@ -66,7 +66,8 @@ UNION ALL
 SELECT
   a.asset_id as asset_id,
   p.date_time as date_time,
-  p.share_token_price_usd as price,
+  -- Older int_product_share_price tables have this column Nullable.
+  assumeNotNull(p.share_token_price_usd) as price,
   p.price_source as price_source
 FROM {{ ref('int_product_share_price') }} p FINAL
 INNER JOIN (

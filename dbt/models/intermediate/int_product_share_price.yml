@@ -6,6 +6,10 @@ models:
     config:
       meta:
         primary_key: ["chain_id", "product_address", "date_time"]
+        # make dbt reimport/refresh run this model one month at a time (a full history of
+        # stats joined to oracle prices does not fit in 30 GiB); see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-01-01"
     tests:
       - keys_match:
           name: int_product_share_price_in_int_product_keys

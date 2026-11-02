@@ -10,7 +10,10 @@
   )
 }}
 
-{% if is_incremental() %}
+{% set since = incremental_since_var() %}
+{% set until = incremental_until_var() %}
+{% set threshold = since %}
+{% if is_incremental() and since is none %}
   {% set threshold_sql %}
     SELECT max(date_time) - INTERVAL 1 DAY FROM {{ this }}
   {% endset %}
@@ -19,10 +22,6 @@
     {% set threshold = threshold_result.rows[0][0] | string %}
   {% else %}
     {% set threshold = '1900-01-01 00:00:00' %}
-  {% endif %}
-  {% set since = incremental_since_var() %}
-  {% if since is not none %}
-    {% set threshold = since %}
   {% endif %}
 {% endif %}
 
@@ -62,9 +61,9 @@ inner join {{ ref('int_chain_keys') }} c
 inner join {{ ref('int_product_keys') }} pk
   on c.chain_id = pk.chain_id
   and moo.moo_token_symbol = pk.share_token_symbol
-{% if is_incremental() %}
+{% if threshold is not none %}
 where moo.date_time >= toDateTime('{{ threshold }}')
-  and moo.date_time < now() + interval 1 day
+  and moo.date_time < {% if until is not none %}toDateTime('{{ until }}'){% else %}now() + interval 1 day{% endif %}
 {% endif %}
 
 union all
@@ -89,7 +88,7 @@ select
   pk.beefy_key as beefy_key,
   stats.date_time as date_time,
   -- databarn v1 ppfs is want tokens per 1e18 raw share units, the unit of this column: no decimals scaling.
-  toDecimal256(toFloat64(stats.ppfs) * toFloat64(wants.price), 20) as share_token_price_usd,
+  toDecimal256(toFloat64(assumeNotNull(stats.ppfs)) * toFloat64(wants.price), 20) as share_token_price_usd,
   cast('databarn_v1' as String) as price_source,
   toUInt64(stats.seconds_into_slot) as __rmt_version
 from (
@@ -103,8 +102,11 @@ from (
     select product_id, datetime, share_to_underlying_price as ppfs
     from {{ ref('stg_databarn_v1__vault_stats') }}
     where share_to_underlying_price > 0
-      {% if is_incremental() %}
+      {% if threshold is not none %}
       and datetime >= toDateTime('{{ threshold }}')
+      {% endif %}
+      {% if until is not none %}
+      and datetime < toDateTime('{{ until }}')
       {% endif %}
 
     union all
@@ -115,8 +117,11 @@ from (
       on r.price_feed_id = s.price_feed_id
       and s.import_type = 'product:share-rate'
     where r.price > 0
-      {% if is_incremental() %}
+      {% if threshold is not none %}
       and r.datetime >= toDateTime('{{ threshold }}')
+      {% endif %}
+      {% if until is not none %}
+      and r.datetime < toDateTime('{{ until }}')
       {% endif %}
   )
   group by product_id, date_time
@@ -127,8 +132,16 @@ inner join {{ ref('int_product_keys') }} pk
   on wd.chain_id = pk.chain_id
   and wd.product_address = pk.product_address
 asof inner join (
+  -- The whole table does not fit in the asof hash table (30 GiB): only the wants, from 1 day before the window.
   select beefy_price_oracle_key, date_time, price
   from {{ ref('int_beefy_oracle_price') }} FINAL
+  where beefy_price_oracle_key in (select beefy_wants_price_oracle_key from {{ ref('int_product_keys') }})
+    {% if threshold is not none %}
+    and date_time >= toDateTime64('{{ threshold }}', 0) - interval 1 day
+    {% endif %}
+    {% if until is not none %}
+    and date_time < toDateTime('{{ until }}')
+    {% endif %}
 ) wants
   on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
   and stats.stats_datetime >= wants.date_time
@@ -154,8 +167,11 @@ from (
   where beefy_price_oracle_key in (
     select beefy_share_price_oracle_key from {{ ref('int_product_keys') }} where beefy_share_price_oracle_key is not null
   )
-    {% if is_incremental() %}
+    {% if threshold is not none %}
     and date_time >= toDateTime('{{ threshold }}')
+    {% endif %}
+    {% if until is not none %}
+    and date_time < toDateTime('{{ until }}')
     {% endif %}
   group by beefy_price_oracle_key, date_hour
 ) o
@@ -178,6 +194,9 @@ inner join {{ ref('int_product_keys') }} pk
   on c.chain_id = pk.chain_id
   and c.product_address = pk.product_address
 where c.share_token_price_usd > 0
-  {% if is_incremental() %}
+  {% if threshold is not none %}
   and c.date_hour >= toDateTime('{{ threshold }}')
+  {% endif %}
+  {% if until is not none %}
+  and c.date_hour < toDateTime('{{ until }}')
   {% endif %}

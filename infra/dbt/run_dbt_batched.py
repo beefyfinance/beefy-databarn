@@ -13,11 +13,11 @@ A model opts in with config meta (e.g. product_stats.yml):
 and must honour the incremental_since / incremental_until vars (macros/incremental_since.sql),
 also when not incremental (first batch of a full refresh).
 
-Plan for a selection that contains batchable models B:
-  1. everything selected that is not B or downstream of B, once
-  2. each B, one run per month from <since> (or batch_start) to tomorrow;
+A batched model can sit downstream of another one, so the selection runs in levels, parents first.
+The level of a model is the number of batched models above it in the selection. For each level:
+  1. its models that are not batched, once
+  2. each of its batched models, one run per month from <since> (or batch_start) to tomorrow;
      for refresh the first batch is a --full-refresh, later batches append to it
-  3. everything selected downstream of B, once
 Without batchable models in the selection it is a single plain dbt run, as before.
 """
 
@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 
@@ -35,23 +36,51 @@ def dbt(*args: str) -> None:
     subprocess.run(cmd, check=True)
 
 
-def batchable_models(selector: str) -> list[tuple[str, str]]:
-    """(name, batch_start) of selected models whose meta asks for monthly batches."""
+@dataclass
+class Model:
+    name: str
+    parents: list[str]  # unique ids
+    batch_start: str | None  # None when not batched
+
+
+def selected_models(selector: str) -> dict[str, Model]:
+    """Selected models by unique id, with the meta that asks for monthly batches."""
     out = subprocess.run(
-        ["dbt", "--quiet", "ls", "--resource-type", "model", "--select", selector, "--output", "json"],
+        [
+            "dbt", "--quiet", "ls", "--resource-type", "model", "--select", selector,
+            "--output", "json", "--output-keys", "unique_id", "name", "config", "depends_on",
+        ],
         check=True,
         capture_output=True,
         text=True,
     ).stdout
-    found = []
+    found = {}
     for line in out.splitlines():
         line = line.strip()
         if not line.startswith("{"):
             continue
         node = json.loads(line)
         meta = (node.get("config") or {}).get("meta") or {}
-        if meta.get("batch") == "month":
-            found.append((node["name"], str(meta.get("batch_start", ""))))
+        batch_start = str(meta.get("batch_start", "")) if meta.get("batch") == "month" else None
+        found[node["unique_id"]] = Model(node["name"], node["depends_on"]["nodes"], batch_start)
+    return found
+
+
+def levels(models: dict[str, Model]) -> dict[str, int]:
+    """Level of each model: how many batched models it sits below, along its longest path."""
+    found: dict[str, int] = {}
+
+    def level(unique_id: str) -> int:
+        if unique_id not in found:
+            parents = [p for p in models[unique_id].parents if p in models]
+            found[unique_id] = max(
+                (level(p) + (models[p].batch_start is not None) for p in parents),
+                default=0,
+            )
+        return found[unique_id]
+
+    for unique_id in models:
+        level(unique_id)
     return found
 
 
@@ -81,32 +110,33 @@ def main() -> None:
     full_refresh = ["--full-refresh"] if mode == "refresh" else []
     since_vars = ["--vars", json.dumps({"incremental_since": since})] if since else []
 
-    batched = batchable_models(selector)
-    if not batched:
+    models = selected_models(selector)
+    if all(model.batch_start is None for model in models.values()):
         dbt("run", "--select", selector, *full_refresh, *since_vars)
         return
 
-    names = [name for name, _ in batched]
+    names = sorted(model.name for model in models.values() if model.batch_start is not None)
     print(f"Batching by month: {', '.join(names)}", flush=True)
-    downstream_of_batched = [f"{name}+" for name in names]
 
-    # 1. Upstream and unrelated models, once.
-    dbt("run", "--select", selector, "--exclude", *downstream_of_batched, *full_refresh, *since_vars)
+    model_levels = levels(models)
+    for current_level in range(max(model_levels.values()) + 1):
+        at_level = [model for uid, model in models.items() if model_levels[uid] == current_level]
 
-    # 2. Batchable models, one month at a time.
-    for name, batch_start in batched:
-        start_str = since or batch_start
-        if not start_str:
-            sys.exit(f"{name}: meta.batch_start is required for refresh")
-        for i, (lower, upper) in enumerate(month_windows(date.fromisoformat(start_str[:10]))):
-            batch_vars = {"incremental_since": lower.isoformat(), "incremental_until": upper.isoformat()}
-            print(f"=== {name}: {lower} -> {upper} ===", flush=True)
-            first_refresh_batch = full_refresh if i == 0 else []
-            dbt("run", "--select", name, *first_refresh_batch, "--vars", json.dumps(batch_vars))
+        # 1. Models of this level that are not batched, once.
+        plain = sorted(model.name for model in at_level if model.batch_start is None)
+        if plain:
+            dbt("run", "--select", *plain, *full_refresh, *since_vars)
 
-    # 3. Selected models downstream of the batched ones, once.
-    downstream = [f"{token},{name}+" for token in selector.split() for name in names]
-    dbt("run", "--select", *downstream, "--exclude", *names, *full_refresh, *since_vars)
+        # 2. Batchable models, one month at a time.
+        for model in sorted((m for m in at_level if m.batch_start is not None), key=lambda m: m.name):
+            start_str = since or model.batch_start
+            if not start_str:
+                sys.exit(f"{model.name}: meta.batch_start is required for refresh")
+            for i, (lower, upper) in enumerate(month_windows(date.fromisoformat(start_str[:10]))):
+                batch_vars = {"incremental_since": lower.isoformat(), "incremental_until": upper.isoformat()}
+                print(f"=== {model.name}: {lower} -> {upper} ===", flush=True)
+                first_refresh_batch = full_refresh if i == 0 else []
+                dbt("run", "--select", model.name, *first_refresh_batch, "--vars", json.dumps(batch_vars))
 
 
 if __name__ == "__main__":
