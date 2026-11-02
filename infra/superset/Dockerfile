@@ -1,5 +1,6 @@
 
-FROM apache/superset:6.1.0
+# py311: the default 6.1.0 tag runs Python 3.10, which pillow>=13 no longer supports
+FROM apache/superset:6.1.0-py311
 
 USER root
 
