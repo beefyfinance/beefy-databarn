@@ -91,7 +91,12 @@ select
   pk.beefy_key as beefy_key,
   stats.date_time as date_time,
   -- databarn v1 ppfs is want tokens per 1e18 raw share units, the unit of this column: no decimals scaling.
-  toDecimal256(toFloat64(assumeNotNull(stats.ppfs)) * toFloat64(wants.price), 20) as share_token_price_usd,
+  -- The if keeps the cast safe wherever ClickHouse evaluates it: the where below may run after it.
+  toDecimal256(if(
+    abs(toFloat64(assumeNotNull(stats.ppfs)) * toFloat64(wants.price)) < {{ max_share_price_usd }},
+    toFloat64(assumeNotNull(stats.ppfs)) * toFloat64(wants.price),
+    0
+  ), 20) as share_token_price_usd,
   cast('databarn_v1' as String) as price_source,
   toUInt64(stats.seconds_into_slot) as __rmt_version
 from (
@@ -191,7 +196,8 @@ select
   c.product_address as product_address,
   pk.beefy_key as beefy_key,
   c.date_hour as date_time,
-  toDecimal256(assumeNotNull(c.share_token_price_usd), 20) as share_token_price_usd,
+  -- The if keeps the cast safe wherever ClickHouse evaluates it: the where below may run after it.
+  toDecimal256(if(abs(assumeNotNull(c.share_token_price_usd)) < {{ max_share_price_usd }}, assumeNotNull(c.share_token_price_usd), 0), 20) as share_token_price_usd,
   cast('clm_subgraph' as String) as price_source,
   toUInt64(0) as __rmt_version
 from {{ ref('int_beefy_clm_subgraph__clm_stats_hourly') }} c
