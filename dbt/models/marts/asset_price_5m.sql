@@ -62,7 +62,7 @@ INNER JOIN (
 
 UNION ALL
 
--- beefy_api share price series (vault share tokens without beefy_db oracle)
+-- share price series (vault share tokens without beefy_db oracle): moo-token snapshots, databarn v1 ppfs
 SELECT
   a.asset_id as asset_id,
   p.date_time as date_time,

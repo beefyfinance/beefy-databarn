@@ -91,14 +91,14 @@ models:
                 field: representation_address
                 kind: one_to_many
       - name: creation_block
-        description: "Block number when the product was initialized (from envio)"
+        description: "Block number when the product was initialized (envio, then databarn v1 import state)"
         data_type: Nullable(Int64)
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "is null or creation_block != 0"
       - name: creation_datetime
-        description: "Timestamp when the product was initialized (from envio)"
+        description: "Timestamp when the product was initialized (envio, then databarn v1 import state)"
         data_type: Nullable(DateTime64(3, 'UTC'))
         tests:
           - dbt_utils.expression_is_true:

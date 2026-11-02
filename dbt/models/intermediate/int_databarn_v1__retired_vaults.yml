@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: int_databarn_v1__retired_vaults
+    description: "Classic vaults known to databarn v1 but gone from the Beefy API, one row per beefy_key. Feeds int_product_keys, product_classic and token so beefy_db facts and databarn v1 share prices of retired vaults keep a product and an asset."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the vault exists"
+        tests:
+          - not_null
+      - name: product_address
+        description: "Vault contract address"
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy vault id"
+        tests:
+          - not_null
+          - unique
+      - name: beefy_wants_price_oracle_key
+        description: "Oracle pricing the want (deposit) token, NOT the vault share"
+        tests:
+          - not_null
+      - name: platform_id
+        description: "Platform identifier"
+      - name: underlying_token_representation_address
+        description: "Want (deposit) token address"
+      - name: want_address
+        description: "Want (deposit) token address as declared. Null for a native-asset vault."
+      - name: want_decimals
+        description: "Want token decimals, 18 when unknown"
+      - name: want_is_lp
+        description: "True when the want token is built from several assets"
+      - name: share_token_symbol
+        description: "Vault share token symbol. Can repeat across vaults: a moo symbol is reused by redeployed vaults."
+        tests:
+          - not_null

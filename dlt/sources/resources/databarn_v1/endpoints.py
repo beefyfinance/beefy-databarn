@@ -25,6 +25,7 @@ class Dimension:
     path: str
     primary_key: str
     json_column: Optional[str] = None
+    primary_key_type: str = "bigint"
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,13 @@ DIMENSIONS = (
     Dimension("products", "products", "product_id", json_column="product_data"),
     Dimension("price_feeds", "price-feeds", "price_feed_id", json_column="price_feed_data"),
     Dimension("investors", "investors", "investor_id"),
+    Dimension(
+        "import_states",
+        "import-states",
+        "import_key",
+        json_column="import_data",
+        primary_key_type="text",
+    ),
 )
 
 TIME_SERIES = (

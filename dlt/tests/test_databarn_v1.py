@@ -57,6 +57,13 @@ def test_investor_counts_is_not_ingested() -> None:
     assert "investor-counts" not in paths
 
 
+def test_import_states_are_a_dimension_keyed_by_a_string() -> None:
+    endpoint = next(e for e in DIMENSIONS if e.table == "import_states")
+    assert endpoint.path == "import-states"
+    assert endpoint.primary_key == "import_key"
+    assert endpoint.primary_key_type == "text"
+
+
 def test_pages_follow_cursor_with_the_same_window(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = _install_api(
         monkeypatch,
@@ -149,6 +156,25 @@ def test_nullable_columns_accept_nulls() -> None:
 
     assert table.column("vault_total_supply").null_count == 1
     assert not table.schema.field("product_id").nullable
+
+
+def test_float_columns_accept_whole_numbers_above_2_pow_53() -> None:
+    row = {name: None for name in ENDPOINTS["investor_timeline"].columns}
+    row.update(
+        datetime="2026-01-01T00:00:00.000000Z",
+        investor_id=1,
+        product_id=2,
+        block_number=3,
+        balance=9732405731723386,
+        balance_diff=1.5,
+    )
+
+    table = client.rows_to_arrow(ENDPOINTS["investor_timeline"], [row])
+
+    values = table.to_pylist()[0]
+    assert values["balance"] == float(9732405731723386)
+    assert values["balance_diff"] == 1.5
+    assert values["usd_balance"] is None
 
 
 def test_start_uses_the_head_lag_only_near_the_head() -> None:

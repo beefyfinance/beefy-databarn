@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: int_databarn_v1__product_creation
+    description: "On-chain creation of databarn v1 vaults and boosts, one row per contract. Falls back behind envio in the product dimensions."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the contract exists"
+        tests:
+          - not_null
+      - name: product_address
+        description: "Vault or boost contract address"
+        tests:
+          - not_null
+      - name: creation_block
+        description: "Block of the first event of the contract"
+        tests:
+          - not_null
+      - name: creation_datetime
+        description: "Time of creation_block"
+        tests:
+          - not_null

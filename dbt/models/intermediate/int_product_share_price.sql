@@ -27,8 +27,10 @@
 {% endif %}
 
 -- Incremental share-to-USD prices from Beefy API moo-token snapshots (already PPFS-adjusted).
--- For now the share price comes only from /mootokenprices. Later an indexer will provide PPFS and
--- the share price becomes ppfs * beefy wants price.
+-- Snapshots start in 2026. Older prices are databarn v1 ppfs * beefy wants price, with a want price at most
+-- 1 day old. Ppfs comes from vault stats and from share-rate price feeds: most vaults retired before 2023 only
+-- have the feed. The two agree (daily p99 gap 0.12%). Their __rmt_version is only the seconds into the slot, so a snapshot or correction always wins.
+-- After a databarn_v1 backfill: make dbt reimport int_product_share_price+ <since>.
 -- Grain is a 5-minute slot: beefy_api dlt snapshots run every 5 minutes (infra/dlt/scheduler.py)
 -- and are bucketed with toStartOfFiveMinutes.
 -- Raw snapshots and int_mootoken_price_corrections rows are a plain union all. ReplacingMergeTree
@@ -72,3 +74,58 @@ select
   corr.price_source as price_source,
   (toUInt64(toUnixTimestamp(now())) * 2 + 1) * 300 as __rmt_version
 from {{ ref('int_mootoken_price_corrections') }} corr
+
+union all
+
+-- databarn v1 ppfs: lowest priority, whatever the run.
+select
+  pk.chain_id as chain_id,
+  pk.product_address as product_address,
+  pk.beefy_key as beefy_key,
+  stats.date_time as date_time,
+  toDecimal256(toFloat64(stats.ppfs) * toFloat64(wants.price), 20) as share_token_price_usd,
+  cast('databarn_v1' as String) as price_source,
+  toUInt64(stats.seconds_into_slot) as __rmt_version
+from (
+  select
+    product_id,
+    toStartOfFiveMinutes(datetime) as date_time,
+    max(datetime) as stats_datetime,
+    argMax(ppfs, datetime) as ppfs,
+    max(toUnixTimestamp(datetime) - toUnixTimestamp(toStartOfFiveMinutes(datetime))) as seconds_into_slot
+  from (
+    select product_id, datetime, share_to_underlying_price as ppfs
+    from {{ ref('stg_databarn_v1__vault_stats') }}
+    where share_to_underlying_price > 0
+      {% if is_incremental() %}
+      and datetime >= toDateTime('{{ threshold }}')
+      {% endif %}
+
+    union all
+
+    select assumeNotNull(s.product_id) as product_id, r.datetime as datetime, r.price as ppfs
+    from {{ ref('stg_databarn_v1__prices_raw') }} r
+    inner join {{ ref('stg_databarn_v1__import_states') }} s
+      on r.price_feed_id = s.price_feed_id
+      and s.import_type = 'product:share-rate'
+    where r.price > 0
+      {% if is_incremental() %}
+      and r.datetime >= toDateTime('{{ threshold }}')
+      {% endif %}
+  )
+  group by product_id, date_time
+) stats
+inner join {{ ref('stg_databarn_v1__products') }} p
+  on stats.product_id = p.product_id
+inner join {{ ref('int_chain_keys') }} c
+  on {{ normalize_network_beefy_key('p.chain_key') }} = c.beefy_key
+inner join {{ ref('int_product_keys') }} pk
+  on c.chain_id = pk.chain_id
+  and {{ evm_address("splitByChar(':', p.product_key)[4]") }} = pk.product_address
+asof inner join (
+  select beefy_price_oracle_key, date_time, price
+  from {{ ref('int_beefy_oracle_price') }} FINAL
+) wants
+  on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
+  and stats.stats_datetime >= wants.date_time
+where stats.stats_datetime < wants.date_time + interval 1 day

@@ -77,8 +77,8 @@ models:
         tests:
           - not_null
       - name: platform_id
-        description: "Platform identifier"
-        data_type: String
+        description: "Platform identifier, null for a retired vault whose platform is gone"
+        data_type: Nullable(String)
         tests:
           - relationships:
               arguments:

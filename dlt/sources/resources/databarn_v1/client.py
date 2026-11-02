@@ -58,6 +58,9 @@ def _column(values: List[Any], data_type: pa.DataType) -> pa.Array:
         return pa.array([_trim_decimal(v) for v in values], pa.string()).cast(DECIMAL)
     if data_type == TIMESTAMP:
         return pa.array(values, pa.string()).cast(TIMESTAMP)
+    if data_type == pa.float64():
+        # JSON whole numbers parse to int, and pyarrow refuses those above 2^53.
+        return pa.array([None if v is None else float(v) for v in values], data_type)
     return pa.array(values, data_type)
 
 

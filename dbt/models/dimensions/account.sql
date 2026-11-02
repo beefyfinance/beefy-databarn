@@ -258,6 +258,50 @@ zap_addresses AS (
     AND token_address != '0x0000000000000000000000000000000000000000'
 ),
 
+-- CLM strategies and investors seen by the subgraph.
+clm_subgraph_addresses AS (
+  SELECT
+    c.chain_id as chain_id,
+    s.strategy_address as address,
+    'clm_strategy' as label,
+    true as is_contract
+  FROM {{ ref('stg_beefy_clm_subgraph__clms') }} s
+  INNER JOIN {{ ref('chain') }} c
+    ON s.chain_key = c.beefy_key
+  WHERE s.strategy_address != ''
+
+  UNION ALL
+
+  SELECT DISTINCT
+    c.chain_id as chain_id,
+    i.investor_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM (
+    SELECT chain_key, investor_address FROM {{ ref('stg_beefy_clm_subgraph__clm_position_interactions') }}
+    UNION ALL
+    SELECT chain_key, investor_address FROM {{ ref('stg_beefy_clm_subgraph__classic_position_interactions') }}
+  ) i
+  INNER JOIN {{ ref('chain') }} c
+    ON i.chain_key = c.beefy_key
+),
+
+-- Investors of databarn v1 products. An investor with no timeline row yet has no known chain and is left out.
+databarn_v1_addresses AS (
+  SELECT DISTINCT
+    c.chain_id as chain_id,
+    i.investor_address as address,
+    CAST(NULL as Nullable(String)) as label,
+    false as is_contract
+  FROM {{ ref('stg_databarn_v1__investor_timeline') }} t
+  INNER JOIN {{ ref('stg_databarn_v1__investors') }} i
+    ON t.investor_id = i.investor_id
+  INNER JOIN {{ ref('stg_databarn_v1__products') }} p
+    ON t.product_id = p.product_id
+  INNER JOIN {{ ref('chain') }} c
+    ON {{ normalize_network_beefy_key('p.chain_key') }} = c.beefy_key
+),
+
 all_addresses AS (
   SELECT chain_id, address, label, is_contract FROM product_addresses
   UNION ALL
@@ -274,6 +318,10 @@ all_addresses AS (
   SELECT chain_id, address, label, is_contract FROM activity_addresses
   UNION ALL
   SELECT chain_id, address, label, is_contract FROM zap_addresses
+  UNION ALL
+  SELECT chain_id, address, label, is_contract FROM clm_subgraph_addresses
+  UNION ALL
+  SELECT chain_id, address, label, is_contract FROM databarn_v1_addresses
 ),
 
 addresses_aggregated AS (

@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_databarn_v1__import_states
+    description: "Databarn v1 import progress, one row per import_key."
+    config:
+      meta:
+        primary_key: ["import_key"]
+    columns:
+      - name: import_key
+        description: "Import key, for example product:investment:42 or price:feed:10"
+      - name: import_type
+        description: "product:investment, product:share-rate, product:statistics or oracle:price"
+      - name: product_id
+        description: "databarn v1 numeric product id. Null for oracle:price."
+      - name: price_feed_id
+        description: "Imported price feed. Null for product:investment and product:statistics."
+      - name: chain_key
+        description: "Beefy chain key. Null for oracle:price."
+      - name: contract_created_at_block
+        description: "Block of the first event of the product contract"
+      - name: contract_creation_datetime
+        description: "Time of contract_created_at_block"
+      - name: chain_latest_block_number
+        description: "Chain head at the last import"
+      - name: first_datetime
+        description: "First price date of an oracle:price import"
+      - name: last_import_datetime
+        description: "Last time this import ran"
+      - name: covered_ranges
+        description: "JSON array of {from, to} ranges attempted. Blocks, or dates for oracle:price."
+      - name: to_retry_ranges
+        description: "JSON array of {from, to} ranges that failed, in the same unit as covered_ranges"

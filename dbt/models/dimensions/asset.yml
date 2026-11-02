@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: asset
-    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_source tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a classic vault id prices the vault want token, NOT the share token; a CLM oracle prices the CLM share) or 'beefy_api_share' (a vault share token without beefy_db oracle, priced from moo-token price snapshots). Prices: asset_price_5m, asset_price_1h, asset_price_1d, asset_price_latest."
+    description: "Dimension table for price series. One row per asset; tokens link to it through token.asset_id, so one token deployed on several chains shares a single price series. asset_source tells where prices come from: 'beefy_db_oracle' (a beefy_db price oracle; an oracle named after a classic vault id prices the vault want token, NOT the share token; a CLM oracle prices the CLM share) or 'beefy_api_share' (a vault share token without beefy_db oracle, retired vaults included, priced from moo-token price snapshots and databarn v1 ppfs). Tokens without a price series have no asset. Prices: asset_price_5m, asset_price_1h, asset_price_1d, asset_price_latest."
     config:
       contract:
         enforced: true
@@ -16,7 +16,7 @@ models:
           - not_null
           - unique
       - name: asset_source
-        description: "Price source of the series: 'beefy_db_oracle' (beefy_db prices, preferred) or 'beefy_api_share' (moo-token price snapshots, for share tokens without beefy_db oracle)"
+        description: "Price source of the series: 'beefy_db_oracle' (beefy_db prices, preferred) or 'beefy_api_share' (moo-token price snapshots and databarn v1 ppfs, for share tokens without beefy_db oracle)"
         data_type: String
         tests:
           - not_null

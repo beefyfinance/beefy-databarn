@@ -93,6 +93,8 @@ sources:
         description: "Databarn v1 price feeds, one row per price_feed_id."
       - name: databarn_v1___investors
         description: "Databarn v1 investors, one row per investor_id."
+      - name: databarn_v1___import_states
+        description: "Databarn v1 import progress, one row per import_key."
       - name: databarn_v1___prices_raw
         description: "Every price imported by databarn v1, one row per (price_feed_id, datetime, block_number)."
       - name: databarn_v1___prices_1h

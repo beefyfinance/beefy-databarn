@@ -49,12 +49,12 @@ SELECT
   vaults.id as beefy_key,
   coalesce(vaults.oracle_id, vaults.id) as beefy_wants_price_oracle_key,
   vaults.name as display_name,
-  vaults.platform_id as platform_id,
+  cast(vaults.platform_id as Nullable(String)) as platform_id,
   toBool(ifNull(vaults.status = 'active', false)) as is_active,
   vaults.strategy as latest_strategy_address,
   {{ to_representation_evm_address('vaults.token_address') }} as underlying_token_representation_address,
-  envio.initialized_block as creation_block,
-  envio.initialized_timestamp as creation_datetime,
+  coalesce(envio.initialized_block, creation.creation_block) as creation_block,
+  coalesce(envio.initialized_timestamp, creation.creation_datetime) as creation_datetime,
   toDateTime64(vaults.created_at, 3, 'UTC') as declared_creation_date,
   coalesce(nullIf(strategies_agg.strategies_json, ''), '[]') as strategies_json
 FROM {{ ref('stg_beefy_api__vaults') }} vaults
@@ -63,7 +63,32 @@ LEFT JOIN {{ ref('chain') }} chain_dim
 LEFT JOIN {{ ref('stg_envio__classic_vault') }} envio
   ON chain_dim.chain_id = envio.network_id
   AND vaults.earn_contract_address = envio.address
+LEFT JOIN {{ ref('int_databarn_v1__product_creation') }} creation
+  ON chain_dim.chain_id = creation.chain_id
+  AND vaults.earn_contract_address = creation.product_address
 LEFT JOIN strategies_agg
   ON chain_dim.chain_id = strategies_agg.network_id
   AND vaults.earn_contract_address = strategies_agg.vault_address
 WHERE ifNull(vaults.is_gov_vault, false) = false
+
+UNION ALL
+
+-- Retired vaults: gone from the API, known to databarn v1.
+SELECT
+  r.chain_id as chain_id,
+  r.product_address as vault_address,
+  r.beefy_key as beefy_key,
+  r.beefy_wants_price_oracle_key as beefy_wants_price_oracle_key,
+  r.beefy_key as display_name,
+  cast(r.platform_id as Nullable(String)) as platform_id,
+  toBool(false) as is_active,
+  cast(null as Nullable(String)) as latest_strategy_address,
+  r.underlying_token_representation_address as underlying_token_representation_address,
+  cast(creation.creation_block as Nullable(Int64)) as creation_block,
+  cast(creation.creation_datetime as Nullable(DateTime64(3, 'UTC'))) as creation_datetime,
+  cast(null as Nullable(DateTime64(3, 'UTC'))) as declared_creation_date,
+  '[]' as strategies_json
+FROM {{ ref('int_databarn_v1__retired_vaults') }} r
+LEFT JOIN {{ ref('int_databarn_v1__product_creation') }} creation
+  ON r.chain_id = creation.chain_id
+  AND r.product_address = creation.product_address

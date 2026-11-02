@@ -12,7 +12,9 @@
 --   beefy_db_oracle:  one asset per beefy_db price oracle (prices from int_beefy_oracle_price).
 --                     An oracle named after a classic vault id prices that vault's want token, NOT its share token.
 --                     A CLM oracle prices the CLM share: managers map to it, as does the pool lp_token that declares it.
---   beefy_api_share:  one asset per vault share token with no beefy_db oracle (prices from int_product_share_price).
+--   beefy_api_share:  one asset per vault share token with no beefy_db oracle, retired vaults included (prices from
+--                     int_product_share_price: moo-token snapshots, then databarn v1 ppfs for history).
+-- Tokens without a price series (most CLM subgraph tokens) have no asset.
 -- '-rp' oracles duplicate their base oracle and are left out (as in int_beefy_oracle_price).
 
 with token_counts as (

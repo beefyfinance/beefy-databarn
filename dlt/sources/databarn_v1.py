@@ -75,7 +75,7 @@ def start_datetime(
 
 def _dimension_resource(endpoint: Dimension) -> Any:
     columns: Dict[str, Dict[str, Any]] = {
-        endpoint.primary_key: {"data_type": "bigint", "nullable": False},
+        endpoint.primary_key: {"data_type": endpoint.primary_key_type, "nullable": False},
     }
     if endpoint.json_column:
         columns[endpoint.json_column] = {"data_type": "json"}

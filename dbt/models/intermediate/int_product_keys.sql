@@ -43,6 +43,20 @@ clm_products as (
   where ifNull(vaults.is_gov_vault, false) = false
 ),
 
+-- Gone from the API, known to databarn v1. No share_token_symbol: a retired vault can share a moo symbol
+-- with a live one, and /mootokenprices joins on it.
+retired_products as (
+  select
+    r.chain_id as chain_id,
+    r.product_address as product_address,
+    r.beefy_key as beefy_key,
+    r.beefy_wants_price_oracle_key as beefy_wants_price_oracle_key,
+    cast(null as Nullable(String)) as share_token_symbol,
+    cast(null as Nullable(String)) as beefy_share_price_oracle_key,
+    cast(null as Nullable(String)) as beefy_wants_price_oracle_type
+  from {{ ref('int_databarn_v1__retired_vaults') }} r
+),
+
 reward_pool_products as (
   select
     c.chain_id as chain_id,
@@ -81,6 +95,8 @@ products as (
   select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from classic_products
   union all
   select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from clm_products
+  union all
+  select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from retired_products
   union all
   select chain_id, product_address, beefy_key, beefy_wants_price_oracle_key, share_token_symbol, beefy_share_price_oracle_key, beefy_wants_price_oracle_type from reward_pool_products
   union all
