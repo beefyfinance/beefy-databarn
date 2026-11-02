@@ -25,6 +25,9 @@
   {% endif %}
 {% endif %}
 
+{# Far above any real share price (CLM shares reach 1e15), and low enough that aggregates fit Decimal(76, 20). #}
+{% set max_share_price_usd = '1e30' %}
+
 -- Incremental share-to-USD prices from Beefy API moo-token snapshots (already PPFS-adjusted).
 -- share_token_price_usd is the USD value of 1e18 raw share units, which is one token: shares report 18 decimals.
 -- Shares are minted 1:1 with want units, so a non-18-decimal want gives a price far from the want price
@@ -146,6 +149,8 @@ asof inner join (
   on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
   and stats.stats_datetime >= wants.date_time
 where stats.stats_datetime < wants.date_time + interval 1 day
+  -- Above this is dust supply or a broken oracle, and toDecimal256 would overflow.
+  and toFloat64(assumeNotNull(stats.ppfs)) * toFloat64(wants.price) < {{ max_share_price_usd }}
 
 union all
 
@@ -193,7 +198,9 @@ from {{ ref('int_beefy_clm_subgraph__clm_stats_hourly') }} c
 inner join {{ ref('int_product_keys') }} pk
   on c.chain_id = pk.chain_id
   and c.product_address = pk.product_address
+-- Above the maximum is a dust supply or a broken token price, and toDecimal256 would overflow.
 where c.share_token_price_usd > 0
+  and c.share_token_price_usd < {{ max_share_price_usd }}
   {% if threshold is not none %}
   and c.date_hour >= toDateTime('{{ threshold }}')
   {% endif %}
