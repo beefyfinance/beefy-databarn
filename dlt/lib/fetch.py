@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 _MAX_ATTEMPTS = 8
 _RETRY_BACKOFF_S = 1.0
 _RETRY_BACKOFF_CAP_S = 32.0
-_RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
+# 520-524: Cloudflare could not reach the origin.
+_RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524})
 _RESPONSE_SNIPPET_CHARS = 500
 # Vaults/clm-vaults JSON is multiple MB; 5s ReadTimeout kills the whole pipeline.
 _DEFAULT_TIMEOUT_S = 30.0

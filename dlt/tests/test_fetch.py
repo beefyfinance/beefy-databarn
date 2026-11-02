@@ -96,9 +96,10 @@ def test_get_default_timeout_allows_large_json_payloads(monkeypatch: pytest.Monk
     assert fetch._DEFAULT_TIMEOUT_S == 30.0
 
 
-def test_server_error_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("status", [503, 521])
+def test_server_error_is_retried(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
     sleeps: list[float] = []
-    script: list[Any] = [503, 200]
+    script: list[Any] = [status, 200]
     _install(monkeypatch, script, sleeps)
 
     response = asyncio.run(fetch._request("https://api.beefy.finance/clm-vaults"))

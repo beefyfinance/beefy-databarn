@@ -3,7 +3,7 @@
 
 name: beefy-databarn
 
-x-clickhouse-image: &clickhouse-image clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.4}
+x-clickhouse-image: &clickhouse-image clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.36}
 
 services:
   clickhouse:
@@ -98,13 +98,13 @@ services:
         max-file: "3"
 
   clickhouse-backup:
-    image: beefy-databarn-clickhouse-backup:${CLICKHOUSE_VERSION:-26.8.4}
+    image: beefy-databarn-clickhouse-backup:${CLICKHOUSE_VERSION:-26.8.36}
     pull_policy: build
     build:
       context: ..
       dockerfile: clickhouse/Dockerfile.backup
       args:
-        CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.4}
+        CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.36}
     entrypoint: ["/bin/bash", "/opt/backup-loop.sh"]
     command: ["daemon"]
     volumes:
@@ -135,7 +135,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:13.2.1
+    image: grafana/grafana:13.2.5
     ports:
       - "${GRAFANA_HOST_PORT:-13000}:3000"
     volumes:
@@ -190,7 +190,7 @@ services:
         max-file: "3"
 
   prometheus:
-    image: prom/prometheus:v3.7.3
+    image: prom/prometheus:v3.15.1
     ports:
       - "${PROMETHEUS_HOST_PORT:-19090}:9090"
     volumes:
@@ -216,7 +216,7 @@ services:
         max-file: "3"
       
   rustfs:
-    image: rustfs/rustfs:1.0.0
+    image: rustfs/rustfs:1.0.4
     ports:
       - "${RUSTFS_HOST_API_PORT:-19002}:9000"  # API port
       - "${RUSTFS_HOST_CONSOLE_PORT:-19001}:9001"  # Console port
