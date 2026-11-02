@@ -64,7 +64,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool"]
+                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool", "beefy_classic_boost"]
       - name: asset_id
         description: "Price series of this token (foreign key to asset.asset_id). beefy_db oracle first (token list oracle, then vault want oracle); vault share tokens without an oracle use the beefy_api share price. Null when no price source is known. A want oracle never prices a share token."
         data_type: Nullable(UInt64)

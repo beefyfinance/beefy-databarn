@@ -17,7 +17,7 @@ models:
         tests:
           - not_null
       - name: price
-        description: "Moo token price"
+        description: "USD value of 1e18 raw share units. Snapshots before var mootoken_price_fix_deployed_at are rescaled by 10^(18 - want decimals) to this unit."
         tests:
           - not_null
           - dbt_utils.accepted_range:

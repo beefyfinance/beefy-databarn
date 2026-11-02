@@ -287,6 +287,6 @@ models:
         data_type: Nullable(UInt8)
         codec: ZSTD(3)
       - name: share_token_price_usd
-        description: "USD value of one vault share at the end of the hour (moo-token price, PPFS-adjusted, corrections applied). Not the want token price."
+        description: "USD value of one vault share (1e18 raw share units) at the end of the hour, corrections applied. Moo-token price for classic vaults, beefy_db oracle for CLM managers and reward pools. Null for boosts: price them through token.asset_id. Not the want token price: a non-18-decimal want reads far from it (a USDC vault is about 1e12 * ppfs)."
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)

@@ -30,5 +30,5 @@ left join {{ ref('int_databarn_v1__product_creation') }} creation
   and boost.boost_contract_address = creation.product_address
 left join {{ ref('product_classic') }} classic_vault
   on chain_dim.chain_id = classic_vault.chain_id
-  and {{ to_representation_evm_address('boost.underlying_token_address') }} = classic_vault.vault_address
+  and boost.pool_id = classic_vault.beefy_key
 where boost.version is null or boost.version < 2

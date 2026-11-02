@@ -6,8 +6,8 @@
 }}
 
 -- Data Quality Model: vaults whose want decimals disagree between sources.
--- implied_want_decimals comes from the median ppfs (close to 1, scaled as if the want had 18 decimals). Not the
--- first ppfs: it can be off by the whole scale before the first deposit. It is an estimate, as a vault can
+-- implied_want_decimals comes from the median ppfs (want tokens per 1e18 share units, so close to
+-- 10^(18 - want_decimals)). Not the first ppfs: it can be off by the whole scale before the first deposit. It is an estimate, as a vault can
 -- earn its way to a ppfs of 18, so only a gap of 2 or more counts.
 
 with median_ppfs as (

@@ -9,7 +9,7 @@
 
 -- Dimension table: Token reference data, one row per (chain_id, representation_address).
 -- Sources, in priority order: API token list, vault want tokens (vault configs, retired vaults), vault share tokens
--- (int_product_keys, retired vaults), CLM subgraph tokens (no price mapping).
+-- (int_product_keys, retired vaults), CLM subgraph tokens (priced only when their symbol is an oracle key).
 -- asset_id links the token to its price series (asset dimension); the same token on several chains shares one asset.
 -- Price mapping: beefy_db oracle first (a CLM manager's own oracle, then token list oracle_id, then vault oracle_id,
 -- only if the oracle exists in beefy_db), else for vault share tokens the share price series (mootokenprices, databarn v1 ppfs).
@@ -79,12 +79,25 @@ want_tokens as (
   from {{ ref('int_databarn_v1__retired_vaults') }} r
 ),
 
+-- Retired addresses the token list prices with an oracle are tokens, not vault shares: bridged mooBIFI, beS.
+listed_retired_tokens as (
+  select chain_id, representation_address
+  from api_tokens
+  where beefy_price_oracle_key in (
+      select oracle_id from {{ ref('stg_beefy_db__price_oracles') }} where not endsWith(oracle_id, '-rp')
+    )
+    and (chain_id, representation_address) in (
+      select chain_id, product_address from {{ ref('int_databarn_v1__retired_vaults') }}
+    )
+),
+
 -- Vault share tokens: the product contract is the share token, always 18 decimals.
 -- token_kind is 'beefy_' || product_type (beefy_classic_vault, beefy_clm_manager, beefy_reward_pool).
--- Boost receipts have no share_token_symbol and are left out.
--- A CLM manager's own oracle prices its share (unlike a classic vault's, which prices the want). It is
--- declared here because the API token list is not a reliable source: it omits some managers, and
--- beefy_api___tokens is keyed on (chain, id), so managers whose LPs share an id collapse into one row.
+-- A boost receipt is worth the vault share it stakes, so it takes that share's asset.
+-- A CLM manager's own oracle prices its share, and a reward pool share is worth its underlying token (unlike a
+-- classic vault's oracle, which prices the want). It is declared here because the API token list is not a reliable
+-- source: it omits most reward pools and some managers, and beefy_api___tokens is keyed on (chain, id), so
+-- managers whose LPs share an id collapse into one row.
 share_tokens as (
   select
     pk.chain_id as chain_id,
@@ -102,10 +115,11 @@ share_tokens as (
     on pk.chain_id = p.chain_id
     and pk.product_address = p.product_address
   where pk.share_token_symbol is not null
+    and (pk.chain_id, pk.product_address) not in (select chain_id, representation_address from listed_retired_tokens)
 
   union all
 
-  -- Retired vaults have no share oracle: their share price comes from databarn v1.
+  -- Retired vaults whose moo symbol is not unique are not in the rows above.
   select
     r.chain_id as chain_id,
     r.product_address as representation_address,
@@ -118,9 +132,27 @@ share_tokens as (
     cast(null as Nullable(String)) as beefy_price_oracle_key,
     3 as source_priority
   from {{ ref('int_databarn_v1__retired_vaults') }} r
+  where (r.chain_id, r.product_address) not in (select chain_id, representation_address from listed_retired_tokens)
+
+  union all
+
+  select
+    pk.chain_id as chain_id,
+    pk.product_address as representation_address,
+    cast(pk.product_address as Nullable(String)) as erc20_address,
+    false as is_native,
+    cast(pk.beefy_key as String) as symbol,
+    cast(pk.beefy_key as String) as name,
+    cast(18 as Int64) as decimals,
+    'beefy_classic_boost' as token_kind,
+    cast(null as Nullable(String)) as beefy_price_oracle_key,
+    3 as source_priority
+  from {{ ref('int_product_keys') }} pk
+  where pk.boost_staked_product_address is not null
 ),
 
 -- Tokens seen on-chain by the CLM subgraph. Fills in what the configs lack, never overrides them.
+-- A symbol that is also an oracle key takes that oracle: /prices is keyed by symbol.
 subgraph_tokens as (
   select
     chain_dim.chain_id as chain_id,
@@ -131,7 +163,7 @@ subgraph_tokens as (
     cast(tokens.name as String) as name,
     cast(tokens.decimals as Int64) as decimals,
     'erc20' as token_kind,
-    cast(null as Nullable(String)) as beefy_price_oracle_key,
+    cast(tokens.symbol as Nullable(String)) as beefy_price_oracle_key,
     4 as source_priority
   from {{ ref('stg_beefy_clm_subgraph__tokens') }} tokens
   inner join {{ ref('chain') }} chain_dim
@@ -148,6 +180,15 @@ unioned as (
   select * from subgraph_tokens
 ),
 
+-- Classic vault shares follow the vault rule (oracle price * ppfs), so a token list or symbol oracle never prices
+-- them: mooBIFI and mooSiloSonicUSDCe drift from it.
+classic_share_tokens as (
+  select chain_id, product_address as representation_address
+  from {{ ref('int_product_keys') }}
+  where beefy_share_price_oracle_key is null
+    and (chain_id, product_address) not in (select chain_id, representation_address from listed_retired_tokens)
+),
+
 -- Only oracles that exist in beefy_db (and are not '-rp' duplicates) have a price series.
 -- A share token used as a want (e.g. a CLM share in a reward pool) never takes the vault's want oracle:
 -- that oracle prices the underlying, not the share.
@@ -161,6 +202,10 @@ priced as (
       and not (
         u.source_priority = 2
         and (u.chain_id, u.representation_address) in (select chain_id, representation_address from share_tokens)
+      )
+      and not (
+        u.source_priority in (1, 4)
+        and (u.chain_id, u.representation_address) in (select chain_id, representation_address from classic_share_tokens)
       ),
       u.beefy_price_oracle_key,
       null
@@ -184,22 +229,74 @@ tokens as (
     nullIf(argMinIf(ifNull(priced_oracle_key, ''), (source_priority != 3, source_priority, ifNull(priced_oracle_key, '')), priced_oracle_key is not null), '') as beefy_price_oracle_key
   from priced
   group by chain_id, representation_address
+),
+
+resolved as (
+  select
+    t.chain_id as chain_id,
+    t.representation_address as representation_address,
+    t.erc20_address as erc20_address,
+    t.is_native as is_native,
+    t.symbol as symbol,
+    t.name as name,
+    t.decimals as decimals,
+    t.token_kind as token_kind,
+    cast(multiIf(
+      t.beefy_price_oracle_key is not null, {{ asset_id_from_beefy_price_oracle_id('o.id') }},
+      startsWith(t.token_kind, 'beefy_'), {{ asset_id_from_share_token('t.chain_id', 't.representation_address') }},
+      null
+    ) as Nullable(UInt64)) as asset_id
+  from tokens t
+  left join {{ ref('stg_beefy_db__price_oracles') }} o
+    on t.beefy_price_oracle_key = o.oracle_id
+),
+
+-- Boost receipts and the reward pool receipts the CLM subgraph knows, which include pools gone from the API.
+-- One receipt is worth one staked token. The subgraph lists some boosts too, hence union distinct.
+staked_tokens as (
+  select chain_id, product_address as token_address, assumeNotNull(boost_staked_product_address) as staked_address
+  from {{ ref('int_product_keys') }}
+  where boost_staked_product_address is not null
+
+  union distinct
+
+  select
+    chain_dim.chain_id as chain_id,
+    {{ evm_address('arrayJoin(clms.reward_pool_tokens_order)') }} as token_address,
+    {{ evm_address('clms.manager_token_address') }} as staked_address
+  from {{ ref('stg_beefy_clm_subgraph__clms') }} clms
+  inner join {{ ref('chain') }} chain_dim
+    on clms.chain_key = chain_dim.beefy_key
+
+  union distinct
+
+  select
+    chain_dim.chain_id as chain_id,
+    {{ evm_address('arrayJoin(classics.reward_pool_tokens_order)') }} as token_address,
+    {{ evm_address('classics.vault_shares_token_address') }} as staked_address
+  from {{ ref('stg_beefy_clm_subgraph__classics') }} classics
+  inner join {{ ref('chain') }} chain_dim
+    on classics.chain_key = chain_dim.beefy_key
 )
 
 select
-  t.chain_id as chain_id,
-  t.representation_address as representation_address,
-  t.erc20_address as erc20_address,
-  t.is_native as is_native,
-  t.symbol as symbol,
-  t.name as name,
-  t.decimals as decimals,
-  t.token_kind as token_kind,
-  cast(multiIf(
-    t.beefy_price_oracle_key is not null, {{ asset_id_from_beefy_price_oracle_id('o.id') }},
-    startsWith(t.token_kind, 'beefy_'), {{ asset_id_from_share_token('t.chain_id', 't.representation_address') }},
-    null
-  ) as Nullable(UInt64)) as asset_id
-from tokens t
-left join {{ ref('stg_beefy_db__price_oracles') }} o
-  on t.beefy_price_oracle_key = o.oracle_id
+  r.chain_id as chain_id,
+  r.representation_address as representation_address,
+  r.erc20_address as erc20_address,
+  r.is_native as is_native,
+  r.symbol as symbol,
+  r.name as name,
+  r.decimals as decimals,
+  if(r.token_kind = 'erc20' and r.asset_id is null and staked.asset_id is not null, 'beefy_reward_pool', r.token_kind) as token_kind,
+  multiIf(
+    r.token_kind = 'beefy_classic_boost', staked.asset_id,
+    r.asset_id is null, staked.asset_id,
+    r.asset_id
+  ) as asset_id
+from resolved r
+left join staked_tokens st
+  on r.chain_id = st.chain_id
+  and r.representation_address = st.token_address
+left join resolved staked
+  on st.chain_id = staked.chain_id
+  and st.staked_address = staked.representation_address

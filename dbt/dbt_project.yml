@@ -38,3 +38,8 @@ models:
 
 data_tests:
   +severity: error # all tests default to error
+
+vars:
+  # When /mootokenprices started serving beefy-api PR 1966 (UTC). It deployed at 17:12:32, but the CDN served
+  # the old response until 17:14:11. Earlier snapshots are rescaled by stg_beefy_api__mootokenprices.
+  mootoken_price_fix_deployed_at: "2026-11-02 17:14:11"
