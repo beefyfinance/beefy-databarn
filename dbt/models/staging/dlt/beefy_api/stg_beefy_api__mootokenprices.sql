@@ -18,7 +18,12 @@ SELECT
   ) as price,
   cast(t.date_time as DateTime('UTC')) as date_time
 FROM {{ source('dlt', 'beefy_api___mootokenprices') }} t FINAL
-LEFT JOIN {{ ref('stg_beefy_api__vaults') }} v
+-- Several vault ids can share a moo token on a network: one row per token, or snapshots fan out. The newest vault wins.
+LEFT JOIN (
+  SELECT network, earned_token, argMax(token_decimals, created_at) as token_decimals
+  FROM {{ ref('stg_beefy_api__vaults') }}
+  GROUP BY network, earned_token
+) v
   ON {{ normalize_network_beefy_key('t.chain_id') }} = v.network
   AND t.moo_token_symbol = v.earned_token
 where t.price is not null

@@ -50,4 +50,6 @@ SELECT
   cr.buyback_usd
 FROM cleaned_revenue cr
 INNER JOIN {{ ref('token') }} t
+  -- BIFI exists on several chains, buybacks only happen on Ethereum: block numbers and spacing match it since 2023.
   ON t.symbol = 'BIFI'
+  AND t.chain_id = 1
