@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # ClickHouse BACKUP/RESTORE loop: daily full, hourly incremental.
-# Backups are pushed to a remote S3 server (CLICKHOUSE_BACKUP_S3_*), ~100GB per full.
+# Backups land in remote S3 (CLICKHOUSE_BACKUP_S3_*), ~100GB per full, as self-contained prefixes
+# so a new instance can RESTORE FROM S3() without local disk metadata.
+# Two steps: BACKUP to the local staging disk (fast, nothing to time out), then upload with mc mirror,
+# which retries and skips what is already uploaded. .backup goes up last, so a prefix is only ever
+# complete remotely once everything else is there. A failed upload is resumed on the next run.
 # Keep 2 completed fulls so a third can exist while the next full is writing; keep
 # incrementals only for the newest full day.
-# Uses BACKUP TO S3() (self-contained prefixes) so a new instance can RESTORE without local disk metadata.
 # Usage:
 #   backup-loop.sh                  # daemon (run once, then every hour)
 #   backup-loop.sh once [auto|full|incremental]
@@ -26,6 +29,11 @@ S3_ACCESS_KEY="${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:?CLICKHOUSE_BACKUP_S3_ACCESS_KE
 S3_SECRET_KEY="${CLICKHOUSE_BACKUP_S3_SECRET_KEY:?CLICKHOUSE_BACKUP_S3_SECRET_KEY must be set}"
 MC_BIN="${MC_BIN:-/usr/local/bin/mc}"
 MC_ALIAS="chbackups"
+# Local staging disk: <path> of the "backups" disk in config.d/50-backups.xml, mounted here too
+STAGING_DISK="${CLICKHOUSE_BACKUP_STAGING_DISK:-backups}"
+STAGING_DIR="${CLICKHOUSE_BACKUP_STAGING_DIR:-/backups}"
+# Parallel uploads; Hetzner answers 504 when flooded
+MIRROR_WORKERS="${CLICKHOUSE_BACKUP_MIRROR_WORKERS:-8}"
 
 s3_url() {
   local prefix="$1"
@@ -36,6 +44,11 @@ s3_dest() {
   local prefix="$1"
   # log_queries=0 keeps keys out of system.query_log
   echo "S3('$(s3_url "$prefix")', '${S3_ACCESS_KEY}', '${S3_SECRET_KEY}')"
+}
+
+local_dest() {
+  local prefix="$1"
+  echo "Disk('${STAGING_DISK}', '${prefix}/')"
 }
 
 ch() {
@@ -108,7 +121,39 @@ build_backup_items() {
 
 backup_in_progress() {
   local prefix="$1"
-  [[ "$(ch "SELECT count() FROM system.backups WHERE status = 'CREATING_BACKUP' AND position(name, '/${prefix}/') > 0")" != "0" ]]
+  # Matches both Disk('backups', '<prefix>/') and S3('.../<prefix>/')
+  [[ "$(ch "SELECT count() FROM system.backups WHERE status = 'CREATING_BACKUP' AND position(name, '${prefix}/') > 0")" != "0" ]]
+}
+
+staged_complete() {
+  local prefix="$1"
+  [[ -f "${STAGING_DIR}/${prefix}/.backup" ]]
+}
+
+prepare_staging() {
+  mkdir -p "$STAGING_DIR"
+  # ClickHouse writes here as its own user; the bind mount starts out root-owned.
+  chown clickhouse:clickhouse "$STAGING_DIR" 2>/dev/null \
+    || echo "Could not chown ${STAGING_DIR} to clickhouse; BACKUP may fail to write" >&2
+}
+
+# One run at a time: the upload happens outside ClickHouse, so system.backups cannot tell a
+# one-shot `once` that the daemon is mid-upload (and prune would delete the half-uploaded prefix).
+with_lock() {
+  if ! command -v flock >/dev/null 2>&1; then
+    "$@"
+    return
+  fi
+  local rc=0
+  exec 9>"${STAGING_DIR}/.lock"
+  if ! flock -n 9; then
+    echo "Another backup run is in progress; skipping."
+    exec 9>&-
+    return 0
+  fi
+  "$@" || rc=$?
+  exec 9>&-
+  return "$rc"
 }
 
 # Hetzner object storage fails mc's bulk delete (`rm --recursive`: "unexpected EOF"),
@@ -138,7 +183,8 @@ remove_prefix() {
 # failed backup (its .lock makes every retry fail with BACKUP_ALREADY_EXISTS): delete it.
 remove_if_stale() {
   local prefix="$1"
-  if prefix_exists "$prefix" || backup_in_progress "$prefix"; then
+  # A complete local copy means the upload is pending: keep what is already up there.
+  if prefix_exists "$prefix" || staged_complete "$prefix" || backup_in_progress "$prefix"; then
     return 0
   fi
   if [[ -n "$(mc_cmd ls "${MC_ALIAS}/${S3_BUCKET}/${prefix}/" 2>/dev/null)" ]]; then
@@ -147,11 +193,129 @@ remove_if_stale() {
   fi
 }
 
+# Refuse to start a backup that could fill the disk ClickHouse itself lives on.
+enough_staging_space() {
+  local mode="$1"
+  local free_kb need_kb data_kb in_list="" db
+  free_kb="$(df -Pk "$STAGING_DIR" | awk 'NR == 2 {print $4}')"
+  for db in "${BACKUP_DATABASES[@]}"; do
+    [[ -n "$in_list" ]] && in_list+=", "
+    in_list+="'${db}'"
+  done
+  data_kb="$(ch "SELECT intDiv(sum(bytes_on_disk), 1024) FROM system.parts WHERE active AND database IN (${in_list})")"
+  if [[ "$mode" == "full" ]]; then
+    need_kb=$(( data_kb + data_kb / 5 )) # full copy + 20% headroom for data written meanwhile
+  else
+    need_kb=$(( data_kb / 5 )) # incrementals are small, but a big merge can rewrite a lot
+  fi
+  if (( free_kb < need_kb )); then
+    echo "Not enough free space in ${STAGING_DIR} for a ${mode} backup: $(( free_kb / 1048576 ))GiB free, need ~$(( need_kb / 1048576 ))GiB" >&2
+    return 1
+  fi
+}
+
+# Upload a completed local backup; mirror skips objects already there, so retries only send the rest.
+upload_prefix() {
+  local prefix="$1"
+  local src="${STAGING_DIR}/${prefix}"
+  local url="${MC_ALIAS}/${S3_BUCKET}/${prefix}"
+  local attempt start size
+  size="$(du -sh "$src" 2>/dev/null | cut -f1)"
+  start="$(date -u +%s)"
+  for attempt in 1 2 3 4 5; do
+    echo "Uploading ${prefix} (${size}) to $(s3_url "$prefix") (attempt ${attempt}/5)"
+    if mc_cmd mirror --overwrite --quiet --max-workers "$MIRROR_WORKERS" --exclude ".backup" "${src}/" "${url}/" >/dev/null \
+      && mc_cmd cp --quiet "${src}/.backup" "${url}/.backup" >/dev/null \
+      && prefix_exists "$prefix"; then
+      echo "Upload of ${prefix} finished in $(( $(date -u +%s) - start ))s"
+      # Left over from the old direct-to-S3 BACKUP; harmless but confusing.
+      mc_cmd rm --force "${url}/.lock" >/dev/null 2>&1 || true
+      rm -rf "$src"
+      return 0
+    fi
+    echo "Upload attempt ${attempt} of ${prefix} failed" >&2
+    sleep $((attempt * 60))
+  done
+  echo "Upload of ${prefix} failed after 5 attempts; local copy kept in ${src}, resumed next run" >&2
+  return 1
+}
+
+# Local staging shares the disk with ClickHouse data, so nothing may linger there:
+# - uploaded backups are deleted by upload_prefix,
+# - failed/interrupted local BACKUPs are deleted here,
+# - a completed backup whose upload failed is retried here; once it is from an earlier day, a newer
+#   full supersedes it and it is dropped instead.
+# A pending upload blocks new backups (run_backup), so at most one backup is ever staged.
+finish_staged() {
+  local dir prefix date_part today
+  today="$(date -u +%Y-%m-%d)"
+  for dir in "${STAGING_DIR}"/*/; do
+    [[ -d "$dir" ]] || continue
+    prefix="$(basename "$dir")"
+    [[ "$prefix" =~ ^(full|inc)- ]] || continue
+    if backup_in_progress "$prefix"; then
+      continue
+    fi
+    if ! staged_complete "$prefix"; then
+      echo "Removing incomplete local backup ${prefix}"
+      rm -rf "$dir"
+    elif prefix_exists "$prefix"; then
+      rm -rf "$dir"
+    else
+      date_part="$(echo "$prefix" | sed -E 's/^(full|inc)-([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\2/')"
+      if [[ "$date_part" < "$today" ]]; then
+        echo "Dropping local backup ${prefix}: never uploaded and superseded by today's backups" >&2
+        rm -rf "$dir"
+        continue
+      fi
+      echo "Resuming upload of ${prefix}"
+      upload_prefix "$prefix" || return 1
+    fi
+  done
+}
+
+# Poll an ASYNC BACKUP until it is done.
+wait_for_backup() {
+  local id="$1" dest="$2" start="$3"
+  local status error missing=0
+  while true; do
+    status="$(ch "SELECT status FROM system.backups WHERE id = '${id}'" || echo QUERY_FAILED)"
+    case "$status" in
+      CREATING_BACKUP) missing=0; sleep 30 ;;
+      ""|QUERY_FAILED)
+        # Not listed (yet) or ClickHouse briefly unreachable; give up after ~10 minutes.
+        missing=$((missing + 1))
+        if ((missing > 20)); then
+          echo "Backup ${dest} (id ${id}) not found in system.backups; giving up" >&2
+          return 1
+        fi
+        sleep 30
+        ;;
+      BACKUP_CREATED)
+        echo "Local backup ${dest} finished in $(( $(date -u +%s) - start ))s"
+        return 0
+        ;;
+      *)
+        error="$(ch "SELECT error FROM system.backups WHERE id = '${id}'")"
+        echo "Backup ${dest} ${status} after $(( $(date -u +%s) - start ))s: ${error}" >&2
+        return 1
+        ;;
+    esac
+  done
+}
+
 run_backup() {
   local mode="$1"
   local today hour dest settings items
   today="$(date -u +%Y-%m-%d)"
   hour="$(date -u +%H)"
+
+  # Explicit checks throughout: the daemon calls run_backup in `|| ...`, where set -e is off.
+  # Pending uploads first: an incremental needs today's full complete remotely.
+  if ! finish_staged; then
+    echo "Pending upload failed; not starting a new backup." >&2
+    return 1
+  fi
 
   if [[ "$mode" == "full" ]]; then
     dest="full-${today}"
@@ -171,56 +335,35 @@ run_backup() {
     echo "Backup ${dest} is still being written; skipping."
     return 0
   fi
-  # Explicit checks throughout: the daemon calls run_backup in `|| ...`, where set -e is off.
-  if ! remove_if_stale "$dest"; then
-    echo "Cannot clear incomplete ${dest}; not starting a backup into it." >&2
+  rm -rf "${STAGING_DIR:?}/${dest}"
+  if ! enough_staging_space "$mode"; then
     return 1
   fi
 
-  # ASYNC + polling: a ~100GB full to remote S3 outlives any client timeout, and a dropped
-  # synchronous client cancels the BACKUP and leaves a half-written prefix behind.
+  # ASYNC + polling: a ~100GB full outlives any client timeout, and a dropped synchronous
+  # client cancels the BACKUP.
   local id="${dest}-$(date -u +%s)"
   settings="id = '${id}'"
   if [[ "$mode" != "full" ]]; then
+    # Base read from remote S3 (only its .backup metadata), so the incremental restores from S3 alone.
     settings+=", base_backup = $(s3_dest "full-${today}")"
   fi
 
   items="$(build_backup_items)"
-  echo "Starting ${mode} backup to $(s3_url "$dest") (id ${id})"
+  echo "Starting ${mode} backup to ${STAGING_DIR}/${dest} (id ${id})"
   echo "  items: ${items}"
-  local start status error
+  local start
   start="$(date -u +%s)"
   # max_execution_time = 0: the default profile caps queries at 300s, ASYNC backups included.
-  if ! ch "SET log_queries = 0; SET max_execution_time = 0; BACKUP ${items} TO $(s3_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null; then
+  if ! ch "SET log_queries = 0; SET max_execution_time = 0; BACKUP ${items} TO $(local_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null; then
     echo "Failed to start backup ${dest}" >&2
     return 1
   fi
-
-  local missing=0
-  while true; do
-    status="$(ch "SELECT status FROM system.backups WHERE id = '${id}'" || echo QUERY_FAILED)"
-    case "$status" in
-      CREATING_BACKUP) missing=0; sleep 30 ;;
-      ""|QUERY_FAILED)
-        # Not listed (yet) or ClickHouse briefly unreachable; give up after ~10 minutes.
-        missing=$((missing + 1))
-        if ((missing > 20)); then
-          echo "Backup ${dest} (id ${id}) not found in system.backups; giving up" >&2
-          return 1
-        fi
-        sleep 30
-        ;;
-      BACKUP_CREATED)
-        echo "Backup ${dest} finished in $(( $(date -u +%s) - start ))s"
-        return 0
-        ;;
-      *)
-        error="$(ch "SELECT error FROM system.backups WHERE id = '${id}'")"
-        echo "Backup ${dest} ${status} after $(( $(date -u +%s) - start ))s: ${error}" >&2
-        return 1
-        ;;
-    esac
-  done
+  if ! wait_for_backup "$id" "$dest" "$start"; then
+    rm -rf "${STAGING_DIR:?}/${dest}"
+    return 1
+  fi
+  upload_prefix "$dest"
 }
 
 decide_mode() {
@@ -280,7 +423,10 @@ prune_old_backups() {
 
 show_status() {
   echo "=== system.backups (latest 20) ==="
-  ch "SELECT start_time, status, name, error, formatReadableSize(total_size) AS size FROM system.backups ORDER BY start_time DESC LIMIT 20 FORMAT PrettyCompact"
+  ch "SELECT start_time, status, name, substring(error, 1, 200) AS error, formatReadableSize(total_size) AS size FROM system.backups ORDER BY start_time DESC LIMIT 20 FORMAT PrettyCompact"
+  echo
+  echo "=== Local staging (${STAGING_DIR}; complete ones are waiting for upload) ==="
+  du -sh "${STAGING_DIR}"/*/ 2>/dev/null || echo "(empty)"
   echo
   echo "=== S3 prefixes (${S3_BUCKET}) ==="
   list_backup_prefixes || echo "(none)"
@@ -307,6 +453,18 @@ sleep_until_next_hour() {
   sleep $(( next - now ))
 }
 
+run_once() {
+  local rc=0
+  run_backup "$1" || rc=$?
+  prune_old_backups || rc=$?
+  return "$rc"
+}
+
+run_hourly() {
+  run_backup "$(decide_mode)" || echo "Backup failed; will retry next hour" >&2
+  prune_old_backups || echo "Prune failed; will retry next hour" >&2
+}
+
 cmd="${1:-daemon}"
 case "$cmd" in
   once)
@@ -319,8 +477,8 @@ case "$cmd" in
       echo "Usage: backup-loop.sh once [auto|full|incremental]" >&2
       exit 1
     fi
-    run_backup "$mode"
-    prune_old_backups
+    prepare_staging
+    with_lock run_once "$mode"
     ;;
   restore)
     wait_for_clickhouse
@@ -344,12 +502,10 @@ case "$cmd" in
   daemon)
     wait_for_clickhouse
     echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, keep ${KEEP_FULLS} fulls + ${KEEP_INCREMENTAL_DAYS}d incrementals)"
-    run_backup "$(decide_mode)" || echo "Initial backup failed; will retry next hour" >&2
-    prune_old_backups || echo "Initial prune failed; will retry next hour" >&2
+    prepare_staging
     while true; do
+      with_lock run_hourly || true
       sleep_until_next_hour
-      run_backup "$(decide_mode)" || echo "Backup failed; will retry next hour" >&2
-      prune_old_backups || echo "Prune failed; will retry next hour" >&2
     done
     ;;
   *)

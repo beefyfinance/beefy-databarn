@@ -1,6 +1,20 @@
 <?xml version="1.0"?>
 <clickhouse>
+    <!-- Backups are staged on this local disk (a volume shared with the clickhouse-backup sidecar),
+         then uploaded to the remote S3 server by the sidecar with mc, which retries and resumes.
+         BACKUP straight to the remote S3 died on sporadic 504 GatewayTimeouts, losing the whole run.
+         skip_access_check: the sidecar chowns the volume, which may still be root-owned at server start. -->
+    <storage_configuration>
+        <disks>
+            <backups>
+                <type>local</type>
+                <path>/backups/</path>
+                <skip_access_check>true</skip_access_check>
+            </backups>
+        </disks>
+    </storage_configuration>
     <backups>
+        <allowed_disk>backups</allowed_disk>
         <allow_concurrent_backups>false</allow_concurrent_backups>
         <allow_concurrent_restores>false</allow_concurrent_restores>
     </backups>

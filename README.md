@@ -133,7 +133,7 @@ flowchart TB
 
 - **Prometheus + Grafana**: Monitoring stack that collects metrics from all services and provides dashboards for infrastructure health, query performance, and system resources.
 
-- **Backups**: the prod `clickhouse-backup` sidecar runs native ClickHouse `BACKUP` to a remote S3 server (`CLICKHOUSE_BACKUP_S3_*` in `.env`): daily full, hourly incrementals. dlt staging stays on local `file://`.
+- **Backups**: the prod `clickhouse-backup` sidecar runs native ClickHouse `BACKUP` to a local staging disk (`${STORAGE_DIR}/clickhouse-backups`, needs room for one full), then uploads it to a remote S3 server (`CLICKHOUSE_BACKUP_S3_*` in `.env`) with `mc mirror`, which retries and resumes: daily full, hourly incrementals. dlt staging stays on local `file://`.
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 

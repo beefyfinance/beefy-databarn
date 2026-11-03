@@ -13,6 +13,7 @@ UV := uv run --env-file $(ROOT_DIR)/.env
 # Directories that need to exist for bind mounts (override via .env if present)
 STORAGE_DIR ?= /mnt/data
 DATA_DIRS := $(STORAGE_DIR)/clickhouse \
+             $(STORAGE_DIR)/clickhouse-backups \
              $(STORAGE_DIR)/prometheus \
              $(STORAGE_DIR)/grafana \
              $(STORAGE_DIR)/postgres \
