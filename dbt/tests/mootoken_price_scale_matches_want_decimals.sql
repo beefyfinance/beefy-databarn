@@ -1,6 +1,8 @@
 -- Fails when a recent /mootokenprices share price of a non-18-decimal vault is not on the 1e18 share unit scale.
--- implied_ppfs should be near 1. It is far off, by at least 1e6, when var mootoken_price_fix_deployed_at
--- is wrong: the snapshot is rescaled twice or not at all.
+-- The vault's own ppfs (want raw units per 1e18 share units) gives the expected share price, so ratio should be
+-- near 1. It is far off, by at least 1e2 and usually 1e10, when var mootoken_price_fix_deployed_at is wrong:
+-- the snapshot is rescaled twice or not at all.
+-- Ppfs, not 10^(18 - want decimals): ERC-4626 vaults (silov2, venus) mint 18-decimal shares, not 1:1 with want units.
 
 with shares as (
   select chain_id, product_address, argMax(share_token_price_usd, date_time) as share_price
@@ -22,9 +24,10 @@ select
   pk.product_address as product_address,
   pk.beefy_key as beefy_key,
   v.token_decimals as want_decimals,
+  toFloat64OrNull(v.price_per_full_share) as ppfs,
   toFloat64(s.share_price) as share_price,
   toFloat64(w.want_price) as want_price,
-  toFloat64(s.share_price) / (toFloat64(w.want_price) * pow(10, 18 - v.token_decimals)) as implied_ppfs
+  toFloat64(s.share_price) / (toFloat64(w.want_price) * ppfs / pow(10, v.token_decimals)) as ratio
 from shares s
 inner join {{ ref('int_product_keys') }} pk
   on s.chain_id = pk.chain_id
@@ -36,4 +39,5 @@ inner join wants w
 where v.token_decimals != 18
   and s.share_price > 0
   and w.want_price > 0
-  and implied_ppfs not between 0.01 and 10000
+  and ppfs > 0
+  and ratio not between 0.1 and 10
