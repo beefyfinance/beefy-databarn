@@ -120,12 +120,18 @@ remove_prefix() {
     return 0
   fi
   echo "Bulk delete of ${prefix} failed; deleting object by object"
-  mc_cmd ls --recursive "${url}/" | awk '{print $NF}' \
-    | xargs -P 16 -I{} "$MC_BIN" rm --force "${url}/{}" >/dev/null
-  if [[ -n "$(mc_cmd ls "${url}/" 2>/dev/null)" ]]; then
-    echo "Could not delete ${prefix}: objects remain" >&2
-    return 1
-  fi
+  # Single deletes also hit sporadic "unexpected EOF"; retry what is left a few times.
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    mc_cmd ls --recursive "${url}/" 2>/dev/null | awk '{print $NF}' \
+      | xargs -P 16 -I{} "$MC_BIN" rm --force "${url}/{}" >/dev/null 2>&1 || true
+    if [[ -z "$(mc_cmd ls "${url}/" 2>/dev/null)" ]]; then
+      return 0
+    fi
+    sleep $((attempt * 10))
+  done
+  echo "Could not delete ${prefix}: objects remain after 5 attempts" >&2
+  return 1
 }
 
 # A prefix without .backup that no running BACKUP is writing is a leftover of an interrupted or
@@ -184,7 +190,8 @@ run_backup() {
   echo "  items: ${items}"
   local start status error
   start="$(date -u +%s)"
-  if ! ch "SET log_queries = 0; BACKUP ${items} TO $(s3_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null; then
+  # max_execution_time = 0: the default profile caps queries at 300s, ASYNC backups included.
+  if ! ch "SET log_queries = 0; SET max_execution_time = 0; BACKUP ${items} TO $(s3_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null; then
     echo "Failed to start backup ${dest}" >&2
     return 1
   fi
@@ -283,7 +290,7 @@ restore_from() {
   local prefix="${1:?restore prefix required, e.g. inc-YYYY-MM-DD-HH}"
   prefix="${prefix%/}"
   echo "RESTORE ALL FROM $(s3_url "$prefix")"
-  ch "SET log_queries = 0; RESTORE ALL FROM $(s3_dest "$prefix")"
+  ch "SET log_queries = 0; SET max_execution_time = 0; RESTORE ALL FROM $(s3_dest "$prefix")"
   echo "Restore finished. Re-run init-clickhouse.sh (or restart ClickHouse with ALWAYS_RUN_INITDB_SCRIPTS) so .env service users win."
 }
 

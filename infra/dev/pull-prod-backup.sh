@@ -135,7 +135,7 @@ restore_prefix() {
   echo "RESTORE ${items} FROM ${S3_ENDPOINT%/}/${S3_BUCKET}/${prefix}/"
   local start
   start="$(date +%s)"
-  ch_local "SET log_queries = 0; RESTORE ${items} FROM S3('${S3_ENDPOINT%/}/${S3_BUCKET}/${prefix}/', '${S3_ACCESS_KEY}', '${S3_SECRET_KEY}')"
+  ch_local "SET log_queries = 0; SET max_execution_time = 0; RESTORE ${items} FROM S3('${S3_ENDPOINT%/}/${S3_BUCKET}/${prefix}/', '${S3_ACCESS_KEY}', '${S3_SECRET_KEY}')"
   echo "Restore of ${prefix} finished in $(( $(date +%s) - start ))s"
 }
 
