@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from functools import lru_cache
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar
 
 import psycopg2
 import sqlalchemy as sa
@@ -22,6 +23,22 @@ logger = logging.getLogger(__name__)
 _MAX_ATTEMPTS = 4
 _RETRY_BACKOFF_S = 1.0
 
+T = TypeVar("T")
+
+
+def _retry_delay(label: str, what: str, err: BaseException, attempt: int) -> float:
+    delay = _RETRY_BACKOFF_S * (2 ** (attempt - 1))
+    logger.warning(
+        "%s %s failed (%s); retry %s/%s in %.0fs",
+        label,
+        what,
+        err,
+        attempt,
+        _MAX_ATTEMPTS - 1,
+        delay,
+    )
+    return delay
+
 
 def connect_postgres(url: str, label: str) -> Any:
     """Connect to Postgres, retrying transient libpq/SSL handshake failures.
@@ -36,16 +53,42 @@ def connect_postgres(url: str, label: str) -> Any:
         except psycopg2.OperationalError as err:
             if attempt >= _MAX_ATTEMPTS:
                 raise
-            delay = _RETRY_BACKOFF_S * (2 ** (attempt - 1))
-            logger.warning(
-                "%s connect failed (%s); retry %s/%s in %.0fs",
-                label,
-                err,
-                attempt,
-                _MAX_ATTEMPTS - 1,
-                delay,
-            )
-            time.sleep(delay)
+            time.sleep(_retry_delay(label, "connect", err, attempt))
+
+
+def _is_retryable_disconnect(err: sa.exc.DBAPIError, attempt: int) -> bool:
+    # connection_invalidated: SQLAlchemy saw a disconnect and dropped the pool,
+    # so the next checkout opens a fresh connection.
+    return err.connection_invalidated and attempt < _MAX_ATTEMPTS
+
+
+def retry_on_disconnect(fn: Callable[[], T], label: str) -> T:
+    """Run ``fn``, retrying when the server drops the connection mid-query.
+
+    ``pool_pre_ping`` only covers stale connections at checkout. A drop during
+    a query (e.g. "SSL connection has been closed unexpectedly" while
+    reflecting a table) would otherwise abort the whole pipeline.
+    """
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            return fn()
+        except sa.exc.DBAPIError as err:
+            if not _is_retryable_disconnect(err, attempt):
+                raise
+            time.sleep(_retry_delay(label, "query", err, attempt))
+    raise AssertionError("unreachable")
+
+
+async def aretry_on_disconnect(fn: Callable[[], Awaitable[T]], label: str) -> T:
+    """Async variant of :func:`retry_on_disconnect`."""
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            return await fn()
+        except sa.exc.DBAPIError as err:
+            if not _is_retryable_disconnect(err, attempt):
+                raise
+            await asyncio.sleep(_retry_delay(label, "query", err, attempt))
+    raise AssertionError("unreachable")
 
 
 def connect_beefy_db() -> Any:

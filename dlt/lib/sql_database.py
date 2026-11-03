@@ -8,6 +8,8 @@ from dlt.sources.sql_database import sql_table
 from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, TIMESTAMP
 from sqlalchemy.exc import NoSuchTableError
 
+from lib.postgres import retry_on_disconnect
+
 logger = logging.getLogger(__name__)
 
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -121,9 +123,10 @@ def try_sql_table(*, table: str, **kwargs: Any) -> Optional[Any]:
 
     Omitting the resource from the run leaves its dlt incremental state unchanged
     so the next pipeline run can retry once the table exists again.
+    Reflection is retried if the server drops the connection mid-query.
     """
     try:
-        return sql_table(table=table, **kwargs)
+        return retry_on_disconnect(lambda: sql_table(table=table, **kwargs), table)
     except NoSuchTableError as e:
         log_missing_table(table, e)
         return None

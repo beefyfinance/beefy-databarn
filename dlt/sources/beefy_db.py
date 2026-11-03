@@ -3,6 +3,7 @@ from typing import Any, Awaitable, Callable, Optional
 import dlt
 from sqlalchemy.exc import NoSuchTableError
 
+from lib.postgres import aretry_on_disconnect
 from lib.sql_database import log_missing_table
 from .resources.beefy_db.harvests import get_beefy_db_harvests_resource
 from .resources.beefy_db.prices import get_beefy_db_prices_resource
@@ -24,8 +25,9 @@ async def _optional_resource(
 ) -> Optional[Any]:
     # Soft-skip missing Postgres tables so other resources still load.
     # Omitting the resource keeps its dlt incremental state unchanged for the next run.
+    # Factories reflect tables and query Timescale; retry if the connection drops.
     try:
-        return await factory()
+        return await aretry_on_disconnect(factory, name)
     except NoSuchTableError as e:
         log_missing_table(name, e)
         return None

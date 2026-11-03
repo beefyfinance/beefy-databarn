@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+
 import psycopg2
 import pytest
+import sqlalchemy as sa
 
 import lib.config as config
 import lib.postgres as postgres
@@ -214,3 +217,54 @@ def test_table_loader_buffers_then_releases_timescale() -> None:
     rows = list(patch._load_rows_without_server_cursor(loader, "SELECT 1", {}))
     assert rows == [{"ok": True}]
     assert TableLoader._load_rows is patch._load_rows_without_server_cursor
+
+
+def _dbapi_error(msg: str, *, invalidated: bool) -> sa.exc.DBAPIError:
+    return sa.exc.OperationalError(
+        "SELECT 1", {}, psycopg2.OperationalError(msg), connection_invalidated=invalidated
+    )
+
+
+def test_retry_on_disconnect_retries_dropped_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr(postgres.time, "sleep", sleeps.append)
+    calls = {"n": 0}
+
+    def reflect() -> str:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise _dbapi_error("SSL connection has been closed unexpectedly", invalidated=True)
+        return "table"
+
+    assert postgres.retry_on_disconnect(reflect, "feebatch_harvests") == "table"
+    assert calls["n"] == 3
+    assert sleeps == [1.0, 2.0]
+
+
+def test_retry_on_disconnect_raises_other_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(postgres.time, "sleep", lambda _: None)
+    calls = {"n": 0}
+
+    def reflect() -> None:
+        calls["n"] += 1
+        raise _dbapi_error("permission denied for table x", invalidated=False)
+
+    with pytest.raises(sa.exc.OperationalError):
+        postgres.retry_on_disconnect(reflect, "x")
+    assert calls["n"] == 1
+
+
+def test_aretry_on_disconnect_gives_up_after_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def no_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr(postgres.asyncio, "sleep", no_sleep)
+    calls = {"n": 0}
+
+    async def factory() -> None:
+        calls["n"] += 1
+        raise _dbapi_error("SSL connection has been closed unexpectedly", invalidated=True)
+
+    with pytest.raises(sa.exc.OperationalError):
+        asyncio.run(postgres.aretry_on_disconnect(factory, "harvests"))
+    assert calls["n"] == postgres._MAX_ATTEMPTS
