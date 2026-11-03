@@ -4,4 +4,8 @@
         <allow_concurrent_backups>false</allow_concurrent_backups>
         <allow_concurrent_restores>false</allow_concurrent_restores>
     </backups>
+    <!-- Remote backup S3 (Hetzner) answers 504 GatewayTimeout when flooded with parallel uploads
+         (defaults: 16 backup threads, 1000 backup IO threads). Fewer in flight = slower but completes. -->
+    <backup_threads>4</backup_threads>
+    <max_backups_io_thread_pool_size>16</max_backups_io_thread_pool_size>
 </clickhouse>
