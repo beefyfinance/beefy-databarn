@@ -188,10 +188,10 @@ make dbt run        # Run dbt models
 make help             # Show all available commands
 make infra logs       # View infrastructure logs
 make infra ps         # Check service status
-make [clickhouse|ch] backup-status   # Prod backups in the remote S3 bucket (dev never pushes backups)
-make [clickhouse|ch] backup-list
+make [clickhouse|ch] backup status   # Prod backups in the remote S3 bucket (dev never pushes backups)
+make [clickhouse|ch] backup list
 make [clickhouse|ch] dev-usage        # dev_* database sizes vs 20 GiB quota (DEV_DB_QUOTA_GB to change; exits 1 if over)
-make [clickhouse|ch] pull-prod [BACKUP=inc-YYYY-MM-DD-HH] [YES=1]  # Restore prod data dbs locally (default: newest full)
+make [clickhouse|ch] backup pull [BACKUP=inc-YYYY-MM-DD-HH] [YES=1]  # Restore prod data dbs locally (default: newest full)
 # Retention: 2 fulls (~100GB each) + today's hourly incrementals; override with CLICKHOUSE_BACKUP_KEEP_FULLS
 ```
 

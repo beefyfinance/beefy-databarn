@@ -369,8 +369,31 @@ clickhouse:
 				$(DC) exec clickhouse clickhouse-client; \
 			fi \
 			;; \
-		backup-status) \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status \
+		backup) \
+			BSUB="$(word 3,$(MAKECMDGOALS))"; \
+			BEXEC="$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh"; \
+			case "$$BSUB" in \
+				status) $$BEXEC status ;; \
+				list) $$BEXEC list ;; \
+				pull) $(ROOT_DIR)/infra/dev/pull-prod-backup.sh $(BACKUP) $(if $(YES),-y) ;; \
+				restore) \
+					if [ -z "$(BACKUP)" ]; then \
+						echo "Usage: make clickhouse backup restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
+						exit 1; \
+					fi; \
+					echo "Restoring from S3 prefix $(BACKUP)..."; \
+					$$BEXEC restore "$(BACKUP)" ;; \
+				help|"") \
+					echo "ClickHouse backup (prod backups in the remote S3 bucket; dev never pushes):"; \
+					echo "  make [clickhouse|ch] backup pull [BACKUP=<prefix>] [YES=1]  Restore prod data dbs locally (default: newest full)"; \
+					echo "  make [clickhouse|ch] backup status   Recent backups and remote S3 prefixes"; \
+					echo "  make [clickhouse|ch] backup list     All backup files in the remote S3 bucket"; \
+					echo "  make [clickhouse|ch] backup restore BACKUP=<prefix>  RESTORE ALL (incl. users) from that prefix"; \
+					echo "" ;; \
+				*) \
+					echo "Usage: make [clickhouse|ch] backup [pull|status|list|restore|help]"; \
+					exit 1 ;; \
+			esac \
 			;; \
 		dev-usage) \
 			QUOTA_GB="$${DEV_DB_QUOTA_GB:-20}"; \
@@ -380,38 +403,21 @@ clickhouse:
 			if [ "$$OVER" != "0" ]; then echo "✗ $$OVER dev database(s) over the $$QUOTA_GB GiB quota"; exit 1; fi; \
 			echo "✓ all dev databases within the $$QUOTA_GB GiB quota" \
 			;; \
-		backup-list) \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list \
-			;; \
 		version) \
 			$(DC) exec clickhouse clickhouse-client --query "SELECT version()" \
-			;; \
-		restore) \
-			if [ -z "$(BACKUP)" ]; then \
-				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
-				exit 1; \
-			fi; \
-			echo "Restoring from S3 prefix $(BACKUP)..."; \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)" \
-			;; \
-		pull-prod) \
-			$(ROOT_DIR)/infra/dev/pull-prod-backup.sh $(BACKUP) $(if $(YES),-y) \
 			;; \
 		help|"") \
 			echo "ClickHouse:"; \
 			echo "  make [clickhouse|ch] stop              Stop ClickHouse"; \
 			echo "  make [clickhouse|ch] restart          Re-restart ClickHouse (reload configs)"; \
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
-			echo "  make [clickhouse|ch] backup-status    Show recent backups and remote S3 prefixes"; \
 			echo "  make [clickhouse|ch] dev-usage        Size of dev_* databases vs quota (DEV_DB_QUOTA_GB, default 20)"; \
-			echo "  make [clickhouse|ch] backup-list      List all backup files in the remote S3 bucket"; \
 			echo "  make [clickhouse|ch] version          Show server version"; \
-			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL (incl. users) from that prefix"; \
-			echo "  make [clickhouse|ch] pull-prod [BACKUP=<prefix>]  Restore prod data dbs from the remote backup (default: newest full)"; \
+			echo "  make [clickhouse|ch] backup <cmd>     Prod backups: pull|status|list|restore (make ch backup)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup-status|backup-list|dev-usage|version|restore|pull-prod|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|dev-usage|version|backup <cmd>|help]"; \
 			exit 1 \
 			;; \
 	esac

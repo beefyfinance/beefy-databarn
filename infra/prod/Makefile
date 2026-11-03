@@ -410,17 +410,47 @@ clickhouse:
 			$(DC) exec clickhouse clickhouse-client; \
 		;; \
 		backup) \
-			MODE="$(word 3,$(MAKECMDGOALS))"; \
-			if [ "$$MODE" = "full" ] || [ "$$MODE" = "incremental" ]; then \
-				echo "Running one-shot $$MODE backup..."; \
-				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once $$MODE; \
-			else \
-				echo "Running one-shot backup (auto full/incremental)..."; \
-				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once auto; \
-			fi; \
-		;; \
-		backup-status) \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status; \
+			BSUB="$(word 3,$(MAKECMDGOALS))"; \
+			BEXEC="$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh"; \
+			case "$$BSUB" in \
+				logs) $(DC) logs -f --tail 200 clickhouse-backup ;; \
+				restart) \
+					echo "Recreating clickhouse-backup (reloads backup-loop.sh and .env)..."; \
+					$(DC) up -d --force-recreate clickhouse-backup; \
+					echo "✓ clickhouse-backup recreated" ;; \
+				start) $(DC) up -d clickhouse-backup ;; \
+				stop) $(DC) stop clickhouse-backup ;; \
+				ps) $(DC) ps clickhouse-backup ;; \
+				status) $$BEXEC status ;; \
+				list) $$BEXEC list ;; \
+				full|incremental) \
+					echo "Running one-shot $$BSUB backup..."; \
+					$$BEXEC once $$BSUB ;; \
+				run) \
+					echo "Running one-shot backup (auto full/incremental)..."; \
+					$$BEXEC once auto ;; \
+				restore) \
+					if [ -z "$(BACKUP)" ]; then \
+						echo "Usage: make clickhouse backup restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
+						exit 1; \
+					fi; \
+					echo "Restoring from S3 prefix $(BACKUP)..."; \
+					$$BEXEC restore "$(BACKUP)" ;; \
+				help|"") \
+					echo "clickhouse backup (clickhouse-backup sidecar: hourly loop, local stage + upload to remote S3):"; \
+					echo "  make clickhouse backup logs       Follow backup loop logs"; \
+					echo "  make clickhouse backup restart    Recreate sidecar (reload backup-loop.sh/.env)"; \
+					echo "  make clickhouse backup start|stop|ps"; \
+					echo "  make clickhouse backup status     Recent backups, local staging, remote prefixes"; \
+					echo "  make clickhouse backup list       All backup files in remote S3 with sizes"; \
+					echo "  make clickhouse backup run        One-shot backup now (auto full/incremental)"; \
+					echo "  make clickhouse backup full|incremental  One-shot backup of that kind"; \
+					echo "  make clickhouse backup restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
+					echo "" ;; \
+				*) \
+					echo "Usage: make clickhouse backup [logs|restart|start|stop|ps|status|list|run|full|incremental|restore|help]"; \
+					exit 1 ;; \
+			esac; \
 		;; \
 		dev-usage) \
 			QUOTA_GB="$${DEV_DB_QUOTA_GB:-20}"; \
@@ -430,39 +460,19 @@ clickhouse:
 			if [ "$$OVER" != "0" ]; then echo "✗ $$OVER dev database(s) over the $$QUOTA_GB GiB quota"; exit 1; fi; \
 			echo "✓ all dev databases within the $$QUOTA_GB GiB quota"; \
 		;; \
-		backup-list) \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list; \
-		;; \
-		backup-restart) \
-			echo "Recreating clickhouse-backup..."; \
-			$(DC) up -d --force-recreate clickhouse-backup; \
-			echo "✓ clickhouse-backup recreated"; \
-		;; \
 		version) \
 			$(DC) exec clickhouse clickhouse-client --query "SELECT version()"; \
-		;; \
-		restore) \
-			if [ -z "$(BACKUP)" ]; then \
-				echo "Usage: make clickhouse restore BACKUP=inc-YYYY-MM-DD-HH (or full-YYYY-MM-DD)"; \
-				exit 1; \
-			fi; \
-			echo "Restoring from S3 prefix $(BACKUP)..."; \
-			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)"; \
 		;; \
 		help|"") \
 			echo "clickhouse:"; \
 			echo "  make clickhouse client   Open ClickHouse client"; \
 			echo "  make clickhouse version  Show server version"; \
-			echo "  make clickhouse backup [full|incremental]  One-shot backup to S3"; \
-			echo "  make clickhouse backup-status    Show recent backups"; \
 			echo "  make clickhouse dev-usage        Size of dev_* databases vs quota (DEV_DB_QUOTA_GB, default 20)"; \
-			echo "  make clickhouse backup-list      List all backup files in S3 with sizes"; \
-			echo "  make clickhouse backup-restart   Recreate backup sidecar (reload loop script/env)"; \
-			echo "  make clickhouse restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
+			echo "  make clickhouse backup <cmd>     Backup sidecar: logs|restart|status|list|run|full|restore|... (make clickhouse backup)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make clickhouse [client|version|backup [full|incremental]|backup-status|backup-list|dev-usage|backup-restart|restore|help]"; \
+			echo "Usage: make clickhouse [logs|restart|ps|client|version|dev-usage|backup <cmd>|help]"; \
 			exit 1; \
 		;; \
 	esac
@@ -624,7 +634,7 @@ mcp:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-list dev-usage backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package drop drop-state reimport optimize cleanup-pipeline-state backup full incremental status list stop dev-usage restore version docs:
 	@:
 
 # Catch-all for any other resource/source names
