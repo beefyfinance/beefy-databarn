@@ -159,6 +159,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON zapalytics.*              FROM dlt;
     REVOKE ALL PRIVILEGES ON envio.*                   FROM dlt;
     GRANT ${READ_PERM}                ON INFORMATION_SCHEMA.*       TO dlt;
+    GRANT ${READ_PERM}                ON system.parts               TO dlt; -- optimize_replacing_tables picks the latest partition
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dlt.*                      TO dlt;
     GRANT ${READ_PERM}                ON dbt.*                      TO dlt; -- required to update incremental materialized views
     GRANT ${READ_PERM}                ON analytics.*                TO dlt; -- required to update incremental materialized views

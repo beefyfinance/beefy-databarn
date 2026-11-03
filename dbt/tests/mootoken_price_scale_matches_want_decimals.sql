@@ -3,6 +3,8 @@
 -- near 1. It is far off, by at least 1e2 and usually 1e10, when var mootoken_price_fix_deployed_at is wrong:
 -- the snapshot is rescaled twice or not at all.
 -- Ppfs, not 10^(18 - want decimals): ERC-4626 vaults (silov2, venus) mint 18-decimal shares, not 1:1 with want units.
+-- Listed vaults only: /mootokenprices keeps pricing some vaults /vaults dropped (venus-arb-wbtc, about 1e10 off),
+-- and their last /vaults row is stale.
 
 with shares as (
   select chain_id, product_address, argMax(share_token_price_usd, date_time) as share_price
@@ -37,6 +39,7 @@ inner join {{ ref('stg_beefy_api__vaults') }} v
 inner join wants w
   on pk.beefy_wants_price_oracle_key = w.beefy_price_oracle_key
 where v.token_decimals != 18
+  and v.is_listed
   and s.share_price > 0
   and w.want_price > 0
   and ppfs > 0

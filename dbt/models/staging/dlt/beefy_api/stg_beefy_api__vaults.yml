@@ -107,6 +107,8 @@ models:
         description: "Pool together information"
       - name: retired_reason
         description: "Retired reason"
+      - name: is_listed
+        description: "Whether the latest /vaults load still lists this vault. Delisted vaults keep their last row."
       - name: bridged__optimism
         description: "Bridged to Optimism"
       - name: bridged__base

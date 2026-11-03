@@ -50,6 +50,8 @@ SELECT
   toBool(t.earning_points) as earning_points,
   t.pool_together,
   t.retired_reason,
-  t.bridged
+  t.bridged,
+  -- Every load writes the full /vaults list and FINAL keeps each vault's last row: an older load means the API dropped it.
+  t._dlt_load_id = (SELECT max(_dlt_load_id) FROM {{ source('dlt', 'beefy_api___vaults') }}) as is_listed
 FROM {{ source('dlt', 'beefy_api___vaults') }} t FINAL
 

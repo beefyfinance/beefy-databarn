@@ -1,5 +1,5 @@
 #!/bin/bash
-# Read-only: inputs behind the two failing price tests, plus vaults sharing a moo token.
+# Read-only: checks the new price test logic against prod before deploying it.
 # Run from a machine with prod access: ssh databarn@<prod-host> bash -s < infra/prod/diagnose_price_tests.sh
 set -euo pipefail
 
@@ -12,56 +12,73 @@ q() {
     --data-binary @-'
 }
 
-echo "== vaults sharing a moo token"
+echo "== is_listed: vault counts, and the scale test vaults"
 q <<'SQL'
-select network, earned_token, groupArray(id) ids, groupArray(token_decimals) decimals,
-  groupArray(status) statuses, groupArray(created_at) created
-from dbt.stg_beefy_api__vaults
-group by network, earned_token
-having count() > 1
-SQL
-
-echo "== scale test vaults: reported ppfs"
-q <<'SQL'
-select id, earned_token, token_decimals, price_per_full_share,
-  toFloat64OrNull(price_per_full_share) / pow(10, token_decimals) as want_per_share
-from dbt.stg_beefy_api__vaults
-where id in ('venus-arb-wbtc', 'silov2-arbitrum-usdc-optima')
-SQL
-
-echo "== bifi-maxi-eol ppfs points, 2023-09..11"
-q <<'SQL'
-with p as (
-  select product_id from dbt.int_databarn_v1__want_decimals
-  where chain_id = 56 and product_address = '0xf7069e41c57ecc5f122093811d8c75bdb5f7c14e'
-)
-select 'vault_stats' src, toStartOfMonth(datetime) m, count() n, min(datetime) first, max(datetime) last
-from dbt.stg_databarn_v1__vault_stats
-where product_id in p and share_to_underlying_price > 0 and datetime between '2023-09-01' and '2023-11-30'
-group by m
+with latest as (select max(_dlt_load_id) as id from dlt.beefy_api___vaults)
+select id, network, _dlt_load_id, _dlt_load_id = (select id from latest) as is_listed
+from dlt.beefy_api___vaults FINAL
+where id in ('venus-arb-wbtc', 'silov2-arbitrum-usdc-optima', 'venus-zksync-wbtc')
 union all
-select 'share_rate_feed', toStartOfMonth(r.datetime) m, count(), min(r.datetime), max(r.datetime)
-from dbt.stg_databarn_v1__prices_raw r
-inner join dbt.stg_databarn_v1__import_states s
-  on r.price_feed_id = s.price_feed_id and s.import_type = 'product:share-rate'
-where s.product_id in p and r.price > 0 and r.datetime between '2023-09-01' and '2023-11-30'
-group by m
-order by src, m
+select concat('total listed / all'), toString(countIf(_dlt_load_id = (select id from latest))), toString(count()), null
+from dlt.beefy_api___vaults FINAL
 SQL
 
-echo "== oldBIFI want price points, 2023-09..11"
+echo "== new databarn_ppfs_reaches_share_price (expect no rows)"
 q <<'SQL'
-select toStartOfMonth(date_time) m, count() n, min(date_time) first, max(date_time) last
-from dbt.int_beefy_oracle_price
-where beefy_price_oracle_key = 'oldBIFI' and date_time between '2023-09-01' and '2023-11-30'
-group by m order by m
-SQL
+-- Fails when a databarn v1 vault has ppfs and a want price in a month, but int_product_share_price has no price
+-- for it that month: the join on want decimals, product keys or the want oracle lost it.
+-- The model only prices ppfs with a want price at most 1 day older, so a ppfs day only counts with a want price
+-- that day or the day before. A same-month match is not enough: oldBIFI prices start 2023-10-24, after the
+-- October ppfs of bifi-maxi-eol. A want price later the same day than every ppfs point can still slip through.
+-- Whole months, so this stays cheap over the full history. Not the current month: it can still be loading.
 
-echo "== bifi-maxi-eol share prices, 2023-09..11"
-q <<'SQL'
-select toStartOfMonth(date_time) m, price_source, count() n, min(date_time) first, max(date_time) last
-from dbt.int_product_share_price
-where chain_id = 56 and product_address = '0xf7069e41c57ecc5f122093811d8c75bdb5f7c14e'
-  and date_time between '2023-09-01' and '2023-11-30'
-group by m, price_source order by m
+with ppfs as (
+  select product_id, toDate(datetime) as day
+  from `dbt`.`stg_databarn_v1__vault_stats`
+  where share_to_underlying_price > 0
+    and datetime >= '2021-08-01'
+  group by product_id, day
+
+  union distinct
+
+  select assumeNotNull(s.product_id) as product_id, toDate(r.datetime) as day
+  from `dbt`.`stg_databarn_v1__prices_raw` r
+  inner join `dbt`.`stg_databarn_v1__import_states` s
+    on r.price_feed_id = s.price_feed_id
+    and s.import_type = 'product:share-rate'
+  where r.price > 0
+    and r.datetime >= '2021-08-01'
+  group by product_id, day
+),
+
+-- A want price on day d covers ppfs on d and d + 1.
+wants as (
+  select distinct beefy_price_oracle_key, arrayJoin([toDate(date_time), toDate(date_time) + 1]) as day
+  from `dbt`.`int_beefy_oracle_price`
+),
+
+shares as (
+  select distinct chain_id, product_address, toStartOfMonth(date_time) as month
+  from `dbt`.`int_product_share_price`
+)
+
+select distinct
+  pk.chain_id as chain_id,
+  pk.product_address as product_address,
+  pk.beefy_key as beefy_key,
+  toStartOfMonth(p.day) as month
+from ppfs p
+inner join `dbt`.`int_databarn_v1__want_decimals` wd
+  on p.product_id = wd.product_id
+inner join `dbt`.`int_product_keys` pk
+  on wd.chain_id = pk.chain_id
+  and wd.product_address = pk.product_address
+inner join wants w
+  on pk.beefy_wants_price_oracle_key = w.beefy_price_oracle_key
+  and p.day = w.day
+left anti join shares s
+  on pk.chain_id = s.chain_id
+  and pk.product_address = s.product_address
+  and toStartOfMonth(p.day) = s.month
+where p.day < toStartOfMonth(now())
 SQL

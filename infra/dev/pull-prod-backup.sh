@@ -7,7 +7,8 @@
 # Read-only on the remote bucket: nothing is pushed or pruned.
 #
 # Usage:
-#   infra/dev/pull-prod-backup.sh list             # list prod backup prefixes
+#   infra/dev/pull-prod-backup.sh list             # list completed prod backup prefixes
+#   infra/dev/pull-prod-backup.sh inspect <prefix> # top-level objects of a backup + .backup marker check
 #   infra/dev/pull-prod-backup.sh [<prefix>] [-y]  # restore (default: newest full-*)
 #
 # Env (from .env):
@@ -84,10 +85,29 @@ backup_databases() {
     | grep -vE '^(system|INFORMATION_SCHEMA|information_schema)$' || true
 }
 
+# clickhouse-client echoes the failing query (with the S3 secret) on error, so scrub it from output.
+redact() {
+  local secret="$S3_SECRET_KEY"
+  secret="${secret//\\/\\\\}"
+  secret="${secret//\//\\/}"
+  secret="${secret//&/\\&}"
+  sed "s/${secret}/[REDACTED]/g"
+}
+
+inspect_prefix() {
+  in_toolbox 'mc alias set remote "$CLICKHOUSE_BACKUP_S3_ENDPOINT" "$CLICKHOUSE_BACKUP_S3_ACCESS_KEY" "$CLICKHOUSE_BACKUP_S3_SECRET_KEY" >/dev/null
+    echo "== mc ls remote/$CLICKHOUSE_BACKUP_S3_BUCKET/$1/"
+    mc ls "remote/$CLICKHOUSE_BACKUP_S3_BUCKET/$1/"
+    echo "== mc stat remote/$CLICKHOUSE_BACKUP_S3_BUCKET/$1/.backup"
+    mc stat "remote/$CLICKHOUSE_BACKUP_S3_BUCKET/$1/.backup"
+    true' "$1" 2>&1 | redact
+}
+
 ch_local() {
   in_toolbox 'clickhouse-client --host "$CLICKHOUSE_BACKUP_CH_HOST" --user backup \
     --password "${CLICKHOUSE_BACKUP_PASSWORD:-$CLICKHOUSE_PASSWORD}" \
-    --receive_timeout 14400 --send_timeout 14400 --multiquery --query "$1"' "$1"
+    --receive_timeout 14400 --send_timeout 14400 --multiquery --query "$1"' "$1" \
+    2> >(redact >&2) | redact
 }
 
 restore_prefix() {
@@ -124,9 +144,9 @@ prefix=""
 assume_yes=0
 for arg in "$@"; do
   case "$arg" in
-    list|restore) cmd="$arg" ;;
+    list|restore|inspect) cmd="$arg" ;;
     -y|--yes) assume_yes=1 ;;
-    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) prefix="${arg%/}" ;;
   esac
 done
@@ -134,15 +154,25 @@ done
 load_s3_config
 ensure_local_stack
 
+if [[ "$cmd" == "inspect" ]]; then
+  inspect_prefix "${prefix:?usage: inspect <prefix>}"
+  exit 0
+fi
+
 if [[ "$cmd" == "list" ]]; then
   list_prefixes
   exit 0
 fi
 
+completed="$(list_prefixes)"
 if [[ -z "$prefix" ]]; then
-  prefix="$(list_prefixes | grep '^full-' | tail -n1)"
-  [[ -n "$prefix" ]] || { echo "No full-* backup found in ${S3_BUCKET}" >&2; exit 1; }
-  echo "Using newest prod full backup: ${prefix}"
+  prefix="$(grep '^full-' <<<"$completed" | tail -n1 || true)"
+  [[ -n "$prefix" ]] || { echo "No completed full-* backup found in ${S3_BUCKET}" >&2; exit 1; }
+  echo "Using newest completed prod full backup: ${prefix}"
+elif ! grep -qx "$prefix" <<<"$completed"; then
+  echo "${prefix} is not a completed backup (still being written, failed, or missing). Completed:" >&2
+  echo "$completed" >&2
+  exit 1
 fi
 
 restore_prefix "$prefix" "$assume_yes"
