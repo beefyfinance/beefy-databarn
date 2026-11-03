@@ -71,9 +71,6 @@ services:
       CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS: ${CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS:-1}
       CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
       CLICKHOUSE_BACKUP_ALLOWED_HOST: IP '172.19.1.0/24'
-      CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT:-http://rustfs:9000/clickhouse-backups/}
-      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
-      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
@@ -166,20 +163,17 @@ services:
       CLICKHOUSE_BACKUP_CH_USER: backup
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
-      CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:-http://rustfs:9000}
+      # Remote S3 server the backups are pushed to
+      CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:?CLICKHOUSE_BACKUP_S3_ENDPOINT must be set}
       CLICKHOUSE_BACKUP_S3_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
-      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
-      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
+      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:?CLICKHOUSE_BACKUP_S3_ACCESS_KEY must be set}
+      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:?CLICKHOUSE_BACKUP_S3_SECRET_KEY must be set}
       CLICKHOUSE_BACKUP_KEEP_FULLS: ${CLICKHOUSE_BACKUP_KEEP_FULLS:-2}
       CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS: ${CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS:-1}
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
     networks:
       - backend_network
     depends_on:
       clickhouse:
-        condition: service_healthy
-      rustfs:
         condition: service_healthy
     restart: unless-stopped
     labels:
@@ -291,55 +285,6 @@ services:
         max-size: "1G"
         max-file: "3"
     restart: unless-stopped
-
-  rustfs:
-    image: rustfs/rustfs:1.0.4
-    volumes:
-      - rustfs_data:/data
-    environment:
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_VOLUMES: /data
-      RUSTFS_ADDRESS: 0.0.0.0:9000
-      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
-      RUSTFS_CONSOLE_ENABLE: "false"
-    networks:
-      - backend_network
-    labels:
-      - "traefik.enable=false"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
-      interval: 1s
-      timeout: 20s
-      retries: 10
-    logging:
-      driver: "local"
-      options:
-        max-size: "1G"
-        max-file: "3"
-    restart: unless-stopped
-
-  rustfs-init:
-    image: minio/mc:latest
-    environment:
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_CLICKHOUSE_BACKUP_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        echo "Configuring mc alias for RustFS..."
-        mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
-        echo "Creating bucket $${RUSTFS_CLICKHOUSE_BACKUP_BUCKET}..."
-        mc mb rustfs/$${RUSTFS_CLICKHOUSE_BACKUP_BUCKET} || true
-        echo "Bucket ready."
-    networks:
-      - backend_network
-    depends_on:
-      rustfs:
-        condition: service_healthy
-    restart: "no"
 
   postgres:
     image: pgautoupgrade/pgautoupgrade:17-alpine
@@ -770,12 +715,6 @@ volumes:
       type: none
       o: bind
       device: ${STORAGE_DIR}/grafana
-  rustfs_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${STORAGE_DIR}/rustfs
   postgres_data:
     driver: local
     driver_opts:

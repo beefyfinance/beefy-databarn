@@ -369,16 +369,6 @@ clickhouse:
 				$(DC) exec clickhouse clickhouse-client; \
 			fi \
 			;; \
-		backup) \
-			MODE="$(word 3,$(MAKECMDGOALS))"; \
-			if [ "$$MODE" = "full" ] || [ "$$MODE" = "incremental" ]; then \
-				echo "Running one-shot $$MODE backup..."; \
-				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once $$MODE; \
-			else \
-				echo "Running one-shot backup (auto full/incremental)..."; \
-				$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh once auto; \
-			fi \
-			;; \
 		backup-status) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh status \
 			;; \
@@ -393,11 +383,6 @@ clickhouse:
 		backup-list) \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh list \
 			;; \
-		backup-restart) \
-			echo "Recreating clickhouse-backup..."; \
-			$(DC) up -d --force-recreate clickhouse-backup; \
-			echo "✓ clickhouse-backup recreated" \
-			;; \
 		version) \
 			$(DC) exec clickhouse clickhouse-client --query "SELECT version()" \
 			;; \
@@ -410,25 +395,23 @@ clickhouse:
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)" \
 			;; \
 		pull-prod) \
-			$(ROOT_DIR)/infra/dev/pull-prod-backup.sh $(BACKUP) \
+			$(ROOT_DIR)/infra/dev/pull-prod-backup.sh $(BACKUP) $(if $(YES),-y) \
 			;; \
 		help|"") \
 			echo "ClickHouse:"; \
 			echo "  make [clickhouse|ch] stop              Stop ClickHouse"; \
 			echo "  make [clickhouse|ch] restart          Re-restart ClickHouse (reload configs)"; \
 			echo "  make [clickhouse|ch] client [<user>]  Open ClickHouse client shell (default user)"; \
-			echo "  make [clickhouse|ch] backup [full|incremental]  One-shot backup to S3"; \
-			echo "  make [clickhouse|ch] backup-status    Show recent backups and S3 prefixes"; \
+			echo "  make [clickhouse|ch] backup-status    Show recent backups and remote S3 prefixes"; \
 			echo "  make [clickhouse|ch] dev-usage        Size of dev_* databases vs quota (DEV_DB_QUOTA_GB, default 20)"; \
-			echo "  make [clickhouse|ch] backup-list      List all backup files in S3 with sizes"; \
-			echo "  make [clickhouse|ch] backup-restart   Recreate backup sidecar (reload loop script/env)"; \
+			echo "  make [clickhouse|ch] backup-list      List all backup files in the remote S3 bucket"; \
 			echo "  make [clickhouse|ch] version          Show server version"; \
-			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
-			echo "  make [clickhouse|ch] pull-prod [BACKUP=<prefix>]  Copy a prod backup locally and restore it (default: newest full)"; \
+			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL (incl. users) from that prefix"; \
+			echo "  make [clickhouse|ch] pull-prod [BACKUP=<prefix>]  Restore prod data dbs from the remote backup (default: newest full)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|dev-usage|backup-restart|version|restore|pull-prod|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup-status|backup-list|dev-usage|version|restore|pull-prod|help]"; \
 			exit 1 \
 			;; \
 	esac
@@ -600,8 +583,7 @@ _print-urls:
 	echo "  - Traefik Dashboard: http://localhost:8080" && \
 	echo "  - ClickHouse: http://localhost:$${CLICKHOUSE_HOST_HTTP_PORT:-28123} ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
 	echo "  - Grafana: http://localhost:$${GRAFANA_HOST_PORT:-13000} ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \
-	echo "  - Prometheus: http://localhost:$${PROMETHEUS_HOST_PORT:-19090} (no auth)" && \
-	echo "  - RustFS: http://localhost:$${RUSTFS_HOST_CONSOLE_PORT:-19001} ($${RUSTFS_ACCESS_KEY:-admin}/$${RUSTFS_SECRET_KEY:-admin})"
+	echo "  - Prometheus: http://localhost:$${PROMETHEUS_HOST_PORT:-19090} (no auth)"
 
 # Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
 # product_stats.tvl_usd is built from tvls, not prices.

@@ -15,7 +15,6 @@ STORAGE_DIR ?= /mnt/data
 DATA_DIRS := $(STORAGE_DIR)/clickhouse \
              $(STORAGE_DIR)/prometheus \
              $(STORAGE_DIR)/grafana \
-             $(STORAGE_DIR)/rustfs \
              $(STORAGE_DIR)/postgres \
              $(STORAGE_DIR)/superset \
              $(STORAGE_DIR)/redis \

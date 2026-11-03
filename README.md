@@ -42,7 +42,6 @@ flowchart TB
     %% Data Warehouse
     subgraph DW["Data Warehouse - ClickHouse"]
         CH[(ClickHouse)]
-        RUSTFS[RustFS]
     end
     
     %% Analytics
@@ -69,7 +68,7 @@ flowchart TB
     
     %% External Data Flow
     CH -.->|External Tables<br/>Federation Query| BEEFY_DB
-    CH -.->|Native BACKUP/RESTORE| RUSTFS
+    CH -.->|Native BACKUP/RESTORE| BACKUP_S3[(Remote S3 backups)]
     PYTHON -->|Query API| BEEFY_API
     PYTHON -->|Ingest Data| CH
     
@@ -109,7 +108,7 @@ flowchart TB
     class TR gateway
     class BEEFY_DB,BEEFY_API external
     class PYTHON,DBT elt
-    class CH,RUSTFS warehouse
+    class CH warehouse
     class SUP,SUP_W,CELERY,PG,REDIS_A analytics
     class PROM,GRAF,PG_OBS,REDIS_OBS,REDIS_C,PG_C observability
     class USR user
@@ -134,7 +133,7 @@ flowchart TB
 
 - **Prometheus + Grafana**: Monitoring stack that collects metrics from all services and provides dashboards for infrastructure health, query performance, and system resources.
 
-- **RustFS**: S3-compatible object storage used as the ClickHouse `BACKUP`/`RESTORE` disk (swap `.env` to remote S3 later). dlt staging stays on local `file://`.
+- **Backups**: the prod `clickhouse-backup` sidecar runs native ClickHouse `BACKUP` to a remote S3 server (`CLICKHOUSE_BACKUP_S3_*` in `.env`): daily full, hourly incrementals. dlt staging stays on local `file://`.
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
@@ -168,7 +167,7 @@ make dbt run        # Run dbt models
 
 2. Start infrastructure services:
    ```bash
-   make infra start      # Start ClickHouse, Superset, Grafana, Prometheus, RustFS
+   make infra start      # Start ClickHouse, Superset, Grafana, Prometheus
    # ClickHouse automatically initializes on first startup
    ```
 
@@ -183,20 +182,16 @@ make dbt run        # Run dbt models
    - Superset: http://localhost:18088
    - Grafana: http://localhost:13000 (admin/changeme by default)
    - Prometheus: http://localhost:19090
-   - RustFS Console: http://localhost:19001 (admin/changeme by default, or rustfsadmin/rustfsadmin)
-   - RustFS API: http://localhost:19002
 
 **Other useful commands:**
 ```bash
 make help             # Show all available commands
 make infra logs       # View infrastructure logs
 make infra ps         # Check service status
-make [clickhouse|ch] backup [full|incremental]  # One-shot backup to RustFS/S3
-make [clickhouse|ch] backup-status
+make [clickhouse|ch] backup-status   # Prod backups in the remote S3 bucket (dev never pushes backups)
 make [clickhouse|ch] backup-list
 make [clickhouse|ch] dev-usage        # dev_* database sizes vs 20 GiB quota (DEV_DB_QUOTA_GB to change; exits 1 if over)
-make [clickhouse|ch] backup-restart  # Recreate backup sidecar (reload loop script/env)
-make [clickhouse|ch] restore BACKUP=inc-YYYY-MM-DD-HH
+make [clickhouse|ch] pull-prod [BACKUP=inc-YYYY-MM-DD-HH] [YES=1]  # Restore prod data dbs locally (default: newest full)
 # Retention: 2 fulls (~100GB each) + today's hourly incrementals; override with CLICKHOUSE_BACKUP_KEEP_FULLS
 ```
 

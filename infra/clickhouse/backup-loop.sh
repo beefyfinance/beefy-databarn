@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ClickHouse BACKUP/RESTORE loop: daily full, hourly incremental.
-# Disk: ~100GB per full, host fits ~3. Keep 2 completed fulls so a third can exist
-# while the next full is writing; keep incrementals only for the newest full day.
+# Backups are pushed to a remote S3 server (CLICKHOUSE_BACKUP_S3_*), ~100GB per full.
+# Keep 2 completed fulls so a third can exist while the next full is writing; keep
+# incrementals only for the newest full day.
 # Uses BACKUP TO S3() (self-contained prefixes) so a new instance can RESTORE without local disk metadata.
 # Usage:
 #   backup-loop.sh                  # daemon (run once, then every hour)
@@ -9,6 +10,7 @@
 #   backup-loop.sh restore <prefix> # e.g. inc-2026-09-15-14 or full-2026-09-15
 #   backup-loop.sh status
 #   backup-loop.sh list             # every object in the bucket, with sizes
+#   backup-loop.sh prefixes         # backup prefixes only (full-*/inc-*), sorted
 set -euo pipefail
 
 BACKUP_DATABASES=(dlt envio zapalytics)
@@ -18,10 +20,10 @@ FULL_HOUR="${CLICKHOUSE_BACKUP_FULL_HOUR:-0}" # UTC hour for the daily full
 CH_HOST="${CLICKHOUSE_BACKUP_CH_HOST:-clickhouse}"
 CH_USER="${CLICKHOUSE_BACKUP_CH_USER:-backup}"
 CH_PASSWORD="${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}}"
-S3_ENDPOINT="${CLICKHOUSE_BACKUP_S3_ENDPOINT:-http://rustfs:9000}"
+S3_ENDPOINT="${CLICKHOUSE_BACKUP_S3_ENDPOINT:?CLICKHOUSE_BACKUP_S3_ENDPOINT must be set (remote S3 server)}"
 S3_BUCKET="${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}"
-S3_ACCESS_KEY="${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}"
-S3_SECRET_KEY="${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY:?CLICKHOUSE_BACKUP_S3_SECRET_KEY or RUSTFS_SECRET_KEY must be set}}"
+S3_ACCESS_KEY="${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:?CLICKHOUSE_BACKUP_S3_ACCESS_KEY must be set}"
+S3_SECRET_KEY="${CLICKHOUSE_BACKUP_S3_SECRET_KEY:?CLICKHOUSE_BACKUP_S3_SECRET_KEY must be set}"
 MC_BIN="${MC_BIN:-/usr/local/bin/mc}"
 MC_ALIAS="chbackups"
 
@@ -259,6 +261,9 @@ case "$cmd" in
   list)
     list_files
     ;;
+  prefixes)
+    list_backup_prefixes | sort
+    ;;
   daemon)
     wait_for_clickhouse
     echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, keep ${KEEP_FULLS} fulls + ${KEEP_INCREMENTAL_DAYS}d incrementals)"
@@ -271,7 +276,7 @@ case "$cmd" in
     done
     ;;
   *)
-    echo "Usage: backup-loop.sh [daemon|once [auto|full|incremental]|restore <prefix>|status|list]" >&2
+    echo "Usage: backup-loop.sh [daemon|once [auto|full|incremental]|restore <prefix>|status|list|prefixes]" >&2
     exit 1
     ;;
 esac

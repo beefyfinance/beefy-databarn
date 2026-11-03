@@ -40,9 +40,6 @@ services:
       CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS: ${CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS:-1}
       CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
       CLICKHOUSE_BACKUP_ALLOWED_HOST: ANY
-      CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT:-http://rustfs:9000/clickhouse-backups/}
-      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
-      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_ALLOWED_HOST: ANY
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
@@ -105,8 +102,9 @@ services:
       dockerfile: clickhouse/Dockerfile.backup
       args:
         CLICKHOUSE_IMAGE: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.8.36}
-    entrypoint: ["/bin/bash", "/opt/backup-loop.sh"]
-    command: ["daemon"]
+    # Toolbox only (mc + clickhouse-client) for status/list/restore against the remote backup
+    # bucket. Never run the backup daemon in dev: it would push dev data and prune prod backups.
+    entrypoint: ["sleep", "infinity"]
     volumes:
       - ../clickhouse/backup-loop.sh:/opt/backup-loop.sh:ro
     environment:
@@ -114,18 +112,13 @@ services:
       CLICKHOUSE_BACKUP_CH_USER: backup
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
-      CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:-http://rustfs:9000}
+      # Remote backup bucket (read-only use in dev; same values as prod .env to restore prod backups)
+      CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:-}
       CLICKHOUSE_BACKUP_S3_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
-      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
-      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
-      CLICKHOUSE_BACKUP_KEEP_FULLS: ${CLICKHOUSE_BACKUP_KEEP_FULLS:-2}
-      CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS: ${CLICKHOUSE_BACKUP_KEEP_INCREMENTAL_DAYS:-1}
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-}
+      CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-}
     depends_on:
       clickhouse:
-        condition: service_healthy
-      rustfs:
         condition: service_healthy
     restart: unless-stopped
     logging:
@@ -215,51 +208,6 @@ services:
         max-size: "1G"
         max-file: "3"
       
-  rustfs:
-    image: rustfs/rustfs:1.0.4
-    ports:
-      - "${RUSTFS_HOST_API_PORT:-19002}:9000"  # API port
-      - "${RUSTFS_HOST_CONSOLE_PORT:-19001}:9001"  # Console port
-    volumes:
-      - rustfs_data:/data
-    environment:
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_VOLUMES: /data
-      RUSTFS_ADDRESS: 0.0.0.0:9000
-      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
-      RUSTFS_CONSOLE_ENABLE: "true"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
-      interval: 1s
-      timeout: 20s
-      retries: 10
-    logging:
-      driver: "local"
-      options:
-        max-size: "1G"
-        max-file: "3"
-
-  rustfs-init:
-    image: minio/mc:latest
-    environment:
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
-      RUSTFS_CLICKHOUSE_BACKUP_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        echo "Configuring mc alias for RustFS..."
-        mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
-        echo "Creating bucket $${RUSTFS_CLICKHOUSE_BACKUP_BUCKET}..."
-        mc mb rustfs/$${RUSTFS_CLICKHOUSE_BACKUP_BUCKET} || true
-        echo "Bucket ready."
-    depends_on:
-      rustfs:
-        condition: service_healthy
-    restart: "no"
-
   postgres:
     image: pgautoupgrade/pgautoupgrade:17-alpine
     ports:
@@ -379,7 +327,6 @@ volumes:
   clickhouse_data:
   prometheus_data:
   grafana_data:
-  rustfs_data:
   postgres_data:
   superset_data:
   redis_data:

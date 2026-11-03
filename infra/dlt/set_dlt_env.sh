@@ -9,7 +9,7 @@ elif [ -f ../.env ]; then set -a; source ../.env; set +a
 elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi
 
 # --- Destination: filesystem ---
-# Always local file staging. ClickHouse backups use RustFS/S3; dlt does not.
+# Always local file staging. ClickHouse backups go to a remote S3 server; dlt does not.
 storage_dir="${STORAGE_DIR:?STORAGE_DIR must be set when /var/dlt is not mounted}"
 dst_dir="${storage_dir}/dlt"
 mkdir -p "${dst_dir}"

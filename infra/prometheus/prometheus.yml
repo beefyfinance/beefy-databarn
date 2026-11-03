@@ -27,11 +27,6 @@ scrape_configs:
     static_configs:
       - targets: ["docker:9323"]
 
-  - job_name: "rustfs"
-    static_configs:
-      - targets: ["rustfs:9000"]
-    metrics_path: "/metrics"
-
   - job_name: "grafana"
     static_configs:
       - targets: ["grafana:3000"]
