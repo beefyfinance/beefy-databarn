@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Restore a prod ClickHouse backup into local ClickHouse, straight from the remote S3 server prod pushes to.
+# Restore a prod ClickHouse backup into local ClickHouse from the remote S3 server prod pushes to.
 #
-# Runs inside the local clickhouse-backup toolbox container (mc + clickhouse-client): lists the bucket,
-# then RESTOREs from S3() directly, so nothing is copied to a local object store first.
+# Runs inside the local clickhouse-backup toolbox container (mc + clickhouse-client): downloads the
+# backup to the local "backups" disk with mc mirror (retries, resumes), then RESTOREs from Disk().
+# RESTORE straight from S3() dies on the remote's sporadic 504 GatewayTimeouts.
+# Needs local Docker disk space for the backup (~80GB for a full); the download is deleted after a
+# successful restore and kept (resumable) after a failed one.
 # Only the data databases are restored (not system.users etc.), so local service users/passwords stay as-is.
 # Read-only on the remote bucket: nothing is pushed or pruned.
 #
@@ -110,6 +113,43 @@ ch_local() {
     2> >(redact >&2) | redact
 }
 
+# Download a backup to the local staging disk, object by object, 8 at a time. mc mirror stops at the
+# first failed object and the remote fails some at random ("unexpected EOF", 504), so it barely moves.
+# Each object lands in <name>.part and is renamed once complete, so a present file is a whole file and
+# re-runs (and later rounds) only fetch what is missing. Rounds continue while they make progress.
+download_prefix() {
+  in_toolbox 'mc alias set remote "$CLICKHOUSE_BACKUP_S3_ENDPOINT" "$CLICKHOUSE_BACKUP_S3_ACCESS_KEY" "$CLICKHOUSE_BACKUP_S3_SECRET_KEY" >/dev/null || exit 1
+    export src="remote/$CLICKHOUSE_BACKUP_S3_BUCKET/$1/" dst="/backups/$1/"
+    mkdir -p "$dst"
+    keys="/backups/.$1.keys"
+    mc ls --recursive "$src" | awk "{print \$NF}" > "$keys" || exit 1
+    total=$(wc -l < "$keys")
+    [ "$total" -gt 0 ] || { echo "No objects under $src" >&2; exit 1; }
+    find "$dst" -name "*.part" -delete
+    round=0 stalled=0 start=$(date +%s)
+    while [ "$stalled" -lt 3 ]; do
+      round=$((round + 1))
+      missing="$(while read -r k; do [ -f "$dst$k" ] || echo "$k"; done < "$keys")"
+      left=$(printf "%s" "$missing" | grep -c . || true)
+      if [ "$left" -eq 0 ]; then
+        rm -f "$keys"
+        chown -R clickhouse:clickhouse /backups
+        echo "Download of $1 finished in $(( $(date +%s) - start ))s ($(du -sh "$dst" | cut -f1), $total files)"
+        exit 0
+      fi
+      echo "Downloading $1: $((total - left))/$total files here, fetching $left (round $round)"
+      printf "%s\n" "$missing" | xargs -P 8 -n 1 sh -c '\''mkdir -p "$(dirname "$dst$1")" && mc cp --quiet "$src$1" "$dst$1.part" >/dev/null 2>&1 && mv "$dst$1.part" "$dst$1" || rm -f "$dst$1.part"'\'' _''
+      now_left="$(while read -r k; do [ -f "$dst$k" ] || echo "$k"; done < "$keys" | grep -c . || true)"
+      if [ "$now_left" -lt "$left" ]; then stalled=0; else stalled=$((stalled + 1)); sleep $((stalled * 60)); fi
+    done
+    echo "Download of $1 stalled; partial copy kept in $dst (re-run to resume)" >&2
+    exit 1' "$1" 2>&1 | redact # pipefail + set -e: a failed download stops here, before any DROP
+}
+
+remove_download() {
+  in_toolbox 'rm -rf "/backups/$1"' "$1"
+}
+
 restore_prefix() {
   local prefix="$1" assume_yes="$2"
   local -a dbs=()
@@ -125,18 +165,29 @@ restore_prefix() {
     [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
   fi
 
+  # Download first: local databases are only dropped once the whole backup is here.
+  # An incremental's metadata points at its base full on S3; download that too and override it.
+  local base="" settings=""
+  if [[ "$prefix" == inc-* ]]; then
+    base="full-$(sed -E 's/^inc-([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/' <<<"$prefix")"
+    download_prefix "$base"
+    settings=" SETTINGS base_backup = Disk('backups', '${base}/')"
+  fi
+  download_prefix "$prefix"
+
   for db in "${dbs[@]}"; do
     ch_local "DROP DATABASE IF EXISTS \`${db}\` SYNC"
     [[ -n "$items" ]] && items+=", "
     items+="DATABASE \`${db}\`"
   done
 
-  # An incremental's base full is resolved from its own metadata (same remote bucket and keys).
-  echo "RESTORE ${items} FROM ${S3_ENDPOINT%/}/${S3_BUCKET}/${prefix}/"
+  echo "RESTORE ${items} FROM Disk('backups', '${prefix}/')${settings}"
   local start
   start="$(date +%s)"
-  ch_local "SET log_queries = 0; SET max_execution_time = 0; RESTORE ${items} FROM S3('${S3_ENDPOINT%/}/${S3_BUCKET}/${prefix}/', '${S3_ACCESS_KEY}', '${S3_SECRET_KEY}')"
+  ch_local "SET log_queries = 0; SET max_execution_time = 0; RESTORE ${items} FROM Disk('backups', '${prefix}/')${settings}"
   echo "Restore of ${prefix} finished in $(( $(date +%s) - start ))s"
+  remove_download "$prefix"
+  [[ -z "$base" ]] || remove_download "$base"
 }
 
 cmd="restore"
