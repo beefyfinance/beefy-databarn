@@ -165,7 +165,11 @@ run_backup() {
     echo "Backup ${dest} is still being written; skipping."
     return 0
   fi
-  remove_if_stale "$dest"
+  # Explicit checks throughout: the daemon calls run_backup in `|| ...`, where set -e is off.
+  if ! remove_if_stale "$dest"; then
+    echo "Cannot clear incomplete ${dest}; not starting a backup into it." >&2
+    return 1
+  fi
 
   # ASYNC + polling: a ~100GB full to remote S3 outlives any client timeout, and a dropped
   # synchronous client cancels the BACKUP and leaves a half-written prefix behind.
@@ -180,12 +184,25 @@ run_backup() {
   echo "  items: ${items}"
   local start status error
   start="$(date -u +%s)"
-  ch "SET log_queries = 0; BACKUP ${items} TO $(s3_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null
+  if ! ch "SET log_queries = 0; BACKUP ${items} TO $(s3_dest "$dest") SETTINGS ${settings} ASYNC" >/dev/null; then
+    echo "Failed to start backup ${dest}" >&2
+    return 1
+  fi
 
+  local missing=0
   while true; do
-    status="$(ch "SELECT status FROM system.backups WHERE id = '${id}'")"
+    status="$(ch "SELECT status FROM system.backups WHERE id = '${id}'" || echo QUERY_FAILED)"
     case "$status" in
-      CREATING_BACKUP|"") sleep 30 ;;
+      CREATING_BACKUP) missing=0; sleep 30 ;;
+      ""|QUERY_FAILED)
+        # Not listed (yet) or ClickHouse briefly unreachable; give up after ~10 minutes.
+        missing=$((missing + 1))
+        if ((missing > 20)); then
+          echo "Backup ${dest} (id ${id}) not found in system.backups; giving up" >&2
+          return 1
+        fi
+        sleep 30
+        ;;
       BACKUP_CREATED)
         echo "Backup ${dest} finished in $(( $(date -u +%s) - start ))s"
         return 0
