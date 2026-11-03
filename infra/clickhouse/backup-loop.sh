@@ -215,15 +215,21 @@ enough_staging_space() {
 }
 
 # Upload a completed local backup; mirror skips objects already there, so retries only send the rest.
+# mc mirror stops at the first failed object, and Hetzner fails some regardless of load (504s,
+# "multipart completion is already in progress" when mc retries a slow CompleteMultipartUpload),
+# so keep retrying while attempts make progress; give up after 3 attempts in a row that upload nothing.
 upload_prefix() {
   local prefix="$1"
   local src="${STAGING_DIR}/${prefix}"
   local url="${MC_ALIAS}/${S3_BUCKET}/${prefix}"
-  local attempt start size
+  local attempt=0 stalled=0 start size total before after
   size="$(du -sh "$src" 2>/dev/null | cut -f1)"
+  total="$(find "$src" -type f ! -name .backup | wc -l | tr -d ' ')"
   start="$(date -u +%s)"
-  for attempt in 1 2 3 4 5; do
-    echo "Uploading ${prefix} (${size}) to $(s3_url "$prefix") (attempt ${attempt}/5)"
+  before="$(remote_object_count "$prefix")"
+  while ((stalled < 3)); do
+    attempt=$((attempt + 1))
+    echo "Uploading ${prefix} (${size}, ${before}/${total} files already there) to $(s3_url "$prefix") (attempt ${attempt})"
     if mc_cmd mirror --overwrite --quiet --max-workers "$MIRROR_WORKERS" --exclude ".backup" "${src}/" "${url}/" >/dev/null \
       && mc_cmd cp --quiet "${src}/.backup" "${url}/.backup" >/dev/null \
       && prefix_exists "$prefix"; then
@@ -233,11 +239,23 @@ upload_prefix() {
       rm -rf "$src"
       return 0
     fi
-    echo "Upload attempt ${attempt} of ${prefix} failed" >&2
-    sleep $((attempt * 60))
+    after="$(remote_object_count "$prefix")"
+    if ((after > before)); then
+      stalled=0
+    else
+      stalled=$((stalled + 1))
+    fi
+    echo "Upload attempt ${attempt} of ${prefix} failed (${after}/${total} files there); retrying" >&2
+    before="$after"
+    sleep $((30 + stalled * 120))
   done
-  echo "Upload of ${prefix} failed after 5 attempts; local copy kept in ${src}, resumed next run" >&2
+  echo "Upload of ${prefix} stalled after ${attempt} attempts; local copy kept in ${src}, resumed next run" >&2
   return 1
+}
+
+remote_object_count() {
+  local prefix="$1"
+  mc_cmd ls --recursive "${MC_ALIAS}/${S3_BUCKET}/${prefix}/" 2>/dev/null | wc -l | tr -d ' '
 }
 
 # Local staging shares the disk with ClickHouse data, so nothing may linger there:
