@@ -111,6 +111,23 @@ backup_in_progress() {
   [[ "$(ch "SELECT count() FROM system.backups WHERE status = 'CREATING_BACKUP' AND position(name, '/${prefix}/') > 0")" != "0" ]]
 }
 
+# Hetzner object storage fails mc's bulk delete (`rm --recursive`: "unexpected EOF"),
+# so fall back to deleting object by object, then check nothing is left.
+remove_prefix() {
+  local prefix="$1"
+  local url="${MC_ALIAS}/${S3_BUCKET}/${prefix}"
+  if mc_cmd rm --recursive --force "$url" >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "Bulk delete of ${prefix} failed; deleting object by object"
+  mc_cmd ls --recursive "${url}/" | awk '{print $NF}' \
+    | xargs -P 16 -I{} "$MC_BIN" rm --force "${url}/{}" >/dev/null
+  if [[ -n "$(mc_cmd ls "${url}/" 2>/dev/null)" ]]; then
+    echo "Could not delete ${prefix}: objects remain" >&2
+    return 1
+  fi
+}
+
 # A prefix without .backup that no running BACKUP is writing is a leftover of an interrupted or
 # failed backup (its .lock makes every retry fail with BACKUP_ALREADY_EXISTS): delete it.
 remove_if_stale() {
@@ -120,7 +137,7 @@ remove_if_stale() {
   fi
   if [[ -n "$(mc_cmd ls "${MC_ALIAS}/${S3_BUCKET}/${prefix}/" 2>/dev/null)" ]]; then
     echo "Removing incomplete backup ${prefix} (no .backup marker, not being written)"
-    mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${prefix}"
+    remove_prefix "$prefix"
   fi
 }
 
@@ -225,14 +242,14 @@ prune_old_backups() {
     date_part="$(echo "$prefix" | sed -E 's/^inc-([0-9]{4}-[0-9]{2}-[0-9]{2})-.*/\1/')"
     if [[ "$date_part" < "$inc_cutoff" ]]; then
       echo "Removing old incremental ${prefix}"
-      mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${prefix}" || true
+      remove_prefix "$prefix" || true
     fi
   done
 
   if ((${#fulls[@]} > KEEP_FULLS)); then
     for ((i = KEEP_FULLS; i < ${#fulls[@]}; i++)); do
       echo "Removing old full ${fulls[i]}"
-      mc_cmd rm --recursive --force "${MC_ALIAS}/${S3_BUCKET}/${fulls[i]}" || true
+      remove_prefix "${fulls[i]}" || true
     done
   fi
 }
