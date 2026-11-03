@@ -409,6 +409,9 @@ clickhouse:
 			echo "Restoring from S3 prefix $(BACKUP)..."; \
 			$(DC) exec clickhouse-backup /bin/bash /opt/backup-loop.sh restore "$(BACKUP)" \
 			;; \
+		pull-prod) \
+			$(ROOT_DIR)/infra/dev/pull-prod-backup.sh $(BACKUP) \
+			;; \
 		help|"") \
 			echo "ClickHouse:"; \
 			echo "  make [clickhouse|ch] stop              Stop ClickHouse"; \
@@ -421,10 +424,11 @@ clickhouse:
 			echo "  make [clickhouse|ch] backup-restart   Recreate backup sidecar (reload loop script/env)"; \
 			echo "  make [clickhouse|ch] version          Show server version"; \
 			echo "  make [clickhouse|ch] restore BACKUP=<prefix>  RESTORE ALL from that prefix"; \
+			echo "  make [clickhouse|ch] pull-prod [BACKUP=<prefix>]  Copy a prod backup locally and restore it (default: newest full)"; \
 			echo "" \
 			;; \
 		*) \
-			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|dev-usage|backup-restart|version|restore|help]"; \
+			echo "Usage: make [clickhouse|ch] [stop|restart|client [user]|backup [full|incremental]|backup-status|backup-list|dev-usage|backup-restart|version|restore|pull-prod|help]"; \
 			exit 1 \
 			;; \
 	esac
