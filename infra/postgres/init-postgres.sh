@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Initialize Postgres databases for Superset and Grafana
+# Initialize Postgres databases for Grafana
 # This script is automatically executed on first startup via /docker-entrypoint-initdb.d/
 
 # Check if a database exists
@@ -64,18 +64,12 @@ setup_db() {
 echo "Initializing Postgres databases..."
 
 # Get environment variables with defaults
-SUPERSET_DB=${SUPERSET_POSTGRES_DB:-superset}
-SUPERSET_USER=${SUPERSET_POSTGRES_USER:-superset}
-SUPERSET_PASSWORD=${SUPERSET_POSTGRES_PASSWORD}
-
 GRAFANA_DB=${GRAFANA_POSTGRES_DB:-grafana}
 GRAFANA_USER=${GRAFANA_POSTGRES_USER:-grafana}
 GRAFANA_PASSWORD=${GRAFANA_POSTGRES_PASSWORD}
 
-setup_db "$SUPERSET_DB" "$SUPERSET_USER" "$SUPERSET_PASSWORD" "Superset"
 setup_db "$GRAFANA_DB" "$GRAFANA_USER" "$GRAFANA_PASSWORD" "Grafana"
 
 echo "✓ Postgres initialization complete"
-echo "  - Superset database: $SUPERSET_DB (user: $SUPERSET_USER)"
 echo "  - Grafana database: $GRAFANA_DB (user: $GRAFANA_USER)"
 

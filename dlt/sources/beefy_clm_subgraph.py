@@ -69,11 +69,16 @@ def _replacing(resource: Any) -> Any:
     )
 
 
-def _start_timestamp(lagged_value: Optional[datetime], head_timestamp: datetime) -> int:
+def _start_timestamp(
+    lagged_value: Optional[datetime], head_timestamp: Optional[datetime]
+) -> int:
     """Rewind only near the subgraph head: older rows are final, and a burst of more rows
-    than a run reads inside the lag window would otherwise pin a backfill on the same page."""
+    than a run reads inside the lag window would otherwise pin a backfill on the same page.
+    With the head unknown, rewind the whole lag."""
     if lagged_value is None:
         return 0
+    if head_timestamp is None:
+        return int(lagged_value.timestamp())
     return min(
         int(lagged_value.timestamp()) + _CURSOR_LAG_S,
         int(head_timestamp.timestamp()) - _CURSOR_LAG_S,
@@ -166,6 +171,8 @@ async def _fetch_deployed_statuses() -> List[Dict[str, Any]]:
             continue
         if status["has_indexing_errors"]:
             logger.warning("beefy-clm subgraph on %s reports indexing errors", chain)
+        if status["head_block_timestamp"] is None:
+            logger.warning("beefy-clm subgraph on %s reports no head block timestamp", chain)
         statuses.append(status)
     return statuses
 

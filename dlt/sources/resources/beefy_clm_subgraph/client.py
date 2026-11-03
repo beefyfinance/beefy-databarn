@@ -76,12 +76,14 @@ async def fetch_subgraph_status(chain: str) -> Optional[Dict[str, Any]]:
             return None
         raise
     meta = data["_meta"]
+    # graph-node answers a null timestamp while it has not cached the head block yet.
+    head_timestamp = meta["block"]["timestamp"]
     return {
         "chain_key": chain,
         "deployment": meta["deployment"],
         "has_indexing_errors": meta["hasIndexingErrors"],
         "head_block_number": meta["block"]["number"],
-        "head_block_timestamp": _to_datetime(meta["block"]["timestamp"]),
+        "head_block_timestamp": None if head_timestamp is None else _to_datetime(head_timestamp),
     }
 
 

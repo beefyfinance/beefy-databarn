@@ -1,4 +1,4 @@
-.PHONY: help infra dbt dlt grafana clickhouse superset api mcp test deps-check setup dev reimport-prices orphans
+.PHONY: help infra dbt dlt grafana clickhouse api mcp test deps-check setup dev reimport-prices orphans
 .DEFAULT_GOAL := help
 
 # Prevent execution in production (user "databarn")
@@ -22,7 +22,6 @@ help: ## Show this help message
 	@$(MAKE) -s --no-print-directory dbt
 	@$(MAKE) -s --no-print-directory grafana
 	@$(MAKE) -s --no-print-directory clickhouse
-	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory api
 	@$(MAKE) -s --no-print-directory mcp
 	@$(MAKE) -s --no-print-directory test
@@ -422,48 +421,6 @@ clickhouse:
 			;; \
 	esac
 
-# Superset commands - using subcommands
-superset:
-	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
-	case "$$SUBCMD" in \
-		stop) \
-			echo "Stopping Superset..."; \
-			$(DC) stop superset; \
-			echo "✓ Superset stopped" \
-			;; \
-		restart) \
-			echo "Restarting Superset (rebuild image)..."; \
-			$(DC) up -d --force-recreate --build --no-deps superset; \
-			echo "✓ Superset restarted" \
-			;; \
-		build) \
-			echo "Building Superset image..."; \
-			$(DC) build superset; \
-			echo "✓ Superset image built" \
-			;; \
-		logs) \
-			$(DC) logs -f superset \
-			;; \
-		sync|sync-datasources) \
-			echo "Syncing Superset datasources (refresh dataset metadata)..."; \
-			$(DC) exec superset python3 /usr/local/bin/provision/sync-datasources.py || true; \
-			echo "✓ Datasources sync completed" \
-			;; \
-		help|"") \
-			echo "Superset:"; \
-			echo "  make superset stop             Stop Superset"; \
-			echo "  make superset restart          Restart Superset (reload configs)"; \
-			echo "  make superset build            Build Superset image"; \
-			echo "  make superset logs            View Superset logs"; \
-			echo "  make superset sync-datasources Refresh dataset metadata from databases"; \
-			echo "" \
-			;; \
-		*) \
-			echo "Usage: make superset [stop|restart|build|logs|sync-datasources|help]"; \
-			exit 1 \
-			;; \
-	esac
-
 # API commands - using subcommands
 api:
 	@cd api && unset VIRTUAL_ENV && \
@@ -585,7 +542,6 @@ _print-urls:
 	@echo ""
 	@echo "Access services:"
 	echo "  - API: http://localhost:8080/docs" && \
-	echo "  - Superset: http://localhost:$${SUPERSET_HOST_PORT:-18088}" && \
 	echo "  - Traefik Dashboard: http://localhost:8080" && \
 	echo "  - ClickHouse: http://localhost:$${CLICKHOUSE_HOST_HTTP_PORT:-28123} ($${CLICKHOUSE_USER:-default}/$${CLICKHOUSE_PASSWORD:-<set in .env>})" && \
 	echo "  - Grafana: http://localhost:$${GRAFANA_HOST_PORT:-13000} ($${GRAFANA_ADMIN_USER:-admin}/$${GRAFANA_ADMIN_PASSWORD:-admin})" && \

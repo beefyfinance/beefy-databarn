@@ -18,4 +18,4 @@ models:
       - name: head_block_number
         description: "Latest indexed block"
       - name: head_block_timestamp
-        description: "Time of the latest indexed block"
+        description: "Time of the latest indexed block; null when graph-node has not cached it yet"

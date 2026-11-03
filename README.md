@@ -44,15 +44,6 @@ flowchart TB
         CH[(ClickHouse)]
     end
     
-    %% Analytics
-    subgraph ANALYTICS["Analytics"]
-        SUP[Superset]
-        CELERY[Celery]
-        SUP_W[Superset Worker]
-        PG[(PostgreSQL)]
-        REDIS_A[Redis]
-    end
-    
     %% Observability
     subgraph OBS["Observability"]
         GRAF[Grafana]
@@ -75,16 +66,8 @@ flowchart TB
     %% dbt Flow
     DBT -->|Creates Views & Tables| CH
     
-    %% Analytics Flow
-    SUP -->|Query| CH
-    SUP -->|Metadata| PG
-    SUP -->|Cache| REDIS_A
-    SUP -->|Async Queries| CELERY
-    CELERY -->|Work Queue| REDIS_A
-    REDIS_A -->|Work Requests| SUP_W
-    SUP_W -->|Query| CH
-    
     %% Observability Flow
+    GRAF -->|Query| CH
     GRAF -->|Query| PROM
     PG_C -->|Push Metrics| PROM
     REDIS_C -->|Push Metrics| PROM
@@ -93,7 +76,6 @@ flowchart TB
     
     %% Gateway Flow
     USR -->|HTTPS| TR
-    TR -->|Route| SUP
     TR -->|Route| GRAF
     
     %% Styling
@@ -101,7 +83,6 @@ flowchart TB
     classDef external fill:#ffffff,stroke:#f57c00,stroke-width:2px,color:#000
     classDef elt fill:#ffffff,stroke:#9c27b0,stroke-width:2px,color:#000
     classDef warehouse fill:#ffffff,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef analytics fill:#ffffff,stroke:#c2185b,stroke-width:2px,color:#000
     classDef observability fill:#ffffff,stroke:#f9a825,stroke-width:2px,color:#000
     classDef user fill:#ffffff,stroke:#d32f2f,stroke-width:2px,color:#000
     
@@ -109,7 +90,6 @@ flowchart TB
     class BEEFY_DB,BEEFY_API external
     class PYTHON,DBT elt
     class CH warehouse
-    class SUP,SUP_W,CELERY,PG,REDIS_A analytics
     class PROM,GRAF,PG_OBS,REDIS_OBS,REDIS_C,PG_C observability
     class USR user
 ```
@@ -123,8 +103,6 @@ flowchart TB
   - Transforms and cleans data (intermediate layer)
   - Builds business-ready analytical models (marts layer)
   - Runs on a schedule via cron jobs in production
-
-- **Superset**: Business intelligence platform that connects to ClickHouse as a native data source. Analysts can create dashboards, charts, and SQL queries against the dbt models.
 
 - **Traefik**: Reverse proxy that handles:
   - HTTPS termination with Let's Encrypt certificates
@@ -167,7 +145,7 @@ make dbt run        # Run dbt models
 
 2. Start infrastructure services:
    ```bash
-   make infra start      # Start ClickHouse, Superset, Grafana, Prometheus
+   make infra start      # Start ClickHouse, Grafana, Prometheus
    # ClickHouse automatically initializes on first startup
    ```
 
@@ -179,7 +157,6 @@ make dbt run        # Run dbt models
 
 4. Access services:
    - ClickHouse: http://localhost:28123
-   - Superset: http://localhost:18088
    - Grafana: http://localhost:13000 (admin/changeme by default)
    - Prometheus: http://localhost:19090
 
@@ -205,7 +182,7 @@ make [clickhouse|ch] backup pull [BACKUP=inc-YYYY-MM-DD-HH] [YES=1]  # Restore p
 
 3. Build and deploy infrastructure:
    ```bash
-   # Build images (dbt, superset, etc.)
+   # Build images (dbt, etc.)
    make build
 
    # Deploy stack
@@ -231,7 +208,7 @@ make up              # Rolling update (redeploy stack)
 
 ## Project Structure
 
-- `infra/`: Infrastructure configurations (dev/prod stacks, ClickHouse, Superset, Traefik, monitoring)
+- `infra/`: Infrastructure configurations (dev/prod stacks, ClickHouse, Traefik, monitoring)
   - `infra/prod/`: Production deployment files (Makefile, docker-stack.yml, docker-compose.build.yml)
   - `infra/dev/`: Development docker-compose configuration
   - `infra/dbt/`: dbt container configuration (Dockerfile, cron jobs)
@@ -250,7 +227,7 @@ graph LR
     A[PostgreSQL<br/>Source Tables] -->|External Table Engine| B[Staging Layer<br/>External Tables]
     B -->|Transform & Clean| C[Intermediate Layer<br/>Views]
     C -->|Aggregate & Model| D[Marts Layer<br/>Tables]
-    D -->|Query| E[Superset<br/>Dashboards]
+    D -->|Query| E[Grafana<br/>Dashboards]
     
     style A fill:#FFB6C1
     style B fill:#87CEEB
@@ -290,7 +267,7 @@ graph LR
 2. **Staging**: `stg_beefy_db__harvests` creates an external table that queries PostgreSQL directly
 3. **Intermediate**: Data is cleaned (filters invalid prices, removes outliers)
 4. **Marts**: `yield_harvest_events` joins with dimensions (chain, product) and calculates USD values
-5. **Consumption**: Superset queries `yield_harvest_events` for dashboards and analytics
+5. **Consumption**: Grafana queries `yield_harvest_events` for dashboards and analytics
 
 ## Development
 
@@ -348,14 +325,11 @@ The platform supports both development and production environments:
 
 Services can be moved between nodes using Docker Swarm labels.
 
-## Monitoring & BI
+## Monitoring
 
-- Superset: http://localhost:18088
 - Grafana: http://localhost:13000
 - Prometheus: http://localhost:19090
 - ClickHouse: http://localhost:28123
-
-**Note**: Superset supports ClickHouse as a native data source. After initial setup, you can configure ClickHouse connections through the Superset UI to query your dbt models and data.
 
 ## Security
 

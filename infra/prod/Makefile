@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf mcp run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans _orphans-scan
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse grafana gf mcp run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport reimport-prices orphans _orphans-scan
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -17,7 +17,6 @@ DATA_DIRS := $(STORAGE_DIR)/clickhouse \
              $(STORAGE_DIR)/prometheus \
              $(STORAGE_DIR)/grafana \
              $(STORAGE_DIR)/postgres \
-             $(STORAGE_DIR)/superset \
              $(STORAGE_DIR)/redis \
              $(STORAGE_DIR)/traefik_certs \
              $(STORAGE_DIR)/dbt \
@@ -36,7 +35,6 @@ help:
 	@$(MAKE) -s --no-print-directory dlt
 	@$(MAKE) -s --no-print-directory clickhouse
 	@$(MAKE) -s --no-print-directory grafana
-	@$(MAKE) -s --no-print-directory superset
 	@$(MAKE) -s --no-print-directory mcp
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
@@ -131,42 +129,6 @@ grafana:
 			;; \
 		*) \
 			echo "Usage: make [grafana|gf] [start|restart|logs|ps|help]"; \
-			exit 1 \
-			;; \
-	esac
-
-# Superset commands - using subcommands
-superset:
-	@SUBCMD="$(word 2,$(MAKECMDGOALS))" && \
-	case "$$SUBCMD" in \
-		restart) \
-			echo "Restarting Superset (rebuild image)..."; \
-			$(DC) up -d --force-recreate --build --no-deps superset; \
-			echo "✓ Superset restarted" \
-			;; \
-		build) \
-			echo "Building Superset image..."; \
-			$(DC) build superset; \
-			echo "✓ Superset image built" \
-			;; \
-		logs) \
-			$(DC) logs -f superset \
-			;; \
-		sync|sync-datasources) \
-			echo "Syncing Superset datasources (refresh dataset metadata)..."; \
-			$(DC) exec superset python3 /usr/local/bin/provision/sync-datasources.py || true; \
-			echo "✓ Datasources sync completed" \
-			;; \
-		help|"") \
-			echo "Superset:"; \
-			echo "  make superset restart          Restart Superset (reload configs)"; \
-			echo "  make superset build            Build Superset image"; \
-			echo "  make superset logs            View Superset logs"; \
-			echo "  make superset sync-datasources Refresh dataset metadata from databases"; \
-			echo "" \
-			;; \
-		*) \
-			echo "Usage: make superset [restart|build|logs|sync-datasources|help]"; \
 			exit 1 \
 			;; \
 	esac

@@ -59,9 +59,6 @@ validate_ip_config DBT_CLICKHOUSE_ALLOWED_HOST
 validate_password GRAFANA_CLICKHOUSE_PASSWORD
 validate_ip_config GRAFANA_CLICKHOUSE_ALLOWED_HOST
 
-validate_password SUPERSET_CLICKHOUSE_PASSWORD
-validate_ip_config SUPERSET_CLICKHOUSE_ALLOWED_HOST
-
 validate_password API_CLICKHOUSE_PASSWORD
 validate_ip_config API_CLICKHOUSE_ALLOWED_HOST
 
@@ -120,10 +117,8 @@ clickhouse-client \
     ALTER USER grafana IDENTIFIED WITH sha256_password BY '${GRAFANA_CLICKHOUSE_PASSWORD}';
     ALTER USER grafana HOST ${GRAFANA_CLICKHOUSE_ALLOWED_HOST};
 
-    -- superset
-    CREATE USER IF NOT EXISTS superset IDENTIFIED WITH sha256_password BY '${SUPERSET_CLICKHOUSE_PASSWORD}';
-    ALTER USER superset IDENTIFIED WITH sha256_password BY '${SUPERSET_CLICKHOUSE_PASSWORD}';
-    ALTER USER superset HOST ${SUPERSET_CLICKHOUSE_ALLOWED_HOST};
+    -- superset (removed): drop the leftover user
+    DROP USER IF EXISTS superset;
 
     -- api
     CREATE USER IF NOT EXISTS api IDENTIFIED WITH sha256_password BY '${API_CLICKHOUSE_PASSWORD}';
@@ -198,18 +193,6 @@ clickhouse-client \
     GRANT ${READ_PERM} ON envio.*         TO grafana;
     GRANT ${READ_PERM} ON zapalytics.*    TO grafana;
 
-    -- superset: R on warehouse + project DBs
-    REVOKE ALL PRIVILEGES ON dlt.*           FROM superset;
-    REVOKE ALL PRIVILEGES ON dbt.*           FROM superset;
-    REVOKE ALL PRIVILEGES ON analytics.*     FROM superset;
-    REVOKE ALL PRIVILEGES ON envio.*         FROM superset;
-    REVOKE ALL PRIVILEGES ON zapalytics.*    FROM superset;
-    GRANT ${READ_PERM} ON dlt.*        TO superset;
-    GRANT ${READ_PERM} ON dbt.*        TO superset;
-    GRANT ${READ_PERM} ON analytics.*  TO superset;
-    GRANT ${READ_PERM} ON envio.*      TO superset;
-    GRANT ${READ_PERM} ON zapalytics.* TO superset;
-
     -- api: R on warehouse + project DBs
     REVOKE ALL PRIVILEGES ON analytics.*    FROM api;
     REVOKE ALL PRIVILEGES ON dlt.*          FROM api;
@@ -238,7 +221,7 @@ clickhouse-client \
     -- Settings profiles (env-synced)
     -------------------------------------------
 
-    -- Web profile: readonly dashboards (grafana + superset + api)
+    -- Web profile: readonly dashboards (grafana + api)
     CREATE SETTINGS PROFILE IF NOT EXISTS web_profile;
     ALTER  SETTINGS PROFILE web_profile
         SETTINGS
@@ -255,7 +238,7 @@ clickhouse-client \
             max_rows_to_read  = ${CLICKHOUSE_WEB_MAX_ROWS_TO_READ:-1000000},
             use_uncompressed_cache = 0,
             load_balancing = 'random'
-        TO grafana, superset, api;
+        TO grafana, api;
 
     -- ETL profile: dbt + dlt
     CREATE SETTINGS PROFILE IF NOT EXISTS etl_profile;
@@ -364,7 +347,7 @@ clickhouse-client \
             read_rows      = 100000000000,
             read_bytes     = 100000000000000,
             execution_time = 7200
-        TO grafana, superset, api;
+        TO grafana, api;
 
     DROP QUOTA IF EXISTS project_quota;
 

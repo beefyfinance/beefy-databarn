@@ -76,8 +76,6 @@ services:
       DBT_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
       DLT_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
-      SUPERSET_CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD}
-      SUPERSET_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       GRAFANA_CLICKHOUSE_PASSWORD: ${GRAFANA_CLICKHOUSE_PASSWORD}
       GRAFANA_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       API_CLICKHOUSE_PASSWORD: ${API_CLICKHOUSE_PASSWORD}
@@ -300,9 +298,6 @@ services:
       POSTGRES_DB: ${POSTGRES_ADMIN_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
-      SUPERSET_POSTGRES_DB: ${SUPERSET_POSTGRES_DB:-superset}
-      SUPERSET_POSTGRES_USER: ${SUPERSET_POSTGRES_USER:-superset}
-      SUPERSET_POSTGRES_PASSWORD: ${SUPERSET_POSTGRES_PASSWORD}
       GRAFANA_POSTGRES_DB: ${GRAFANA_POSTGRES_DB:-grafana}
       GRAFANA_POSTGRES_USER: ${GRAFANA_POSTGRES_USER:-grafana}
       GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD}
@@ -383,84 +378,6 @@ services:
       options:
         max-size: "1G"
         max-file: "3"
-
-  superset:
-    build:
-      context: ../superset
-      dockerfile: Dockerfile
-    image: beefy-databarn-superset:latest
-    volumes:
-      - superset_data:/app/superset_home
-      - ../superset/provision:/usr/local/bin/provision
-      - ../superset/docker-entrypoint-wrapper.sh:/app/docker-entrypoint-wrapper.sh
-      - ../superset/superset_config.py:/app/superset_config.py
-      - ../superset/github_security_manager.py:/app/pythonpath/github_security_manager.py
-    command: ["/app/docker-entrypoint-wrapper.sh"]
-    environment:
-      SUPERSET_WEBAPP_DOMAIN_NAME: ${SUPERSET_WEBAPP_DOMAIN_NAME}
-      SUPERSET_ENV: ${SUPERSET_ENV:-production}
-      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
-      SUPERSET_CONFIG_PATH: /app/superset_config.py
-      POSTGRES_USER: ${SUPERSET_POSTGRES_USER:-superset}
-      POSTGRES_PASSWORD: ${SUPERSET_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${SUPERSET_POSTGRES_DB:-superset}
-      SUPERSET_POSTGRES_HOST: postgres
-      SUPERSET_POSTGRES_PORT: 5432
-      SUPERSET_POSTGRES_USER: ${SUPERSET_POSTGRES_USER:-superset}
-      SUPERSET_POSTGRES_PASSWORD: ${SUPERSET_POSTGRES_PASSWORD}
-      SUPERSET_POSTGRES_DB: ${SUPERSET_POSTGRES_DB:-superset}
-      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
-      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
-      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@example.com}
-      SUPERSET_CLICKHOUSE_HOST: ${SUPERSET_CLICKHOUSE_HOST}
-      SUPERSET_CLICKHOUSE_PORT: 8123
-      SUPERSET_CLICKHOUSE_USER: ${SUPERSET_CLICKHOUSE_USER:-superset}
-      SUPERSET_CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD}
-      SUPERSET_CLICKHOUSE_DB: ${SUPERSET_CLICKHOUSE_DB:-analytics}
-      SUPERSET_REDIS_HOST: redis
-      SUPERSET_REDIS_PORT: 6379
-      SUPERSET_REDIS_CELERY_DB: ${SUPERSET_REDIS_CELERY_DB:-0}
-      SUPERSET_REDIS_RESULTS_DB: ${SUPERSET_REDIS_RESULTS_DB:-1}
-      # GitHub OAuth Configuration
-      SUPERSET_GITHUB_CLIENT_ID: ${SUPERSET_GITHUB_CLIENT_ID:-}
-      SUPERSET_GITHUB_CLIENT_SECRET: ${SUPERSET_GITHUB_CLIENT_SECRET:-}
-      SUPERSET_GITHUB_API_BASE_URL: ${SUPERSET_GITHUB_API_BASE_URL:-}
-      SUPERSET_GITHUB_ACCESS_TOKEN_URL: ${SUPERSET_GITHUB_ACCESS_TOKEN_URL:-}
-      SUPERSET_GITHUB_AUTHORIZE_URL: ${SUPERSET_GITHUB_AUTHORIZE_URL:-}
-      SUPERSET_GITHUB_ALLOWED_ORG: ${SUPERSET_GITHUB_ALLOWED_ORG:-}
-      SUPERSET_AUTH_USER_REGISTRATION_ROLE: ${SUPERSET_AUTH_USER_REGISTRATION_ROLE:-Gamma}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      clickhouse:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8088/health || exit 1"]
-      interval: 1s
-      timeout: 10s
-      retries: 20
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.superset.rule=Host(`${SUPERSET_WEBAPP_DOMAIN_NAME}`)"
-      - "traefik.http.routers.superset.entrypoints=websecure"
-      - "traefik.http.routers.superset.tls.certresolver=letsencrypt"
-      - "traefik.http.services.superset.loadbalancer.server.port=8088"
-      - "traefik.http.services.superset.loadbalancer.server.scheme=http"
-      - "traefik.http.services.superset.loadbalancer.healthcheck.path=/health"
-      - "traefik.http.services.superset.loadbalancer.healthcheck.interval=10s"
-      - "traefik.http.services.superset.loadbalancer.healthcheck.timeout=5s"
-      - "traefik.http.routers.superset.service=superset"
-    networks:
-      - backend_network
-      - frontend_network
-    logging:
-      driver: "local"
-      options:
-        max-size: "1G"
-        max-file: "3"
-    restart: unless-stopped
 
   dbt:
     build:
@@ -700,7 +617,6 @@ services:
         max-size: "100M"
         max-file: "3"
 
-
 volumes:
   clickhouse_data:
     driver: local
@@ -732,12 +648,6 @@ volumes:
       type: none
       o: bind
       device: ${STORAGE_DIR}/postgres
-  superset_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${STORAGE_DIR}/superset
   redis_data:
     driver: local
     driver_opts:

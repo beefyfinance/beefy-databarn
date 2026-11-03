@@ -194,6 +194,24 @@ def test_missing_subgraph_is_none_and_other_failures_raise(monkeypatch: pytest.M
         asyncio.run(client.fetch_subgraph_status("gnosis"))
 
 
+def test_null_head_timestamp_is_kept_as_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def post(url: str, *, json_body: dict[str, Any]) -> dict[str, Any]:
+        meta = {
+            "deployment": "Qm",
+            "hasIndexingErrors": False,
+            "block": {"number": 12, "timestamp": None},
+        }
+        return {"data": {"_meta": meta}}
+
+    monkeypatch.setattr(client, "post_url_json_dict", post)
+
+    status = asyncio.run(client.fetch_subgraph_status("base"))
+
+    assert status is not None
+    assert status["head_block_number"] == 12
+    assert status["head_block_timestamp"] is None
+
+
 def _install_chain_keys(monkeypatch: pytest.MonkeyPatch, chain_keys: list[str]) -> None:
     class Client:
         async def query(self, sql: str) -> SimpleNamespace:
@@ -211,7 +229,7 @@ def test_only_chains_with_a_deployment_are_kept(monkeypatch: pytest.MonkeyPatch)
     async def status(chain: str) -> dict[str, Any] | None:
         if chain == "gnosis":
             return None
-        return {"chain_key": chain, "has_indexing_errors": False}
+        return {"chain_key": chain, "has_indexing_errors": False, "head_block_timestamp": None}
 
     monkeypatch.setattr(source, "fetch_subgraph_status", status)
 
@@ -249,3 +267,6 @@ def test_start_timestamp_only_rewinds_near_the_head() -> None:
     # Caught up: re-read the open window.
     caught_up = datetime.fromtimestamp(head_ts - lag, tz=timezone.utc)
     assert source._start_timestamp(caught_up, head) == head_ts - lag
+
+    # Head unknown: rewind the whole lag.
+    assert source._start_timestamp(behind, None) == head_ts - 10 * lag

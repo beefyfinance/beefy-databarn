@@ -10,5 +10,5 @@ SELECT
   t.deployment AS deployment,
   t.has_indexing_errors AS has_indexing_errors,
   cast(t.head_block_number as Int64) AS head_block_number,
-  cast(t.head_block_timestamp as DateTime('UTC')) AS head_block_timestamp
+  cast(t.head_block_timestamp as Nullable(DateTime('UTC'))) AS head_block_timestamp
 FROM {{ source('dlt', 'beefy_clm_subgraph___subgraph_status') }} t
