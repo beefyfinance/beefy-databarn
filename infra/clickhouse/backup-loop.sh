@@ -483,9 +483,19 @@ run_hourly() {
   prune_old_backups || echo "Prune failed; will retry next hour" >&2
 }
 
+# Pushing writes to and prunes the shared remote bucket: only prod sets CLICKHOUSE_BACKUP_PUSH=1.
+# Dev uses this container as a read-only toolbox (status/list/restore) against prod backups.
+require_push_enabled() {
+  if [[ "${CLICKHOUSE_BACKUP_PUSH:-0}" != "1" ]]; then
+    echo "Refusing to '$1': backups are disabled here (set CLICKHOUSE_BACKUP_PUSH=1, prod only)" >&2
+    exit 1
+  fi
+}
+
 cmd="${1:-daemon}"
 case "$cmd" in
   once)
+    require_push_enabled once
     wait_for_clickhouse
     mode="${2:-auto}"
     if [[ "$mode" == "auto" ]]; then
@@ -518,6 +528,7 @@ case "$cmd" in
     done < <(list_backup_prefixes | sort)
     ;;
   daemon)
+    require_push_enabled daemon
     wait_for_clickhouse
     echo "Backup loop starting (daily full at ${FULL_HOUR}:00 UTC, hourly incremental, keep ${KEEP_FULLS} fulls + ${KEEP_INCREMENTAL_DAYS}d incrementals)"
     prepare_staging

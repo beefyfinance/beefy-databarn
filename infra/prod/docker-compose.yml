@@ -166,6 +166,8 @@ services:
       CLICKHOUSE_BACKUP_CH_USER: backup
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_BACKUP_PASSWORD: ${CLICKHOUSE_BACKUP_PASSWORD:-${CLICKHOUSE_PASSWORD}}
+      # Only prod pushes backups (backup-loop.sh refuses daemon/once without it)
+      CLICKHOUSE_BACKUP_PUSH: "1"
       # Remote S3 server the backups are pushed to
       CLICKHOUSE_BACKUP_S3_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_ENDPOINT:?CLICKHOUSE_BACKUP_S3_ENDPOINT must be set}
       CLICKHOUSE_BACKUP_S3_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
