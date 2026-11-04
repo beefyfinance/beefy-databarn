@@ -42,5 +42,6 @@ data_tests:
 vars:
   # When /mootokenprices started serving beefy-api PR 1966 (UTC). It deployed at 17:12:32, but our 17:15:03
   # snapshot still had the old scale; the 17:30:05 one is the first with the new scale.
-  # Earlier snapshots are rescaled by stg_beefy_api__mootokenprices.
+  # Earlier snapshots are rescaled by stg_beefy_api__mootokenprices. That view bakes this value in when it is
+  # created: after changing it, make dbt reimport stg_beefy_api__mootokenprices+ <day of the cutoff>.
   mootoken_price_fix_deployed_at: "2026-11-02 17:30:00"
