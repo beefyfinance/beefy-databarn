@@ -6,6 +6,13 @@ import lib.dlt_timescaledb_no_cursor_patch  # noqa: F401
 import lib.python313_gzip_patch  # noqa: F401
 import lib.snapshot_incremental  # noqa: F401
 
+# pyarrow imports pandas lazily on the first pa.array() call, so with parallelized
+# sources that import starts in an extract worker thread. Meanwhile dlt's
+# is_pandas_frame() reads sys.modules["pandas"].DataFrame from another worker and hits
+# the half-initialized module ("partially initialized module 'pandas'"). Import it
+# here, in the main thread, before any extraction starts.
+import pandas  # noqa: F401
+
 from dataclasses import dataclass
 import argparse
 import sys
