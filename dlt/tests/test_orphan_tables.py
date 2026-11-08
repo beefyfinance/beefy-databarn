@@ -44,6 +44,21 @@ def test_load_dbt_expectations(tmp_path):
     assert expected.dlt_sources == {"beefy_api___vaults"}
 
 
+def test_price_resolver_tables_are_expected(tmp_path):
+    manifest = {
+        "nodes": {
+            "model.obs": {"resource_type": "model", "schema": "dbt", "alias": "int_price_obs", "config": {"materialized": "incremental"}},
+        },
+        "sources": {},
+    }
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest))
+    expected = load_dbt_expectations(path)
+    assert ("dbt", "int_price_runs") in expected.relations
+    assert ("dbt", "int_price_consumers") in expected.relations
+    assert ("analytics", "int_price_runs") not in expected.relations
+
+
 def test_dbt_classification():
     expected = DbtExpectations(frozenset({("analytics", "chain")}), frozenset())
     tables = [

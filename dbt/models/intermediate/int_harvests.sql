@@ -23,12 +23,12 @@
 {% endif %}
 
 -- Harvests priced with asset_price_5m on the harvest's 5-minute slot, like every priced model:
---   want_price         the product's want oracle (beefy_wants_price_oracle_key)
+--   want_price         the product's want oracle (beefy_wants_price_oracle_key), classic vaults only: CLM managers
+--                      and reward pools keep the stored price (their want key is their share oracle)
 --   native_price       the chain's native oracle (beefy_native_price_oracle_key)
 --   platform_fee_price native, except Fraxtal (252) where platform fees are paid in frxETH
 -- Corrections are part of the series. A harvest whose series has no price keeps the price beefy-db stored with it
--- (price source 'harvest'). The stored prices are not price sources: the want price is often wrong (2026-11: 6.7%
--- of harvests more than 50% off the beefy_db price, many a placeholder 1 on CLM wants).
+-- (price source 'harvest'). The stored prices are not price sources (they miss the corrections).
 -- Incremental on txn_timestamp (1-day lookback), plus the harvests a resolver run re-priced (price_reprice: a dirty
 -- want, native or fee asset from its first changed slot). Pricing every harvest reads most of asset_price_5m
 -- (15M harvests: 2.6B rows, 50 s, 1.3 GiB), too much for every run. A harvest that a re-priced want pushes over the
@@ -43,7 +43,10 @@ WITH
     SELECT
       h.*,
       toStartOfFiveMinutes(h.txn_timestamp) AS slot,
-      w.asset_id AS want_asset_id,
+      -- A product with a share oracle (CLM manager, reward pool) has its want key on that oracle: it prices the
+      -- share, not the harvested amount (beefy-db stores CLM harvest amounts in another unit, priced ~1). Those keep
+      -- the stored price (asset 0 finds no price).
+      if(pk.beefy_share_price_oracle_key IS NULL, w.asset_id, toUInt64(0)) AS want_asset_id,
       n.asset_id AS native_asset_id,
       if(h.network_id = 252, (SELECT any(asset_id) FROM oracles WHERE oracle_id = 'frxETH'), n.asset_id) AS fee_asset_id
     FROM {{ ref('stg_beefy_db__harvests') }} h

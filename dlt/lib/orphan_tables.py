@@ -25,6 +25,13 @@ DBT_LEFTOVER = re.compile(r"__dbt_(tmp|backup|new_data)(_[0-9a-f_]+)?$")
 DLT_LEFTOVER_SUFFIXES = ("___engine_swap", "_old", "_new", "_bak", "_backup", "_tmp")
 DLT_INTERNAL_TABLES = frozenset({"_dlt_loads", "_dlt_version", "_dlt_pipeline_state", "dlt_sentinel_table"})
 DLT_STAGING_SUFFIX = "_staging"
+# Tables the price_resolver materialization (asset_price_5m) and the priced models create next to int_price_obs
+# (dbt/macros/prices/price_resolver_sql.sql price_resolver_tables, price_runs.sql). No dbt node produces them.
+PRICE_RESOLVER_TABLES = frozenset({
+    "int_price_asset_state", "int_price_asset_bounds", "int_price_runs", "int_price_map_applied",
+    "int_price_corrections_applied", "int_price_scratch_slots", "int_price_scratch_states",
+    "int_price_scratch_assets", "int_price_consumers",
+})
 IN_PROGRESS_WINDOW = timedelta(hours=1)
 
 Confidence = Literal["high", "review"]
@@ -62,6 +69,11 @@ def load_dbt_expectations(manifest_path: Path) -> DbtExpectations:
         if node["resource_type"] in ("model", "seed", "snapshot")
         and node["config"].get("materialized") != "ephemeral"
     }
+    obs_schemas = {
+        node["schema"] for node in manifest["nodes"].values()
+        if node["resource_type"] == "model" and node["alias"] == "int_price_obs"
+    }
+    relations |= {(schema, name) for schema in obs_schemas for name in PRICE_RESOLVER_TABLES}
     dlt_sources = {
         source["identifier"]
         for source in manifest.get("sources", {}).values()
