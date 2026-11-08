@@ -1,4 +1,4 @@
--- depends_on: {{ ref('int_mootoken_price_corrections') }}
+-- depends_on: {{ ref('int_price_obs') }}
 {{
   config(
     materialized='incremental',
@@ -8,9 +8,13 @@
     order_by=['date_hour', 'chain_id', 'product_address'],
     on_schema_change='append_new_columns',
     incremental_strategy='delete+insert',
+    query_settings={'max_bytes_before_external_group_by': 1000000000, 'max_bytes_before_external_sort': 1000000000},
+    post_hook="{{ price_consumer_done('int_product_stats__share_price_hourly') }}",
   )
 }}
 
+{% set since = incremental_since_var() %}
+{% set until = incremental_until_var() %}
 {% if is_incremental() %}
   {% set threshold_sql %}
     SELECT max(date_hour) - INTERVAL 1 DAY FROM {{ this }}
@@ -21,28 +25,38 @@
   {% else %}
     {% set threshold = '1900-01-01 00:00:00' %}
   {% endif %}
-  {% set since = incremental_since_var() %}
   {% if since is not none %}
     {% set threshold = since %}
   {% endif %}
+  {% set rp = price_reprice('int_product_stats__share_price_hourly', threshold, 'asset', 'hour') %}
 {% endif %}
 
--- Hourly vault share price: the last 5-minute share price of each hour from int_product_share_price
--- (corrections already applied there).
--- Incremental on date_hour (1-day lookback), plus every hour touching a mootoken correction so new
--- windows reach old hours. Removing a window needs a reimport.
+-- Hourly vault share price: the last 5-minute price of each hour of the product's share token in asset_price_5m
+-- (corrections are part of the price series). Products map to their price series through token.asset_id.
+-- Incremental on date_hour (1-day lookback), plus the hours a resolver run re-priced (price_reprice: each dirty
+-- share asset from the hour of its first changed price). Full refresh and reimport run by month (meta.batch:
+-- incremental_since / incremental_until).
 
 SELECT
-  chain_id,
-  product_address,
-  toStartOfHour(date_time) as date_hour,
-  argMax(share_token_price_usd, date_time) as share_token_price_usd
-FROM {{ ref('int_product_share_price') }} FINAL
+  t.chain_id AS chain_id,
+  t.representation_address AS product_address,
+  toStartOfHour(p.date_time) AS date_hour,
+  toDecimal256(argMax(p.price, p.date_time), 20) AS share_token_price_usd
+FROM {{ ref('asset_price_5m') }} p
+INNER JOIN (
+  SELECT t.chain_id, t.representation_address, assumeNotNull(t.asset_id) AS asset_id
+  FROM {{ ref('token') }} t
+  INNER JOIN {{ ref('int_product_keys') }} pk
+    ON t.chain_id = pk.chain_id AND t.representation_address = pk.product_address
+  WHERE t.asset_id IS NOT NULL
+) t ON p.asset_id = t.asset_id
 {% if is_incremental() %}
-WHERE
-  (date_time >= toDateTime('{{ threshold }}') and date_time < now() + INTERVAL 1 DAY)
-  or (chain_id, product_address, toStartOfHour(date_time)) in (
-    select chain_id, product_address, toStartOfHour(date_time) from {{ ref('int_mootoken_price_corrections') }}
+WHERE (
+    (p.date_time >= toDateTime('{{ threshold }}') AND p.date_time < now() + INTERVAL 1 DAY)
+    OR {{ price_repriced(rp, 'p.asset_id', 'p.date_time') }}
   )
+  {% if until is not none %}AND p.date_time < toDateTime('{{ until }}', 'UTC'){% endif %}
+{% elif since is not none %}
+WHERE p.date_time >= toDateTime('{{ since }}', 'UTC'){% if until is not none %} AND p.date_time < toDateTime('{{ until }}', 'UTC'){% endif %}
 {% endif %}
-GROUP BY chain_id, product_address, toStartOfHour(date_time)
+GROUP BY t.chain_id, t.representation_address, date_hour

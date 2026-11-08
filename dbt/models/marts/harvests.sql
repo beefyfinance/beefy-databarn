@@ -8,66 +8,32 @@
 }}
 
 -- Mart: one row per harvest, joined to product dimension only. No grouping.
--- Computed USD columns: fee * native_price, harvest_amount * want_price.
--- Exception: Fraxtal (252) platform fees are paid in frxETH, not native FRAX.
-
-WITH harvest_base AS (
-  SELECT
-    h.txn_timestamp,
-    p.chain_id,
-    p.product_address,
-    p.beefy_key,
-    p.product_type,
-    p.display_name,
-    h.block_number,
-    h.txn_idx,
-    h.event_idx,
-    h.txn_hash,
-    h.call_fee,
-    h.gas_fee,
-    h.platform_fee,
-    h.strategist_fee,
-    h.harvest_amount,
-    h.native_price,
-    h.want_price
-  FROM {{ ref('int_harvests') }} h
-  INNER JOIN {{ ref('product') }} p
-    ON h.network_id = p.chain_id
-    AND h.vault_beefy_key = p.beefy_key
-),
-frxeth_price AS (
-  SELECT
-    toInt64(252) AS chain_id, -- fraxtal
-    date_time,
-    price
-  -- Corrected oracle prices; filtering on the primary key prefix keeps this to frxETH rows only.
-  FROM {{ ref('int_beefy_oracle_price') }} FINAL
-  WHERE beefy_price_oracle_key = 'frxETH'
-)
+-- Computed USD columns: fee * native_price, harvest_amount * want_price, platform fee * platform_fee_price
+-- (frxETH on Fraxtal). Prices come from int_harvests (asset_price_5m on the harvest's slot).
 
 SELECT
-  h.txn_timestamp,
-  h.chain_id,
-  h.product_address,
-  h.beefy_key,
-  h.product_type,
-  h.display_name,
-  h.block_number,
-  h.txn_idx,
-  h.event_idx,
-  h.txn_hash,
+  h.txn_timestamp AS txn_timestamp,
+  p.chain_id AS chain_id,
+  p.product_address AS product_address,
+  p.beefy_key AS beefy_key,
+  p.product_type AS product_type,
+  p.display_name AS display_name,
+  h.block_number AS block_number,
+  h.txn_idx AS txn_idx,
+  h.event_idx AS event_idx,
+  h.txn_hash AS txn_hash,
   h.call_fee AS harvest_call_fee,
   toDecimal256(h.call_fee * h.native_price, 20) AS harvest_call_fee_usd,
-  h.gas_fee,
+  h.gas_fee AS gas_fee,
   toDecimal256(h.gas_fee * h.native_price, 20) AS gas_fee_usd,
-  h.platform_fee,
-  toDecimal256(h.platform_fee * coalesce(frx.price, h.native_price), 20) AS platform_fee_usd,
-  h.strategist_fee,
+  h.platform_fee AS platform_fee,
+  toDecimal256(h.platform_fee * h.platform_fee_price, 20) AS platform_fee_usd,
+  h.strategist_fee AS strategist_fee,
   toDecimal256(h.strategist_fee * h.native_price, 20) AS strategist_fee_usd,
-  h.harvest_amount,
+  h.harvest_amount AS harvest_amount,
   toDecimal256(h.harvest_amount * h.want_price, 20) AS harvest_amount_usd,
   h.native_price AS avg_native_price
-FROM harvest_base h
-ASOF LEFT JOIN frxeth_price frx
-  ON h.chain_id = frx.chain_id
-  AND h.txn_timestamp >= frx.date_time
+FROM {{ ref('int_harvests') }} h
+INNER JOIN {{ ref('product') }} p
+  ON h.network_id = p.chain_id
+  AND h.vault_beefy_key = p.beefy_key

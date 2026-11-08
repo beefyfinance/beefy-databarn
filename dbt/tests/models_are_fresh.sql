@@ -3,8 +3,7 @@
 -- (harvests, databarn v1, CLM subgraph) get a wider margin. See downstream_models_keep_up for a stuck model.
 
 {% set models = [
-  ('int_beefy_oracle_price', 'date_time', 6),
-  ('int_product_share_price', 'date_time', 6),
+  ('int_price_obs', 'ts', 6),
   ('int_product_stats__share_price_hourly', 'date_hour', 6),
   ('int_product_stats__tvl_hourly', 'date_hour', 6),
   ('int_product_stats__apy_hourly', 'date_hour', 6),
@@ -13,7 +12,6 @@
   ('product_stats', 'date_hour', 6),
   ('chain_stats', 'date_hour', 6),
   ('asset_price_5m', 'date_time', 6),
-  ('asset_price_1h', 'date_hour', 6),
   ('asset_price_1d', 'date_day', 48),
   ('int_harvests', 'txn_timestamp', 24),
   ('int_yield', 'txn_timestamp', 24),

@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: int_price_series_map
+    description: "Every expected price series and the asset it prices, with the special cases of the price flow as columns: priority, the old /mootokenprices unit (scale before scale_until), alias validity windows (valid_from, valid_to), the want asset of a vault, the expected ppfs scale of a databarn series (ppfs_log10, for the 1e12 guard). Series are listed from the dimensions and hashed like the sources (macros/prices/price_sources.sql). asset_price_5m recomputes the assets of every row that changes."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - series_id
+              - asset_id
+    columns:
+      - name: series_id
+        description: "Source series (price_series_id of the source and its natural key)"
+        tests:
+          - not_null
+      - name: source
+        description: "beefy_db, beefy_db_alias, api, dbv1_product, dbv1_feed, clm_subgraph, classic_subgraph, corr_oracle, corr_share"
+      - name: asset_id
+        description: "Asset priced by the series (asset.asset_id)"
+        tests:
+          - relationships:
+              arguments:
+                to: ref('asset')
+                field: asset_id
+      - name: asset_kind
+        description: "'oracle' (priced in USD by its series) or 'share' (vault share: USD, or ppfs times the want price)"
+      - name: obs_kind
+        description: "'usd' or 'ppfs'"
+      - name: priority
+        description: "90 corrections, 50 beefy_db / alias / API, 40 databarn v1, 10 CLM subgraph (fallback)"
+      - name: want_asset_id
+        description: "Asset of the vault's want token, 0 when none"
+      - name: ppfs_log10
+        description: "Expected log10 of a databarn ppfs (18 - want decimals), nan otherwise"
+      - name: scale
+        description: "Factor applied to values before scale_until"
+      - name: scale_until
+        description: "End of the scale (the /mootokenprices unit fix)"
+      - name: valid_from
+        description: "First time the series prices this asset"
+      - name: valid_to
+        description: "End of the validity (aliases)"

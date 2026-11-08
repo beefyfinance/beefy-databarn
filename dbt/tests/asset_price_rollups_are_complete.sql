@@ -1,34 +1,25 @@
--- Fails when an asset has prices in a month of asset_price_5m but not in asset_price_1h, or in asset_price_1h but
--- not in asset_price_1d: these three are reimported separately, month by month.
--- Not the current month: its last hours can still be loading.
+-- Fails when asset_price_1d misses a day of asset_price_5m, or disagrees with it on the number of 5-minute prices:
+-- asset_price_1d rebuilds the days each resolver run touched (int_price_runs), so a missed run shows here.
+-- Closed days of the last 30 days (older days were checked when they were recent).
 
 with five_minutes as (
-  select distinct asset_id, toStartOfMonth(date_time) as month
+  select asset_id, toDate(date_time) as date_day, toUInt32(count()) as samples
   from {{ ref('asset_price_5m') }}
-  where date_time < toStartOfMonth(now())
-),
-
-hours as (
-  select distinct asset_id, toStartOfMonth(date_hour) as month
-  from {{ ref('asset_price_1h') }}
-  where date_hour < toStartOfMonth(now())
+  where date_time >= toStartOfDay(now()) - interval 30 day
+    and date_time < toStartOfDay(now())
+  group by asset_id, date_day
 ),
 
 days as (
-  select distinct asset_id, toStartOfMonth(date_day) as month
+  select asset_id, date_day, sample_count
   from {{ ref('asset_price_1d') }}
+  where date_day >= toDate(now()) - 30
+    and date_day < toDate(now())
 )
 
-select 'asset_price_1h' as missing_from, f.asset_id as asset_id, f.month as month
+select f.asset_id as asset_id, f.date_day as date_day, f.samples as samples, d.sample_count as sample_count
 from five_minutes f
-left anti join hours h
-  on f.asset_id = h.asset_id
-  and f.month = h.month
-
-union all
-
-select 'asset_price_1d' as missing_from, h.asset_id as asset_id, h.month as month
-from hours h
-left anti join days d
-  on h.asset_id = d.asset_id
-  and h.month = d.month
+left join days d
+  on f.asset_id = d.asset_id
+  and f.date_day = d.date_day
+where d.sample_count != f.samples

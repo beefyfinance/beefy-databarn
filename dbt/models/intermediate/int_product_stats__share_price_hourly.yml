@@ -2,10 +2,14 @@ version: 2
 
 models:
   - name: int_product_stats__share_price_hourly
-    description: "Hourly vault share price (USD per share): last 5-minute price of each hour from int_product_share_price, with mootoken corrections applied. One row per (chain_id, product_address, date_hour)."
+    description: "Hourly vault share price (USD per share): last 5-minute price of each hour of the product's share token in asset_price_5m (corrections included). One row per (chain_id, product_address, date_hour)."
     config:
       meta:
         primary_key: ["chain_id", "product_address", "date_hour"]
+        # Full refresh and reimport one month at a time (all of asset_price_5m does not fit one query);
+        # see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
     tests:
       - dbt_utils.unique_combination_of_columns:
           config:

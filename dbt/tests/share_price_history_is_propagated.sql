@@ -1,25 +1,36 @@
--- Fails when a product has share prices in a month but product_stats has none, or when a share price asset has
--- share prices in a month but asset_price_1d has none: a partial reimport leaves such holes.
+-- Fails when a product's share token has prices in a month of asset_price_5m but product_stats has none, or
+-- asset_price_1d has none: a partial reimport or a missed recompute leaves such holes.
 -- Whole months, so this stays cheap over the full history. product_stats starts at 2021-07-31.
 
-with shares as (
-  select distinct chain_id, product_address, toStartOfMonth(date_time) as month
-  from {{ ref('int_product_share_price') }}
-  where date_time >= '2021-08-01'
-    and toStartOfMonth(date_time) < toStartOfMonth(now())
-    and share_token_price_usd > 0
+with share_assets as (
+  select asset_id, assumeNotNull(chain_id) as chain_id, assumeNotNull(share_token_address) as share_token_address
+  from {{ ref('asset') }}
+  where asset_source = 'beefy_api_share'
+),
+
+-- Months a product's share token has prices in asset_price_5m.
+shares as (
+  select a.chain_id as chain_id, a.share_token_address as product_address, p.month as month
+  from (
+    select distinct asset_id, toStartOfMonth(date_time) as month
+    from {{ ref('asset_price_5m') }}
+    where asset_id in (select asset_id from share_assets)
+      -- A share of a dead vault can be priced 0: product_stats needs a positive price.
+      and price > 0
+      and date_time >= '2021-08-01'
+      and toStartOfMonth(date_time) < toStartOfMonth(now())
+  ) p
+  inner join share_assets a
+    on p.asset_id = a.asset_id
+  inner join {{ ref('int_product_keys') }} pk
+    on a.chain_id = pk.chain_id
+    and a.share_token_address = pk.product_address
 ),
 
 stats as (
   select distinct chain_id, product_address, toStartOfMonth(date_hour) as month
   from {{ ref('product_stats') }}
   where share_token_price_usd > 0
-),
-
-share_assets as (
-  select asset_id, assumeNotNull(chain_id) as chain_id, assumeNotNull(share_token_address) as share_token_address
-  from {{ ref('asset') }}
-  where asset_source = 'beefy_api_share'
 ),
 
 prices as (

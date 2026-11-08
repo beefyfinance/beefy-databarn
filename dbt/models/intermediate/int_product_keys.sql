@@ -9,7 +9,7 @@
 
 -- Skinny product identity map. Grain is (chain_id, product_address).
 -- beefy_key is 1:1; beefy_wants_price_oracle_key is 1:many. It prices the beefy wants (deposit) token, NOT the vault share.
--- Share prices come from share_token_symbol (/mootokenprices); see int_product_share_price.
+-- Share prices come from share_token_symbol (/mootokenprices); see int_price_series_map.
 -- CLM managers and reward pools are the exception: beefy_share_price_oracle_key is the beefy_db oracle that prices
 -- the share. A CLM oracle prices the manager share, and a reward pool share is worth its underlying token.
 -- A boost receipt is worth the vault share it stakes: boost_staked_product_address, from the boost's pool_id

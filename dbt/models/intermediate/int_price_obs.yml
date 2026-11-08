@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: int_price_obs
+    description: "Every raw price value of every source, keyed by source series (series_id hashes the source and its natural key, see macros/prices/price_sources.sql). Sources: beefy_db oracle prices, /mootokenprices share prices, databarn v1 vault stats ppfs and price feeds, the CLM subgraph hourly share price. No dimension is needed to write a row: int_price_series_map maps series to assets, and asset_price_5m resolves them."
+    config:
+      contract:
+        enforced: true
+      meta:
+        # make dbt reimport/refresh run this model one month at a time; see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
+    columns:
+      - name: series_id
+        description: "Source series: price_series_id(source, natural key)"
+        data_type: UInt64
+      - name: ts
+        description: "Time of the value (UTC)"
+        data_type: DateTime('UTC')
+        codec: DoubleDelta, ZSTD(1)
+      - name: value
+        description: "Raw value: USD price, or ppfs for databarn series (unit fixes and scales are series map rows)"
+        data_type: Float64
+        codec: Gorilla, ZSTD(1)
+      - name: ingested_at
+        description: "Time of the run that wrote the row. The newest row of a (series_id, ts) wins; the resolver recomputes from the rows written since its last run."
+        data_type: DateTime64(3, 'UTC')
+        codec: DoubleDelta, ZSTD(1)

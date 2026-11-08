@@ -164,7 +164,7 @@ models:
         description: "Input token amounts"
         data_type: Array(Decimal256(20))
       - name: input_usd_values
-        description: "USD value per input transfer (parallel array)"
+        description: "USD value per input transfer (parallel array): token amount * asset_price_5m price on the transaction's 5-minute slot, else the indexer's value"
         data_type: Array(Decimal256(20))
       - name: output_token_addresses
         description: "Output token addresses"
@@ -176,7 +176,7 @@ models:
         description: "Output token amounts"
         data_type: Array(Decimal256(20))
       - name: output_usd_values
-        description: "USD value per output transfer (parallel array)"
+        description: "USD value per output transfer (parallel array): token amount * asset_price_5m price on the transaction's 5-minute slot, else the indexer's value"
         data_type: Array(Decimal256(20))
       - name: zap_fee_token_addresses
         description: "Zap fee token addresses (from zap_type=beefy_fee)"
@@ -188,7 +188,7 @@ models:
         description: "Zap fee token amounts"
         data_type: Array(Decimal256(20))
       - name: zap_fee_usd_values
-        description: "USD value per zap fee transfer (parallel array)"
+        description: "USD value per zap fee transfer (parallel array): token amount * asset_price_5m price on the transaction's 5-minute slot, else the indexer's value"
         data_type: Array(Decimal256(20))
       - name: refund_token_addresses
         description: "Refund token addresses"
@@ -200,7 +200,7 @@ models:
         description: "Refund token amounts"
         data_type: Array(Decimal256(20))
       - name: refund_usd_values
-        description: "USD value per refund transfer (parallel array)"
+        description: "USD value per refund transfer (parallel array): token amount * asset_price_5m price on the transaction's 5-minute slot, else the indexer's value"
         data_type: Array(Decimal256(20))
       - name: success
         description: "Whether the parent transaction succeeded"

@@ -9,16 +9,16 @@
 
 -- Hardcoded vault share (moo token) price corrections. Fabricated from the `windows` below only:
 -- no source tables, so it is correct by construction.
--- Grain is (chain_id, product_address, date_time), on the same 5-minute grid as
--- int_product_share_price (beefy_api dlt snapshots run every 5 minutes, see infra/dlt/scheduler.py).
+-- Grain is (chain_id, product_address, date_time), on the 5-minute grid of the beefy_api dlt snapshots
+-- (infra/dlt/scheduler.py). asset_price_5m reads these rows as a priority-90 source of the share's price series.
 --
 -- HOW TO EDIT: add a row to `windows` with the product (chain_id, beefy_key for review, product_address), the last good snapshot before the bad window
 -- (from_time, from_price) and the first good snapshot after it (to_time, to_price), both UTC.
 -- One row is generated per 5-minute slot strictly between from_time and to_time, linearly
 -- interpolated between the two anchors. The anchors themselves stay raw snapshots.
 --
--- Removing a window does not delete corrected rows already written to int_product_share_price:
--- reimport from the window start (make dbt reimport int_product_share_price+ <since>).
+-- Adding, changing or removing a window recomputes the affected prices on the next dbt run (asset_price_5m diffs
+-- these rows with the copy it applied last run).
 
 with windows as (
   select

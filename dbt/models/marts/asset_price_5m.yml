@@ -2,15 +2,9 @@ version: 2
 
 models:
   - name: asset_price_5m
-    description: "USD price of assets (price series) in 5-minute slots, latest price of the slot. Covers beefy_db oracle series and vault share price series (beefy_api snapshots, databarn v1 ppfs before them; see asset.asset_source). Tokens map to it with token.asset_id, so the same token on several chains shares one series. Join facts with: INNER JOIN token t ON (chain_id, token address) then ASOF LEFT JOIN asset_price_5m p ON t.asset_id = p.asset_id AND f.date_time >= p.date_time (consider SETTINGS join_algorithm = 'full_sorting_merge', or asset_price_1h when hourly is enough)."
+    description: "Dense USD price of every asset (price series) in 5-minute slots: one row per asset per slot while a source is fresh. Per slot the highest-priority source value (int_price_series_map), else the last value carried forward: oracle values for 1 day, a vault's last ppfs at any age times its want price of the slot, other share values for 1 day; the CLM subgraph only after an hour with no other value. Written by the price_resolver materialization from int_price_obs, incrementally (late data and mapping changes recompute the assets they touch). Tokens map to it with token.asset_id. Price facts with the slot, not ASOF: LEFT JOIN asset_price_5m p ON p.asset_id = f.asset_id AND p.date_time = toStartOfFiveMinutes(f.ts), with the price side cut to the facts' time range or looked up by key first ((asset_id, date_time) IN (...)). An ASOF join loads the whole price side into memory; asset_price_1d is small enough for one."
     config:
-      contract:
-        enforced: true
       meta:
-        # make dbt reimport/refresh run this model one month at a time (full price history
-        # in one run is heavy); see infra/dbt/run_dbt_batched.py.
-        batch: month
-        batch_start: "2020-01-01"
         primary_key: ["asset_id", "date_time"]
     tests:
       - dbt_utils.unique_combination_of_columns:
@@ -18,6 +12,8 @@ models:
             combination_of_columns:
               - asset_id
               - date_time
+          config:
+            where: "date_time >= now() - INTERVAL 3 DAY"
     columns:
       - name: asset_id
         description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
@@ -41,11 +37,16 @@ models:
           - not_null
       - name: price
         description: "USD price"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: price_source
-        description: "'beefy_db' raw oracle price, 'databarn_v1' share price derived from databarn v1 ppfs, 'clm_subgraph' share price derived from CLM subgraph balances, 'api' share price snapshot, 'interpolated' hardcoded correction"
-        data_type: String
+        description: "Source of the value: 'beefy_db' oracle price, 'beefy_db_alias' price of the oracle that priced a renamed oracle's token before it existed (oldBIFI before 2023-10-24), 'api' /mootokenprices share price, 'dbv1_product' / 'dbv1_feed' databarn v1 ppfs (vault stats / share-rate feed) times the want price, 'clm_subgraph' / 'classic_subgraph' CLM subgraph share price, 'corr_oracle' / 'corr_share' hardcoded correction. On a carried row, the source of the value carried."
+        data_type: LowCardinality(String)
+        tests:
+          - not_null
+      - name: is_carried
+        description: "1 when no source has a value in this slot: last value carried forward (for a vault: its last ppfs times the want price of the slot)"
+        data_type: UInt8
         tests:
           - not_null

@@ -3,6 +3,12 @@ version: 2
 models:
   - name: int_product_stats__lps_breakdown_hourly
     description: "Hourly LPS breakdown aggregations"
+    config:
+      meta:
+        # Full refresh and reimport one month at a time (a full build does not fit one query locally);
+        # see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
     tests:
       - keys_match:
           name: int_product_stats__lps_breakdown_hourly_in_int_product_keys

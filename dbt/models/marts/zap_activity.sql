@@ -12,8 +12,25 @@
 -- Multi-event txns are merged: USD summed, context via any/anyHeavy.
 -- Only Beefy vault zaps: vault_beefy_key is set by the indexer for Beefy product
 -- flows. Null-vault rows are third-party protocols calling the Zap Router.
+-- Leg USD values are token_amount * the token's asset_price_5m price on the transaction's 5-minute slot (the
+-- token_id is a beefy_db price oracle id; the indexer's usd_value is that same oracle price), else the indexer's
+-- usd_value. total_usd / signed_usd are the indexer's event totals, as recorded.
 
-WITH base AS (
+WITH leg_keys AS (
+  SELECT {{ asset_id_from_beefy_price_oracle_id('t.token_id') }} AS asset_id, toStartOfFiveMinutes(p.txn_timestamp) AS slot
+  FROM {{ ref('stg_beefy_db__zap_token_transfers_v2') }} t
+  INNER JOIN {{ ref('stg_beefy_db__zap_parent_transactions') }} p
+    ON t.network_id = p.network_id
+    AND t.block_number = p.block_number
+    AND t.txn_idx = p.txn_idx
+  WHERE t.token_id IS NOT NULL
+),
+leg_prices AS (
+  SELECT asset_id, date_time, price FROM {{ ref('asset_price_5m') }}
+  WHERE (asset_id, date_time) IN (SELECT asset_id, slot FROM leg_keys)
+),
+
+base AS (
   SELECT
     r.network_id as network_id,
     r.block_number as block_number,
@@ -39,7 +56,8 @@ WITH base AS (
     t.token_address as token_address,
     po.oracle_id as token_symbol,
     t.token_amount as token_amount,
-    t.usd_value as usd_value,
+    -- join_use_nulls = 0: a miss has price 0.
+    if(lp.price > 0, toDecimal256(toFloat64(t.token_amount) * lp.price, 20), t.usd_value) as usd_value,
     ifNull(t.event_idx, toInt32(-1)) as transfer_event_idx
   FROM {{ ref('stg_beefy_db__zap_records') }} r
   INNER JOIN {{ ref('stg_beefy_db__zap_parent_transactions') }} p
@@ -53,6 +71,9 @@ WITH base AS (
     AND r.event_idx = t.parent_event_idx
   LEFT JOIN {{ ref('stg_beefy_db__price_oracles') }} po
     ON toString(t.token_id) = po.id
+  LEFT JOIN leg_prices lp
+    ON lp.asset_id = {{ asset_id_from_beefy_price_oracle_id('t.token_id') }}
+    AND lp.date_time = toStartOfFiveMinutes(p.txn_timestamp)
   WHERE r.vault_beefy_key is not null
 ),
 

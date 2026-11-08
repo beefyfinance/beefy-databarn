@@ -77,7 +77,7 @@ models:
         tests:
           - not_null
       - name: token_price_usd
-        description: "Price of BIFI token at the time of buyback in USD"
+        description: "USD price of BIFI on the buyback's 5-minute slot (asset_price_5m), else the price beefy-db stored with the buyback"
         tests:
           - not_null
           - dbt_utils.accepted_range:

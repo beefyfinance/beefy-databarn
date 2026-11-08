@@ -9,7 +9,8 @@
 
 -- Dimension table: Token reference data, one row per (chain_id, representation_address).
 -- Sources, in priority order: API token list, vault want tokens (vault configs, retired vaults), vault share tokens
--- (int_product_keys, retired vaults), CLM subgraph tokens (priced only when their symbol is an oracle key).
+-- (int_product_keys, retired vaults, and the CLM managers and classic vaults the subgraph indexes but the API does not
+-- list), CLM subgraph tokens (priced only when their symbol is an oracle key).
 -- asset_id links the token to its price series (asset dimension); the same token on several chains shares one asset.
 -- Price mapping: beefy_db oracle first (a CLM manager's own oracle, then token list oracle_id, then vault oracle_id,
 -- only if the oracle exists in beefy_db), else for vault share tokens the share price series (mootokenprices, databarn v1 ppfs).
@@ -149,6 +150,43 @@ share_tokens as (
     3 as source_priority
   from {{ ref('int_product_keys') }} pk
   where pk.boost_staked_product_address is not null
+
+  union all
+
+  -- CLM managers and classic vaults the CLM subgraph indexes but the API does not list: deployed and not listed
+  -- yet (or never), or delisted. No oracle: priced by the CLM subgraph (int_price_series_map).
+  -- Once the API lists one, the rows above take over (a CLM then maps to its own oracle).
+  select
+    chain_dim.chain_id as chain_id,
+    sg.product_address as representation_address,
+    cast(sg.product_address as Nullable(String)) as erc20_address,
+    false as is_native,
+    cast(ifNull(sg_tokens.symbol, '') as String) as symbol,
+    cast(ifNull(sg_tokens.name, '') as String) as name,
+    cast(18 as Int64) as decimals,
+    sg.token_kind as token_kind,
+    cast(null as Nullable(String)) as beefy_price_oracle_key,
+    3 as source_priority
+  from (
+    select chain_key, assumeNotNull(clm_address) as product_address, 'beefy_clm_manager' as token_kind
+    from {{ ref('stg_beefy_clm_subgraph__clms') }}
+    where clm_address is not null
+    union all
+    select chain_key, assumeNotNull(classic_address) as product_address, 'beefy_classic_vault' as token_kind
+    from {{ ref('stg_beefy_clm_subgraph__classics') }}
+    where classic_address is not null
+  ) sg
+  inner join {{ ref('chain') }} chain_dim
+    on sg.chain_key = chain_dim.beefy_key
+  left join (
+    select chain_key, token_address, any(symbol) as symbol, any(name) as name
+    from {{ ref('stg_beefy_clm_subgraph__tokens') }}
+    group by chain_key, token_address
+  ) sg_tokens
+    on sg.chain_key = sg_tokens.chain_key
+    and sg.product_address = sg_tokens.token_address
+  where (chain_dim.chain_id, sg.product_address) not in (select chain_id, product_address from {{ ref('int_product_keys') }})
+    and (chain_dim.chain_id, sg.product_address) not in (select chain_id, representation_address from listed_retired_tokens)
 ),
 
 -- Tokens seen on-chain by the CLM subgraph. Fills in what the configs lack, never overrides them.

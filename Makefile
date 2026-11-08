@@ -553,7 +553,7 @@ reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_beefy_oracle_price+ and int_product_stats__tvl_hourly+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+ and int_price_obs+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
@@ -562,8 +562,8 @@ reimport-prices:
 	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
 	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
 	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
-	echo "=== dbt reimport int_beefy_oracle_price+ since $$SINCE ===" && \
-	$(MAKE) dbt reimport 'int_beefy_oracle_price+' $$SINCE
+	echo "=== dbt reimport int_price_obs+ since $$SINCE (asset_price_5m recomputes every asset from then) ===" && \
+	$(MAKE) dbt reimport 'int_price_obs+' $$SINCE
 
 # Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.
 # Read-only: `sql` only writes a file of DROP statements, nothing is ever executed for you.

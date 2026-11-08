@@ -2,15 +2,11 @@ version: 2
 
 models:
   - name: asset_price_1d
-    description: "Daily (UTC) OHLC USD price of assets, aggregated from asset_price_1h. avg_price is weighted by 5-minute sample count. Join facts with ASOF on asset_id and date_day."
+    description: "Daily (UTC) OHLC USD price of assets, from asset_price_5m. Small enough for an ASOF join on asset_id and date_day. Rebuilt for the days each asset_price_5m run resolved or recomputed (int_price_runs)."
     config:
       contract:
         enforced: true
       meta:
-        # make dbt reimport/refresh run this model one month at a time (full price history
-        # in one run is heavy); see infra/dbt/run_dbt_batched.py.
-        batch: month
-        batch_start: "2020-01-01"
         primary_key: ["asset_id", "date_day"]
     tests:
       - dbt_utils.unique_combination_of_columns:
@@ -41,31 +37,31 @@ models:
           - not_null
       - name: open
         description: "First price of the day"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: high
         description: "Highest price of the day"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: low
         description: "Lowest price of the day"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: close
         description: "Last price of the day"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: avg_price
-        description: "Average of the 5-minute prices of the day, sample-weighted"
-        data_type: Decimal(76, 20)
+        description: "Average of the 5-minute prices of the day"
+        data_type: Float64
         tests:
           - not_null
       - name: sample_count
-        description: "Number of 5-minute prices in the day"
-        data_type: UInt64
+        description: "Number of 5-minute prices in the day (288 for an asset priced all day)"
+        data_type: UInt32
         tests:
           - not_null

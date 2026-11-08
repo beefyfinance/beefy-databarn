@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: account_balance_changes
+    description: "One row per token balance change of an account (envio), valued with asset_price_5m at the change's 5-minute slot through token.asset_id. Balances are in whole tokens, prices per whole token or share. For a user timeline: WHERE account_address = ... ORDER BY block_timestamp (the table is ordered by account). Re-priced when the resolver recomputes a price (int_price_runs)."
+    config:
+      meta:
+        primary_key: ["id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "block_timestamp >= now('UTC') - interval 30 day"
+          arguments:
+            combination_of_columns:
+              - id
+    columns:
+      - name: id
+        description: "envio TokenBalanceChange id"
+        data_type: String
+        tests:
+          - not_null
+      - name: chain_id
+        description: "Chain of the token (foreign key to chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: account_address
+        description: "Account holding the token (foreign key to account.address)"
+        data_type: String
+        tests:
+          - not_null
+      - name: token_address
+        description: "Token representation address (with chain_id, foreign key to token)"
+        data_type: String
+        tests:
+          - not_null
+      - name: asset_id
+        description: "Price series of the token (token.asset_id, foreign key to asset.asset_id); NULL when the token has none"
+        data_type: Nullable(UInt64)
+      - name: block_number
+        data_type: Int64
+      - name: block_timestamp
+        description: "Time of the change (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: trx_hash
+        data_type: String
+      - name: log_index
+        data_type: Int32
+      - name: balance_before
+        description: "Balance before the change, whole tokens"
+        data_type: Decimal(76, 20)
+      - name: balance_after
+        description: "Balance after the change, whole tokens"
+        data_type: Decimal(76, 20)
+      - name: amount
+        description: "balance_after - balance_before"
+        data_type: Decimal(76, 20)
+      - name: price_usd
+        description: "USD price of one token at the change's slot (asset_price_5m); NULL when unpriced"
+        data_type: Nullable(Float64)
+      - name: price_source
+        description: "asset_price_5m.price_source of price_usd"
+        data_type: Nullable(String)
+      - name: amount_usd
+        description: "amount * price_usd"
+        data_type: Nullable(Float64)
+      - name: balance_after_usd
+        description: "balance_after * price_usd"
+        data_type: Nullable(Float64)

@@ -1,3 +1,4 @@
+-- depends_on: {{ ref('int_price_obs') }}
 {{
   config(
     materialized='incremental',
@@ -7,6 +8,7 @@
     order_by=['date_hour', 'chain_id', 'product_address'],
     on_schema_change='append_new_columns',
     incremental_strategy='delete+insert',
+    post_hook="{{ price_consumer_done('int_databarn_v1__vault_stats_hourly') }}",
   )
 }}
 
@@ -24,10 +26,14 @@
     {% set threshold = '1900-01-01 00:00:00' %}
   {% endif %}
 {% endif %}
+{% set rp = price_reprice('int_databarn_v1__vault_stats_hourly', threshold, 'asset', 'hour') if is_incremental() else {'head_from': none, 'keys': []} %}
+{% set want_asset = asset_id_from_beefy_price_oracle_id('pk.beefy_wants_price_oracle_id') %}
 
 -- Last databarn v1 vault stats of each hour, valued with a want oracle price at most 1 day old.
 -- Fallback for int_product_stats__tvl_hourly and int_product_stats__lps_breakdown_hourly.
 -- After a databarn_v1 backfill: make dbt reimport int_databarn_v1__vault_stats_hourly+ <since>.
+-- Incremental runs also recompute the hours a resolver run re-priced (price_reprice: each dirty want from the hour
+-- of its first changed price).
 
 select
   pk.chain_id as chain_id,
@@ -47,7 +53,18 @@ from (
   where staked_underlying is not null
     and underlying_total_supply is not null
     {% if threshold is not none %}
-    and datetime >= toDateTime('{{ threshold }}')
+    and (
+      datetime >= toDateTime('{{ threshold }}')
+      -- products whose want price was re-priced (the want join below keeps the re-priced hours only)
+      or product_id in (
+        select p.product_id
+        from {{ ref('stg_databarn_v1__products') }} p
+        inner join {{ ref('int_chain_keys') }} c on {{ normalize_network_beefy_key('p.chain_key') }} = c.beefy_key
+        inner join {{ ref('int_product_keys') }} pk
+          on c.chain_id = pk.chain_id and {{ evm_address("splitByChar(':', p.product_key)[4]") }} = pk.product_address
+        where {{ price_repriced(rp, want_asset, "toDateTime(4294967295, 'UTC')") }}
+      )
+    )
     {% endif %}
     {% if until is not none %}
     and datetime < toDateTime('{{ until }}')
@@ -61,18 +78,24 @@ inner join {{ ref('int_chain_keys') }} c
 inner join {{ ref('int_product_keys') }} pk
   on c.chain_id = pk.chain_id
   and {{ evm_address("splitByChar(':', p.product_key)[4]") }} = pk.product_address
-asof inner join (
-  -- The whole table does not fit in the asof hash table (30 GiB): only the wants, from 1 day before the window.
-  select beefy_price_oracle_key, date_time, price
-  from {{ ref('int_beefy_oracle_price') }} FINAL
-  where beefy_price_oracle_key in (select beefy_wants_price_oracle_key from {{ ref('int_product_keys') }})
+inner join (
+  -- The wants only, in the window: asset_price_5m is dense, so the want price at the last stats row of the hour is
+  -- the row of its 5-minute slot (an oracle price is carried at most 1 day).
+  select asset_id, date_time, price
+  from {{ ref('asset_price_5m') }}
+  where asset_id in (
+      select {{ asset_id_from_beefy_price_oracle_id('beefy_wants_price_oracle_id') }} from {{ ref('int_product_keys') }}
+      where beefy_wants_price_oracle_id is not null
+    )
     {% if threshold is not none %}
-    and date_time >= toDateTime64('{{ threshold }}', 0) - interval 1 day
+    and (
+      date_time >= toStartOfFiveMinutes(toDateTime('{{ threshold }}'))
+      or {{ price_repriced(rp, 'asset_id', 'date_time') }}
+    )
     {% endif %}
     {% if until is not none %}
     and date_time < toDateTime('{{ until }}')
     {% endif %}
 ) wants
-  on pk.beefy_wants_price_oracle_key = wants.beefy_price_oracle_key
-  and stats.stats_datetime >= wants.date_time
-where stats.stats_datetime < wants.date_time + interval 1 day
+  on wants.asset_id = {{ want_asset }}
+  and wants.date_time = toStartOfFiveMinutes(stats.stats_datetime)

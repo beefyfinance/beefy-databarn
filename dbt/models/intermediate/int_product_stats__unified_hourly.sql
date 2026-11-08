@@ -1,3 +1,5 @@
+-- depends_on: {{ ref('int_price_obs') }}
+-- depends_on: {{ ref('int_product_price_assets') }}
 {{
   config(
     materialized='incremental',
@@ -6,6 +8,7 @@
     engine='CoalescingMergeTree',
     on_schema_change='append_new_columns',
     incremental_strategy='append',
+    post_hook="{{ price_consumer_done('int_product_stats__unified_hourly') }}",
   )
 }}
 
@@ -53,6 +56,9 @@
     {% set threshold_yield = since %}
     {% set threshold_harvest = since %}
   {% endif %}
+  {#- Hours a resolver run re-priced for a product (price_reprice), re-emitted by every priced source. -#}
+  {% set rp = price_reprice('int_product_stats__unified_hourly', threshold_tvl, 'product', 'hour') %}
+  {% set repriced = price_repriced(rp, price_product_key('chain_id', 'product_address'), 'date_hour') %}
 {% endif %}
 
 -- Materialized intermediate: Unified hourly stats from all sources
@@ -62,6 +68,8 @@
 -- overwrites. (delete+insert on (..., source) was unsafe: a merged row keeps only one source value, so a
 -- harvest reload could delete an hour's tvl/apy that the 1-day branches would never re-insert.)
 -- Thresholds are pre-computed in one query (above) and reused in each branch.
+-- Priced sources (tvl, lps_breakdown, yield, harvest, share_price) also re-emit the hours a resolver run re-priced
+-- for a product: their upstream models recomputed them in this run; the newer values overwrite.
 
 -- TVL data (incremental: only hours we don't already have TVL for)
 SELECT
@@ -111,7 +119,7 @@ SELECT
   NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__tvl_hourly') }}
 {% if is_incremental() %}
-WHERE date_hour >= toDateTime('{{ threshold_tvl }}') and date_hour < now() + INTERVAL 1 DAY
+WHERE (date_hour >= toDateTime('{{ threshold_tvl }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}
 
 UNION ALL
@@ -270,7 +278,7 @@ SELECT
   NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__lps_breakdown_hourly') }}
 {% if is_incremental() %}
-WHERE date_hour >= toDateTime('{{ threshold_lps_breakdown }}') and date_hour < now() + INTERVAL 1 DAY
+WHERE (date_hour >= toDateTime('{{ threshold_lps_breakdown }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}
 
 UNION ALL
@@ -323,7 +331,7 @@ SELECT
   NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__yield_hourly') }}
 {% if is_incremental() %}
-WHERE date_hour >= toDateTime('{{ threshold_yield }}') and date_hour < now() + INTERVAL 1 DAY
+WHERE (date_hour >= toDateTime('{{ threshold_yield }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}
 
 UNION ALL
@@ -376,7 +384,7 @@ SELECT
   NULL AS share_token_price_usd
 FROM {{ ref('int_product_stats__harvest_hourly') }}
 {% if is_incremental() %}
-WHERE date_hour >= toDateTime('{{ threshold_harvest }}') and date_hour < now() + INTERVAL 1 DAY
+WHERE (date_hour >= toDateTime('{{ threshold_harvest }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}
 
 UNION ALL
@@ -429,5 +437,5 @@ SELECT
   cast(share_token_price_usd as Nullable(Decimal(76, 20))) AS share_token_price_usd
 FROM {{ ref('int_product_stats__share_price_hourly') }}
 {% if is_incremental() %}
-WHERE date_hour >= toDateTime('{{ threshold_share_price }}') and date_hour < now() + INTERVAL 1 DAY
+WHERE (date_hour >= toDateTime('{{ threshold_share_price }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}

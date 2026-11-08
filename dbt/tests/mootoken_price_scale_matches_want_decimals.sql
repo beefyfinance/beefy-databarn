@@ -7,18 +7,30 @@
 -- and their last /vaults row is stale.
 
 with shares as (
-  select chain_id, product_address, argMax(share_token_price_usd, date_time) as share_price
-  from {{ ref('int_product_share_price') }} FINAL
-  where price_source = 'api'
-    and date_time >= now() - interval 1 day
+  -- Share prices observed from /mootokenprices in the last day (not carried slots), by share token.
+  select a.chain_id as chain_id, a.share_token_address as product_address, argMax(p.price, p.date_time) as share_price
+  from {{ ref('asset_price_5m') }} p
+  inner join (
+    select asset_id, assumeNotNull(chain_id) as chain_id, assumeNotNull(share_token_address) as share_token_address
+    from {{ ref('asset') }}
+    where asset_source = 'beefy_api_share'
+  ) a
+    on p.asset_id = a.asset_id
+  where p.price_source = 'api'
+    and p.is_carried = 0
+    and p.date_time >= now() - interval 1 day
   group by chain_id, product_address
 ),
 
 wants as (
-  select beefy_price_oracle_key, argMax(price, date_time) as want_price
-  from {{ ref('int_beefy_oracle_price') }} FINAL
+  select asset_id, argMax(price, date_time) as want_price
+  from {{ ref('asset_price_5m') }}
   where date_time >= now() - interval 2 day
-  group by beefy_price_oracle_key
+    and asset_id in (
+      select {{ asset_id_from_beefy_price_oracle_id('beefy_wants_price_oracle_id') }} from {{ ref('int_product_keys') }}
+      where beefy_wants_price_oracle_id is not null
+    )
+  group by asset_id
 )
 
 select
@@ -37,7 +49,7 @@ inner join {{ ref('int_product_keys') }} pk
 inner join {{ ref('stg_beefy_api__vaults') }} v
   on pk.beefy_key = v.id
 inner join wants w
-  on pk.beefy_wants_price_oracle_key = w.beefy_price_oracle_key
+  on w.asset_id = {{ asset_id_from_beefy_price_oracle_id('pk.beefy_wants_price_oracle_id') }}
 where v.token_decimals != 18
   and v.is_listed
   and s.share_price > 0

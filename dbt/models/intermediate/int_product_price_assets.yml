@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: int_product_price_assets
+    description: "Price series (assets) that price each product's stats: share, want, LP oracle, chain native token, frxETH platform fees on Fraxtal. Maps dirty assets of asset_price_5m to the products to reprice."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+              - asset_id
+              - role
+    columns:
+      - name: chain_id
+        data_type: Int64
+        tests:
+          - not_null
+      - name: product_address
+        data_type: String
+        tests:
+          - not_null
+      - name: asset_id
+        description: "Price series (asset.asset_id)"
+        data_type: UInt64
+        tests:
+          - not_null
+      - name: role
+        description: "share, want, lp, native or platform_fee"
+        data_type: String
+        tests:
+          - not_null

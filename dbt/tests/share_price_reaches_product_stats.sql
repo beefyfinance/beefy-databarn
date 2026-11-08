@@ -1,47 +1,47 @@
--- Fails when a recent hourly share price is missing from product_stats or differs from the last 5-minute price of
--- that hour. Covers int_product_stats__share_price_hourly and int_product_stats__unified_hourly on the way.
--- The window ends 1 hour before the latest price: that hour can still be filling. It is anchored on the latest
--- price, not now(), so stale data does not empty it.
+-- Fails when product_stats misses the recent hourly share price of a product, or differs from the last 5-minute
+-- price of the hour of its share token in asset_price_5m (token.asset_id).
+-- Window: the last var share_price_propagation_days days, up to the last full hour of asset_price_5m.
 
 {% set window_days = var('share_price_propagation_days', 7) %}
 
 with anchor as (
-  select max(date_time) - interval 1 hour as window_end
-  from {{ ref('int_product_share_price') }}
+  select toStartOfHour(max(date_time)) as window_end
+  from {{ ref('asset_price_5m') }}
 ),
 
 shares as (
   select
-    chain_id,
-    product_address,
-    toStartOfHour(date_time) as date_hour,
-    toFloat64(argMax(share_token_price_usd, date_time)) as share_price
-  from {{ ref('int_product_share_price') }} FINAL
-  where date_time >= (select window_end from anchor) - interval {{ window_days }} day
-    and date_time < (select toStartOfHour(window_end) from anchor)
+    t.chain_id as chain_id,
+    t.representation_address as product_address,
+    toStartOfHour(p.date_time) as date_hour,
+    argMax(p.price, p.date_time) as share_price
+  from {{ ref('asset_price_5m') }} p
+  inner join (
+    select t.chain_id, t.representation_address, assumeNotNull(t.asset_id) as asset_id
+    from {{ ref('token') }} t
+    inner join {{ ref('int_product_keys') }} pk
+      on t.chain_id = pk.chain_id
+      and t.representation_address = pk.product_address
+    where t.asset_id is not null
+  ) t
+    on p.asset_id = t.asset_id
+  where p.date_time >= (select window_end from anchor) - interval {{ window_days }} day
+    and p.date_time < (select window_end from anchor)
   group by chain_id, product_address, date_hour
 ),
 
 stats as (
-  select
-    chain_id,
-    product_address,
-    date_hour,
-    cast(toFloat64(share_token_price_usd) as Nullable(Float64)) as stats_price
+  select chain_id, product_address, date_hour, cast(toFloat64(share_token_price_usd) as Nullable(Float64)) as stats_price
   from {{ ref('product_stats') }}
-  where date_hour >= (select window_end from anchor) - interval ({{ window_days }} + 1) day
+  where date_hour >= (select window_end from anchor) - interval {{ window_days }} day
 )
 
-select
-  s.chain_id as chain_id,
-  s.product_address as product_address,
-  s.date_hour as date_hour,
-  s.share_price as share_price,
-  st.stats_price as stats_price
+select s.chain_id as chain_id, s.product_address as product_address, s.date_hour as date_hour, s.share_price as share_price, st.stats_price as stats_price
 from shares s
 left join stats st
   on s.chain_id = st.chain_id
   and s.product_address = st.product_address
   and s.date_hour = st.date_hour
 where st.stats_price is null
-  or abs(st.stats_price - s.share_price) > 1e-6 * abs(s.share_price)
+  -- product_stats stores Decimal(76, 20): prices under 1e-14 lose relative precision to truncation.
+  or abs(st.stats_price - s.share_price) > greatest(1e-6 * abs(s.share_price), 1e-20)

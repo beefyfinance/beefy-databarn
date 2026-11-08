@@ -1,3 +1,5 @@
+-- depends_on: {{ ref('int_price_obs') }}
+-- depends_on: {{ ref('int_product_price_assets') }}
 {{
   config(
     materialized='incremental',
@@ -7,6 +9,8 @@
     order_by=['date_hour', 'chain_id', 'product_address'],
     on_schema_change='append_new_columns',
     incremental_strategy='delete+insert',
+    query_settings={'max_bytes_before_external_group_by': 1000000000, 'max_bytes_before_external_sort': 1000000000},
+    post_hook="{{ price_consumer_done('product_stats') }}",
   )
 }}
 
@@ -25,6 +29,10 @@
 {% endif %}
 {% set since = incremental_since_var() %}
 {% set until = incremental_until_var() %}
+{% if is_incremental() %}
+  {#- Hours a resolver run re-priced for a product (price_reprice); unified_hourly re-emitted them in this run. -#}
+  {% set rp = price_reprice('product_stats', run_query("SELECT toString(toDateTime('" ~ max_date ~ "', 'UTC') - INTERVAL 1 DAY)").rows[0][0] if execute else none, 'product', 'hour') %}
+{% endif %}
 
 SELECT
   hs.chain_id as chain_id,
@@ -88,6 +96,7 @@ INNER JOIN {{ ref('product') }} p
   hs.date_hour >= toDateTime('{{ since }}')
   {% else %}
   hs.date_hour >= toDateTime('{{ max_date }}') - INTERVAL 1 DAY
+  OR {{ price_repriced(rp, price_product_key('hs.chain_id', 'hs.product_address'), 'hs.date_hour') }}
   {% endif %}
      -- Re-load keys that already violate uniqueness in the test window.
      -- delete+insert only covers the 1-day lookback, so a one-off join
@@ -109,6 +118,6 @@ INNER JOIN {{ ref('product') }} p
 WHERE hs.date_hour >= toDateTime('{{ since }}') AND hs.date_hour < toDateTime('{{ until }}')
 {% endif %}
 -- Grain is (chain_id, product_address, date_hour). CoalescingMergeTree FINAL
--- should already be unique; keep one row if a join ever fans out.
-ORDER BY hs.tvl_usd DESC NULLS LAST
+-- should already be unique; keep one row if a join ever fans out. The fanned-out rows share every hs column, so
+-- no ORDER BY: sorting a month of wide rows before LIMIT BY took 3.9 GB, LIMIT BY alone streams.
 LIMIT 1 BY hs.chain_id, hs.product_address, hs.date_hour

@@ -1,27 +1,15 @@
 {{
   config(
-    materialized='incremental',
+    materialized='table',
     tags=['intermediate', 'yield'],
-    unique_key=['chain_id', 'product_address', 'txn_timestamp', 'txn_hash', 'event_idx'],
     order_by=['txn_timestamp', 'chain_id', 'product_address'],
     engine='MergeTree',
-    on_schema_change='sync_all_columns',
-    incremental_strategy='delete+insert',
   )
 }}
 
-{% if is_incremental() %}
-  {% set threshold_sql %}
-    SELECT max(txn_timestamp) - INTERVAL 1 DAY FROM {{ this }}
-  {% endset %}
-  {% set threshold_result = run_query(threshold_sql) %}
-  {% if threshold_result and threshold_result.rows | length > 0 and threshold_result.rows[0][0] %}
-    {% set threshold = threshold_result.rows[0][0] | string %}
-  {% else %}
-    {% set threshold = '1900-01-01 00:00:00' %}
-  {% endif %}
-{% endif %}
-
+-- One row per harvest of a listed product: the want compounded and its USD value (prices from int_harvests,
+-- asset_price_5m on the harvest's slot). A table: rebuilt from int_harvests each run, so re-resolved prices reach
+-- every harvest.
 
 SELECT
   h.txn_timestamp as txn_timestamp,
@@ -41,10 +29,3 @@ INNER JOIN {{ ref('int_product_keys') }} p
 WHERE
   h.txn_timestamp IS NOT NULL
   AND toDate(h.txn_timestamp) > '1970-01-01'
-  {% if is_incremental() %}
-  AND (
-    (h.txn_timestamp >= toDateTime('{{ threshold }}') AND h.txn_timestamp < now() + INTERVAL 1 DAY)
-    -- corrected harvests are re-emitted every run so new price corrections reach older rows
-    OR h.is_want_price_corrected
-  )
-  {% endif %}
