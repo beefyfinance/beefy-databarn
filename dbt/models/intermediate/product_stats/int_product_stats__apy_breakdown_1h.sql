@@ -29,7 +29,7 @@
 -- Incremental on date_hour (1-day lookback), like int_product_stats__tvl_1h.
 SELECT
   p.chain_id,
-  p.product_address,
+  toLowCardinality(p.product_address) AS product_address,
   toStartOfHour(ab.date_time) as date_hour,
   argMax(ab.compoundings_per_year, ab.date_time) as compoundings_per_year,
   argMax(ab.beefy_performance_fee, ab.date_time) as beefy_performance_fee,

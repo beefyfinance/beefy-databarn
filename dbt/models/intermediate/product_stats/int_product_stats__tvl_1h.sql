@@ -74,7 +74,7 @@ WITH tvl_with_product AS (
 -- All corrected rows are always re-emitted so incremental runs refresh them.
 SELECT
   chain_id,
-  product_address,
+  toLowCardinality(product_address) AS product_address,
   date_hour,
   argMax(tvl_usd, (priority, date_time)) as tvl_usd
 FROM (

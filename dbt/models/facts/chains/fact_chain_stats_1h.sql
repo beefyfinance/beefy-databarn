@@ -13,9 +13,9 @@ SELECT
   c.beefy_key as beefy_key,
   c.beefy_enabled as beefy_enabled,
   ps.date_hour as date_hour,
-  {{ to_decimal('sum(ps.tvl_usd)') }} as tvl_usd,
-  {{ to_decimal('sum(if(ps.product_type = \'classic_vault\', ps.tvl_usd, 0))') }} as vault_tvl_usd,
-  {{ to_decimal('sum(if(ps.product_type = \'clm_manager\', ps.tvl_usd, 0))') }} as clm_tvl_usd,
+  sum(ps.tvl_usd) as tvl_usd,
+  sum(if(ps.product_type = 'classic_vault', ps.tvl_usd, 0)) as vault_tvl_usd,
+  sum(if(ps.product_type = 'clm_manager', ps.tvl_usd, 0)) as clm_tvl_usd,
   -- Fee averages (separate columns for easy querying)
   avg(ps.beefy_performance_fee) as avg_beefy_performance_fee,
   avg(ps.lp_fee) as avg_lp_fee,

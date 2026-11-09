@@ -92,9 +92,11 @@ async def get_beefy_api_lps_breakdown_resource() -> Any:
         write_disposition="append",
         columns={
             "price": {"data_type": "double"},
-            "total_supply": {"data_type": "decimal"},
-            "underlying_liquidity": {"data_type": "decimal"},
-            "underlying_price": {"data_type": "decimal"},
+            # A bare "decimal" is Decimal(38, 9) in ClickHouse: it cut totalSupply (18-decimal strings, down to 1e-18)
+            # to 9 decimals. Keep the exact amounts, like Decimal(76, 20) in dbt.
+            "total_supply": {"data_type": "decimal", "precision": 76, "scale": 20},
+            "underlying_liquidity": {"data_type": "decimal", "precision": 76, "scale": 20},
+            "underlying_price": {"data_type": "decimal", "precision": 76, "scale": 20},
         },
     )
     async def beefy_lps_breakdown() -> AsyncIterator[Dict[str, Any]]:

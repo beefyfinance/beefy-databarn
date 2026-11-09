@@ -45,13 +45,13 @@ models:
           - not_null
       - name: tvl_usd
         description: "Total value locked in USD across all product types (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: vault_tvl_usd
         description: "TVL attributed to vault assets in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: clm_tvl_usd
         description: "TVL attributed to CLM assets in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: avg_beefy_performance_fee
         description: "Average Beefy performance fee across all products (latest value)"
         data_type: Nullable(Float64)
@@ -117,37 +117,37 @@ models:
         data_type: Array(Float64)
       - name: underlying_amount_compounded_usd
         description: "Total underlying amount compounded in USD across all products (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: harvest_call_fee
         description: "Sum of harvest call fees in native token (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: harvest_call_fee_usd
         description: "Sum of harvest call fees in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: gas_fee
         description: "Sum of gas fees in native token (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: gas_fee_usd
         description: "Sum of gas fees in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: platform_fee
         description: "Sum of platform fees in native token (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: platform_fee_usd
         description: "Sum of platform fees in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: strategist_fee
         description: "Sum of strategist fees in native token (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: strategist_fee_usd
         description: "Sum of strategist fees in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: harvest_amount
         description: "Sum of harvest amounts in want token (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: harvest_amount_usd
         description: "Sum of harvest amounts in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: avg_native_price
         description: "Average native price across products with harvests (latest value)"
         data_type: Nullable(Float64)

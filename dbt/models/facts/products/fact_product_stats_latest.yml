@@ -50,7 +50,7 @@ models:
           - not_null
       - name: product_address
         description: "Product contract address (foreign key to product.product_address)"
-        data_type: String
+        data_type: LowCardinality(String)
         tests:
           - not_null
         meta:
@@ -168,13 +168,13 @@ models:
         data_type: Array(Decimal(76, 20))
       - name: underlying_price
         description: "Underlying token price in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: underlying_amount_compounded
         description: "Underlying amount compounded (latest value)"
         data_type: Nullable(Decimal(76, 20))
       - name: underlying_token_price_usd
         description: "Underlying token price in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
       - name: underlying_amount_compounded_usd
         description: "Underlying amount compounded in USD (latest value)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)

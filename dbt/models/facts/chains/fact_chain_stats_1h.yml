@@ -51,7 +51,7 @@ models:
           - not_null
       - name: tvl_usd
         description: "Total value locked in USD across all product types (vault + gov + CLM)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
         tests:
           - dbt_utils.accepted_range:
@@ -61,11 +61,11 @@ models:
                 inclusive: true
       - name: vault_tvl_usd
         description: "TVL attributed to vault assets in USD"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: clm_tvl_usd
         description: "TVL attributed to CLM (Concentrated Liquidity Manager) assets in USD"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: avg_beefy_performance_fee
         description: "Average Beefy performance fee across all products"
@@ -165,7 +165,7 @@ models:
         codec: ZSTD(3)
       - name: underlying_amount_compounded_usd
         description: "Total underlying amount compounded in USD across all products"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: harvest_call_fee
         description: "Sum of harvest call fees in native token (chain-hour)"
@@ -173,7 +173,7 @@ models:
         codec: ZSTD(3)
       - name: harvest_call_fee_usd
         description: "Sum of harvest call fees in USD (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: gas_fee
         description: "Sum of gas fees in native token (chain-hour)"
@@ -181,7 +181,7 @@ models:
         codec: ZSTD(3)
       - name: gas_fee_usd
         description: "Sum of gas fees in USD (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: platform_fee
         description: "Sum of platform fees in native token (chain-hour)"
@@ -189,7 +189,7 @@ models:
         codec: ZSTD(3)
       - name: platform_fee_usd
         description: "Sum of platform fees in USD (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: strategist_fee
         description: "Sum of strategist fees in native token (chain-hour)"
@@ -197,7 +197,7 @@ models:
         codec: ZSTD(3)
       - name: strategist_fee_usd
         description: "Sum of strategist fees in USD (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: harvest_amount
         description: "Sum of harvest amounts in want token (chain-hour)"
@@ -205,7 +205,7 @@ models:
         codec: ZSTD(3)
       - name: harvest_amount_usd
         description: "Sum of harvest amounts in USD (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: avg_native_price
         description: "Average native price across products with harvests in the hour"

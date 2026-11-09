@@ -63,7 +63,7 @@ SELECT
   c.id AS id,
   c.chain_id AS chain_id,
   c.account_address AS account_address,
-  c.token_address AS token_address,
+  toLowCardinality(c.token_address) AS token_address,
   c.asset_id AS asset_id,
   c.block_number AS block_number,
   c.block_timestamp AS block_timestamp,

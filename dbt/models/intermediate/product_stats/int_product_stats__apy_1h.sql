@@ -47,7 +47,7 @@ WITH apy_with_product AS (
 
 SELECT
   chain_id,
-  product_address,
+  toLowCardinality(product_address) AS product_address,
   toStartOfHour(date_time) as date_hour,
   argMax(apy, date_time) as apy
 FROM apy_with_product

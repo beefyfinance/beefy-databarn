@@ -8,6 +8,10 @@ models:
         enforced: true
       meta:
         primary_key: ["asset_id", "date_day"]
+        # Reimport one month at a time (a rollup of the whole 5-minute table does not fit one query);
+        # see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

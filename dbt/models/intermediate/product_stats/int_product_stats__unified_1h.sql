@@ -71,6 +71,14 @@
 -- Priced sources (tvl, lps_breakdown, yield, harvest, share_price) also re-emit the hours a resolver run re-priced
 -- for a product: their upstream models recomputed them in this run; the newer values overwrite.
 
+-- LowCardinality is applied once here: the branches mix literals ('tvl', []) with the upstream columns.
+SELECT * REPLACE (
+  toLowCardinality(product_address) AS product_address,
+  toLowCardinality(source) AS source,
+  CAST(breakdown_tokens AS Array(LowCardinality(String))) AS breakdown_tokens
+)
+FROM (
+
 -- TVL data (incremental: only hours we don't already have TVL for)
 SELECT
   chain_id,
@@ -434,8 +442,9 @@ SELECT
   NULL AS avg_native_price,
   NULL AS harvest_txn_count,
   NULL AS harvest_vault_count,
-  cast(share_token_price_usd as Nullable(Decimal(76, 20))) AS share_token_price_usd
+  cast(share_token_price_usd as Nullable(Float64)) AS share_token_price_usd
 FROM {{ ref('int_product_stats__share_price_1h') }}
 {% if is_incremental() %}
 WHERE (date_hour >= toDateTime('{{ threshold_share_price }}') and date_hour < now() + INTERVAL 1 DAY) OR {{ repriced }}
 {% endif %}
+)

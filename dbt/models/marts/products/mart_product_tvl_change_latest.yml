@@ -32,7 +32,7 @@ models:
                 field: chain_id
       - name: product_address
         description: "Product contract address (foreign key to product.product_address)"
-        data_type: String
+        data_type: LowCardinality(String)
         tests:
           - not_null
         meta:

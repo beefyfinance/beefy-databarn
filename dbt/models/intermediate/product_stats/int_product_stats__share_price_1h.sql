@@ -39,9 +39,9 @@
 
 SELECT
   t.chain_id AS chain_id,
-  t.representation_address AS product_address,
+  toLowCardinality(t.representation_address) AS product_address,
   toStartOfHour(p.date_time) AS date_hour,
-  toDecimal256(argMax(p.price, p.date_time), 20) AS share_token_price_usd
+  argMax(p.price, p.date_time) AS share_token_price_usd
 FROM {{ ref('fact_asset_price_5m') }} p
 INNER JOIN (
   SELECT t.chain_id, t.representation_address, assumeNotNull(t.asset_id) AS asset_id

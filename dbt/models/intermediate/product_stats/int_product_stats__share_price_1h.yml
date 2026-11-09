@@ -34,7 +34,7 @@ models:
           - not_null
       - name: product_address
         description: "Product share-token contract address"
-        data_type: String
+        data_type: LowCardinality(String)
         tests:
           - not_null
       - name: date_hour
@@ -44,7 +44,7 @@ models:
           - not_null
       - name: share_token_price_usd
         description: "USD value of one vault share at the end of the hour"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
           - dbt_utils.accepted_range:

@@ -88,7 +88,7 @@ WITH
       h.event_idx AS event_idx,
       h.txn_timestamp AS txn_timestamp,
       h.txn_hash AS txn_hash,
-      h.vault_beefy_key AS vault_beefy_key,
+      toLowCardinality(h.vault_beefy_key) AS vault_beefy_key,
       h.call_fee AS call_fee,
       h.gas_fee AS gas_fee,
       h.raw_gas_fee AS raw_gas_fee,
@@ -96,13 +96,13 @@ WITH
       h.strategist_fee AS strategist_fee,
       h.harvest_amount AS harvest_amount,
       h.is_cowllector AS is_cowllector,
-      h.strategist_address AS strategist_address,
+      toLowCardinality(h.strategist_address) AS strategist_address,
       h.want_asset_id AS want_asset_id,
       h.native_asset_id AS native_asset_id,
       -- join_use_nulls = 0: a miss has price 0 and price_source ''.
-      toDecimal256(if(wp.price > 0, wp.price, toFloat64(h.want_price)), 20) AS want_price,
-      toDecimal256(if(np.price > 0, np.price, toFloat64(h.native_price)), 20) AS native_price,
-      toDecimal256(multiIf(fp.price > 0, fp.price, np.price > 0, np.price, toFloat64(h.native_price)), 20) AS platform_fee_price,
+      if(wp.price > 0, wp.price, toFloat64(h.want_price)) AS want_price,
+      if(np.price > 0, np.price, toFloat64(h.native_price)) AS native_price,
+      multiIf(fp.price > 0, fp.price, np.price > 0, np.price, toFloat64(h.native_price)) AS platform_fee_price,
       cast(if(wp.price > 0, wp.price_source, 'harvest') AS LowCardinality(String)) AS want_price_source,
       cast(if(np.price > 0, np.price_source, 'harvest') AS LowCardinality(String)) AS native_price_source
     FROM harvests h

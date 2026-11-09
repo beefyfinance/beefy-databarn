@@ -126,6 +126,20 @@ Columns (smaller, can come later): events today use `txn_timestamp` and `block_t
 `date_time` in `asset_price_latest`, `date_hour` in `product_stats_latest` and `chain_stats_latest`, and `ref_hour` in
 `product_tvl_diff` all become `as_of`.
 
+String columns with few distinct values repeated over many rows are `LowCardinality(String)`: product and token
+addresses, `beefy_key`, `display_name`, `platform_id`, `product_type`, `chain_name`, a `source` tag, and arrays of them
+(`Array(LowCardinality(String))`). Cast in the model's final SELECT with `toLowCardinality(...)`, which also handles
+Nullable. A 42-character address repeated on every hour of every product was most of the size of the `_1h` tables (it
+barely compresses when rows are sorted by time first). Columns that are unique per row (`txn_hash`, `id`, calldata)
+and account addresses (hundreds of thousands of values) stay `String`.
+
+Prices and USD values are `Float64`; token amounts are `Decimal(76, 20)`. Prices are Float64 at the source
+(`fact_asset_price_5m.price`, the API), and Float64 keeps ~16 significant digits at any magnitude, where
+`Decimal(76, 20)` keeps 2 for a 1e-18 share-token price. Token amounts from beefy_db and the API are exact decimal
+strings, which Float64 would round past the 16th digit. `amount * price` is Float64 (ClickHouse widens Decimal ×
+Float64 to Float64): do not wrap it back in `to_decimal`. Measured on fact_product_stats_1h, Float64 sums match exact
+Decimal sums to 1e-14 relative.
+
 ## 3. Rename map (November 2026)
 
 ### Dimensions → `databarn.dim_*`

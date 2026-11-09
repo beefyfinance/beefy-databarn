@@ -27,17 +27,17 @@ models:
           - not_null
       - name: vault_beefy_key
         description: "Beefy vault id of the harvested product"
-        data_type: String
+        data_type: LowCardinality(String)
         tests:
           - not_null
       - name: want_price
         description: "USD price of the beefy wants token at the harvest's slot (fact_asset_price_5m, else the stored harvest price)"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: native_price
         description: "USD price of the chain's native gas token at the harvest's slot (fact_asset_price_5m, else the stored harvest price)"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: want_asset_id
@@ -48,7 +48,7 @@ models:
         data_type: Nullable(UInt64)
       - name: platform_fee_price
         description: "USD price of the token platform fees are paid in: native, frxETH on Fraxtal"
-        data_type: Decimal(76, 20)
+        data_type: Float64
         tests:
           - not_null
       - name: want_price_source

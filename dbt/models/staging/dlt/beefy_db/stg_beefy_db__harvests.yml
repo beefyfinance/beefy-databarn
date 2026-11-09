@@ -42,7 +42,7 @@ models:
           - not_null
       - name: vault_beefy_key
         description: "Vault identifier"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
@@ -133,5 +133,5 @@ models:
         codec: Delta, LZ4
       - name: strategist_address
         description: "Address of the strategist"
-        data_type: String
+        data_type: LowCardinality(Nullable(String))
         codec: LZ4

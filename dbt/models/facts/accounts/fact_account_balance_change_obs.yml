@@ -31,7 +31,7 @@ models:
           - not_null
       - name: token_address
         description: "Token representation address (with chain_id, foreign key to token)"
-        data_type: String
+        data_type: LowCardinality(String)
         tests:
           - not_null
       - name: asset_id

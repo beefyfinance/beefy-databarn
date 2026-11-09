@@ -15,7 +15,7 @@ with source as (
     cast(t.event_idx as Int32) as event_idx,
     cast(t.txn_timestamp as DateTime('UTC')) as txn_timestamp,
     cast(lower({{ evm_transaction_hash('t.txn_hash') }}) as String) as txn_hash,
-    cast(t.vault_id as String) as vault_beefy_key,
+    cast(t.vault_id as LowCardinality(String)) as vault_beefy_key,
     toDecimal256(ifNull({{ to_decimal('t.call_fee') }}, 0), 20) as call_fee,
     toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) as gas_fee,
     toDecimal256(ifNull({{ to_decimal('t.gas_fee') }}, 0), 20) as raw_gas_fee,
@@ -25,7 +25,7 @@ with source as (
     toDecimal256(ifNull({{ to_decimal('t.native_price') }}, 0), 20) as native_price,
     toDecimal256(ifNull({{ to_decimal('t.want_price') }}, 0), 20) as want_price,
     toBool(ifNull(t.is_cowllector, false)) as is_cowllector,
-    cast({{ evm_address('t.strategist_address') }} as Nullable(String)) as strategist_address
+    cast({{ evm_address('t.strategist_address') }} as LowCardinality(Nullable(String))) as strategist_address
   FROM {{ source('dlt', 'beefy_db___harvests') }} t FINAL
 )
 select * 

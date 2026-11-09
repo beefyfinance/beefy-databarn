@@ -14,14 +14,14 @@
 SELECT
   h.txn_timestamp as txn_timestamp,
   p.chain_id,
-  p.product_address,
+  toLowCardinality(p.product_address) AS product_address,
   h.block_number,
   h.txn_idx,
   h.event_idx,
   h.txn_hash as txn_hash,
   h.harvest_amount as underlying_amount_compounded,
   h.want_price as underlying_token_price_usd,
-  toDecimal256(h.harvest_amount * h.want_price, 20) as underlying_amount_compounded_usd
+  h.harvest_amount * h.want_price as underlying_amount_compounded_usd
 FROM {{ ref('int_harvests') }} h
 INNER JOIN {{ ref('int_product_keys') }} p
   ON h.network_id = p.chain_id

@@ -48,13 +48,13 @@ models:
                 field: chain_id
       - name: chain_name
         description: "Chain name (from chain.chain_name)"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
       - name: product_type
         description: "Type of product"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
@@ -63,13 +63,13 @@ models:
                 values: ["classic_vault", "clm_manager", "reward_pool", "classic_boost"]
       - name: beefy_key
         description: "Beefy-specific vault/product identifier (foreign key to product.beefy_key)"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
       - name: product_address
         description: "Product contract address (foreign key to product.product_address)"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
@@ -81,7 +81,7 @@ models:
                 kind: one_to_many
       - name: display_name
         description: "Product/vault display name"
-        data_type: String
+        data_type: LowCardinality(String)
         codec: LZ4
         tests:
           - not_null
@@ -93,7 +93,7 @@ models:
           - not_null
       - name: platform_id
         description: "Platform identifier (foreign key to platform.platform_id)"
-        data_type: Nullable(String)
+        data_type: LowCardinality(Nullable(String))
         codec: LZ4
         tests:
           - relationships:
@@ -194,7 +194,7 @@ models:
         codec: ZSTD(3)
       - name: breakdown_tokens
         description: "Tokens Addresses"
-        data_type: Array(String)
+        data_type: Array(LowCardinality(String))
         codec: LZ4
         meta:
           docglow:
@@ -220,7 +220,7 @@ models:
         codec: LZ4
       - name: underlying_price
         description: "Underlying token price in USD"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: underlying_amount_compounded
         description: "Underlying amount compounded"
@@ -228,11 +228,11 @@ models:
         codec: ZSTD(3)
       - name: underlying_token_price_usd
         description: "Underlying token price in USD"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: underlying_amount_compounded_usd
         description: "Underlying amount compounded in USD"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: harvest_call_fee
         description: "Sum of harvest call fees in native token (hourly)"
@@ -240,7 +240,7 @@ models:
         codec: ZSTD(3)
       - name: harvest_call_fee_usd
         description: "Sum of harvest call fees in USD (hourly)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: gas_fee
         description: "Sum of gas fees in native token (hourly)"
@@ -248,7 +248,7 @@ models:
         codec: ZSTD(3)
       - name: gas_fee_usd
         description: "Sum of gas fees in USD (hourly)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: platform_fee
         description: "Sum of platform fees in native token (hourly)"
@@ -256,7 +256,7 @@ models:
         codec: ZSTD(3)
       - name: platform_fee_usd
         description: "Sum of platform fees in USD (hourly)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: strategist_fee
         description: "Sum of strategist fees in native token (hourly)"
@@ -264,7 +264,7 @@ models:
         codec: ZSTD(3)
       - name: strategist_fee_usd
         description: "Sum of strategist fees in USD (hourly)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: harvest_amount
         description: "Sum of harvest amounts in want token (hourly)"
@@ -272,7 +272,7 @@ models:
         codec: ZSTD(3)
       - name: harvest_amount_usd
         description: "Sum of harvest amounts in USD (hourly)"
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: avg_native_price
         description: "Average native token price in USD for the hour"
@@ -288,5 +288,5 @@ models:
         codec: ZSTD(3)
       - name: share_token_price_usd
         description: "USD value of one vault share (1e18 raw share units) at the end of the hour, corrections applied. Moo-token price for classic vaults, beefy_db oracle for CLM managers and reward pools. Null for boosts: price them through token.asset_id. Not the want token price: a non-18-decimal want reads far from it (a USDC vault is about 1e12 * ppfs)."
-        data_type: Nullable(Decimal(76, 20))
+        data_type: Nullable(Float64)
         codec: ZSTD(3)

@@ -37,7 +37,7 @@
 
 select
   pk.chain_id as chain_id,
-  pk.product_address as product_address,
+  toLowCardinality(pk.product_address) as product_address,
   stats.date_hour as date_hour,
   stats.last_staked_underlying as staked_underlying,
   stats.last_underlying_total_supply as underlying_total_supply,

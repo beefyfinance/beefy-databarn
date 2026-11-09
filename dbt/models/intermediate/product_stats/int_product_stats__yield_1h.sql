@@ -25,7 +25,7 @@ WITH yield_with_product AS (
 
 SELECT
   chain_id,
-  product_address,
+  toLowCardinality(product_address) AS product_address,
   toStartOfHour(txn_timestamp) as date_hour,
   argMax(underlying_amount_compounded, txn_timestamp) as underlying_amount_compounded,
   argMax(underlying_token_price_usd, txn_timestamp) as underlying_token_price_usd,

@@ -101,7 +101,7 @@ WITH
 SELECT
   r.account_address AS account_address,
   r.chain_id AS chain_id,
-  r.token_address AS token_address,
+  toLowCardinality(r.token_address) AS token_address,
   r.date_day AS date_day,
   r.asset_id AS asset_id,
   r.balance AS balance,

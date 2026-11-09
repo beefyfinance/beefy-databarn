@@ -133,10 +133,11 @@
 
 {# Pre-hook of a daily rollup of fact_asset_price_5m (fact_asset_price_1d): delete the days its run rebuilds, the head range of
    the pending resolver runs and each dirty asset from its recompute day, so a day left with no 5-minute price (a
-   series unmapped or cut short) loses its row. delete+insert alone only replaces the days the run produces. #}
+   series unmapped or cut short) loses its row. delete+insert alone only replaces the days the run produces. A
+   reimport (incremental_since) rebuilds its own window and deletes nothing here. #}
 {% macro price_rollup_clear_pending(model_name) -%}
   {%- set p = price_runs_pending(model_name) -%}
-  {%- if is_incremental() and p['any'] -%}
+  {%- if is_incremental() and p['any'] and incremental_since_var() is none -%}
   DELETE FROM {{ this }}
   WHERE (date_day >= toDate({{ p['head_from'] }}) AND date_day <= toDate({{ p['head_to'] }} - INTERVAL 1 SECOND))
     OR (asset_id, date_day) IN (

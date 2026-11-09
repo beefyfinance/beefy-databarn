@@ -172,14 +172,14 @@ breakdown AS (
 
 SELECT
   chain_id,
-  product_address,
+  toLowCardinality(product_address) AS product_address,
   toStartOfHour(date_time) as date_hour,
   argMax(price, (priority, date_time)) as lp_price,
-  argMax(tokens, (priority, date_time)) as breakdown_tokens,
+  CAST(argMax(tokens, (priority, date_time)) AS Array(LowCardinality(String))) as breakdown_tokens,
   argMax(balances, (priority, date_time)) as breakdown_balances,
   argMax(total_supply, (priority, date_time)) as total_supply,
   argMax(underlying_liquidity, (priority, date_time)) as underlying_liquidity,
   argMax(underlying_balances, (priority, date_time)) as underlying_balances,
-  argMax(underlying_price, (priority, date_time)) as underlying_price
+  CAST(argMax(underlying_price, (priority, date_time)) AS Nullable(Float64)) as underlying_price
 FROM breakdown
 GROUP BY chain_id, product_address, toStartOfHour(date_time)
