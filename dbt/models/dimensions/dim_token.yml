@@ -58,13 +58,13 @@ models:
           - not_null
 
       - name: token_kind
-        description: "Single kind of this token contract: 'native', 'erc20', 'lp_token' (oracle type lps, e.g. vault wants), or a Beefy share token 'beefy_classic_vault', 'beefy_clm_manager', 'beefy_reward_pool' ('beefy_' || product.product_type). Share kinds win over the token list."
+        description: "Single kind of this token contract: 'native', 'erc20', 'lp_token' (oracle type lps, e.g. vault wants), or a Beefy share token 'beefy_classic_vault', 'beefy_clm_manager', 'beefy_reward_pool' ('beefy_' || product.product_type), or 'unlisted_classic_vault' / 'unlisted_clm_manager' for a vault or CLM manager that Beefy's factories deployed (envio) but the API never listed (test and unused deployments; no asset). Share kinds win over the token list."
         data_type: String
         tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool", "beefy_classic_boost"]
+                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool", "beefy_classic_boost", "unlisted_classic_vault", "unlisted_clm_manager"]
       - name: asset_id
         description: "Price series of this token (foreign key to asset.asset_id). beefy_db oracle first (token list oracle, then vault want oracle); vault share tokens without an oracle use the beefy_api share price. Null when no price source is known. A want oracle never prices a share token."
         data_type: Nullable(UInt64)

@@ -10,7 +10,8 @@
 -- Dimension table: Token reference data, one row per (chain_id, representation_address).
 -- Sources, in priority order: API token list, vault want tokens (vault configs, retired vaults), vault share tokens
 -- (int_product_keys, retired vaults, and the CLM managers and classic vaults the subgraph indexes but the API does not
--- list), CLM subgraph tokens (priced only when their symbol is an oracle key).
+-- list), vaults and CLM managers envio knows and nothing lists (no asset), CLM subgraph tokens (priced only when their
+-- symbol is an oracle key).
 -- asset_id links the token to its price series (asset dimension); the same token on several chains shares one asset.
 -- Price mapping: beefy_db oracle first (a CLM manager's own oracle, then token list oracle_id, then vault oracle_id,
 -- only if the oracle exists in beefy_db), else for vault share tokens the share price series (mootokenprices, databarn v1 ppfs).
@@ -189,6 +190,37 @@ share_tokens as (
     and (chain_dim.chain_id, sg.product_address) not in (select chain_id, representation_address from listed_retired_tokens)
 ),
 
+-- Vaults and CLM managers that Beefy's factories deployed (envio follows the factories) but the API never listed:
+-- test vaults (mooTest), duplicates of listed vaults, deployments left unused. No price source, so no asset; the
+-- token_kind ('unlisted_classic_vault', 'unlisted_clm_manager') tells a consumer that the contract is known and not a
+-- mapping gap. Once the API or the CLM subgraph lists one, the rows above replace it.
+unlisted_tokens as (
+  select
+    e.network_id as chain_id,
+    e.address as representation_address,
+    cast(e.address as Nullable(String)) as erc20_address,
+    false as is_native,
+    cast(ifNull(tok.symbol, '') as String) as symbol,
+    cast(ifNull(tok.name, '') as String) as name,
+    cast(ifNull(tok.decimals, 18) as Int64) as decimals,
+    e.token_kind as token_kind,
+    cast(null as Nullable(String)) as beefy_price_oracle_key,
+    3 as source_priority
+  from (
+    select toInt64(network_id) as network_id, address, share_token_id, 'unlisted_classic_vault' as token_kind
+    from {{ ref('stg_envio__classic_vault') }}
+    union all
+    select toInt64(network_id), address, share_token_id, 'unlisted_clm_manager'
+    from {{ ref('stg_envio__clm_manager') }}
+  ) e
+  left join {{ ref('stg_envio__token') }} tok
+    on e.share_token_id = tok.id
+  where e.address != ''
+    and (e.network_id, e.address) not in (select chain_id, product_address from {{ ref('int_product_keys') }})
+    and (e.network_id, e.address) not in (select chain_id, representation_address from share_tokens)
+    and (e.network_id, e.address) not in (select chain_id, representation_address from listed_retired_tokens)
+),
+
 -- Tokens seen on-chain by the CLM subgraph. Fills in what the configs lack, never overrides them.
 -- A symbol that is also an oracle key takes that oracle: /prices is keyed by symbol.
 subgraph_tokens as (
@@ -214,6 +246,8 @@ unioned as (
   select * from want_tokens
   union all
   select * from share_tokens
+  union all
+  select * from unlisted_tokens
   union all
   select * from subgraph_tokens
 ),

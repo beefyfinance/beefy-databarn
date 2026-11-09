@@ -20,6 +20,12 @@
     'slots': s ~ '.int_price_scratch_slots',
     'states': s ~ '.int_price_scratch_states',
     'assets': s ~ '.int_price_scratch_assets',
+    'creation': ref('int_price_asset_creation'),
+    'backfills': s ~ '.int_price_backfills',
+    'bf_cand': s ~ '.int_price_scratch_bf_cand',
+    'bf_first': s ~ '.int_price_scratch_bf_first',
+    'bf_new': s ~ '.int_price_scratch_bf_new',
+    'bf_rewrite': s ~ '.int_price_scratch_bf_rewrite',
   }) }}
 {% endmacro %}
 
@@ -90,6 +96,17 @@ SELECT asset_id, min(slot), argMinState(value, slot) FROM {{ t.slots }} WHERE sl
       asset_id UInt64, slot DateTime('UTC'), usd Float64, ppfs Float64, source LowCardinality(String), want_asset_id UInt64
     ) ENGINE = MergeTree ORDER BY (asset_id, slot)",
     "CREATE TABLE IF NOT EXISTS " ~ t.assets ~ " (asset_id UInt64, from_day DateTime('UTC'), from_ts DateTime('UTC'))
+      ENGINE = MergeTree ORDER BY asset_id",
+    "CREATE TABLE IF NOT EXISTS " ~ t.backfills ~ " (
+      asset_id UInt64, created_at DateTime('UTC'), from_slot DateTime('UTC'), first_slot DateTime('UTC'),
+      first_price Float64, ppfs Float64, want_asset_id UInt64, source LowCardinality(String)
+    ) ENGINE = MergeTree ORDER BY asset_id",
+    "CREATE TABLE IF NOT EXISTS " ~ t.bf_cand ~ " (asset_id UInt64) ENGINE = MergeTree ORDER BY asset_id",
+    "CREATE TABLE IF NOT EXISTS " ~ t.bf_first ~ " (
+      asset_id UInt64, first_slot DateTime('UTC'), first_price Float64, source LowCardinality(String)
+    ) ENGINE = MergeTree ORDER BY asset_id",
+    "CREATE TABLE IF NOT EXISTS " ~ t.bf_new ~ " AS " ~ t.backfills,
+    "CREATE TABLE IF NOT EXISTS " ~ t.bf_rewrite ~ " (asset_id UInt64, changed UInt8, from_ts DateTime('UTC'))
       ENGINE = MergeTree ORDER BY asset_id",
   ] -%}
   {{ return(statements) }}
@@ -365,4 +382,152 @@ WITH
 SELECT asset_id, toStartOfDay(min(from_ts)), toStartOfFiveMinutes(min(from_ts)) FROM (SELECT * FROM direct UNION ALL SELECT * FROM fanout)
 GROUP BY asset_id
 HAVING min(from_ts) < {{ watermark }}
+{%- endmacro %}
+
+{#
+  Backfill: an asset's first value carried back to the creation of its vault or CLM (int_price_asset_creation) when it
+  comes at most var price_backfill_days (5) later. First deposits are made minutes after deployment, before any source
+  prices the share. A vault share carries its first ppfs (first price / want price of its slot) times the want price
+  of each slot; any other asset its first price. Rows: is_carried = 1, observed_at = the slot of the first value (so
+  observed_at > date_time), price_source of the first value. int_price_backfills keeps what each asset got, one row per
+  asset with a creation (first_slot <= from_slot: no backfill), to find what changed. Run at the end of each run by
+  price_backfill (macros/materializations/price_resolver.sql).
+#}
+
+{% macro price_backfill_days() -%}{{ var('price_backfill_days', 5) | int }}{%- endmacro %}
+
+{# Candidates of a tick: assets created recently (their first value may have just been resolved), assets whose
+   creation changed or disappeared, and dirty assets recomputed from inside their backfill window. #}
+{% macro price_backfill_candidates(t, everything, watermark) -%}
+INSERT INTO {{ t.bf_cand }}
+{%- if everything %}
+SELECT asset_id FROM {{ t.creation }}
+UNION DISTINCT
+SELECT asset_id FROM {{ t.backfills }}
+{%- else %}
+SELECT asset_id FROM {{ t.creation }} WHERE created_at >= {{ watermark }} - INTERVAL {{ price_backfill_days() | int + 1 }} DAY
+UNION DISTINCT
+SELECT asset_id FROM {{ t.creation }} WHERE (asset_id, created_at) NOT IN (SELECT asset_id, created_at FROM {{ t.backfills }})
+UNION DISTINCT
+SELECT asset_id FROM {{ t.backfills }} WHERE asset_id NOT IN (SELECT asset_id FROM {{ t.creation }})
+UNION DISTINCT
+SELECT a.asset_id FROM {{ t.assets }} a INNER JOIN {{ t.creation }} c ON a.asset_id = c.asset_id
+WHERE a.from_ts <= c.created_at + INTERVAL {{ price_backfill_days() }} DAY
+{%- endif %}
+{%- endmacro %}
+
+{# First actual row of each candidate from a day before its creation slot to price_backfill_days after: kept only when
+   it comes after the creation slot (a value in the day before, carried or not, leaves no gap). The tuple list prunes
+   fact_asset_price_5m on its primary key. #}
+{% macro price_backfill_first(t) -%}
+INSERT INTO {{ t.bf_first }}
+WITH c AS (
+  SELECT asset_id, toStartOfFiveMinutes(created_at) AS from_slot FROM {{ t.creation }}
+  WHERE asset_id IN (SELECT asset_id FROM {{ t.bf_cand }})
+)
+SELECT f.asset_id, f.first_slot, f.first_price, f.source
+FROM (
+  SELECT asset_id, min(date_time) AS first_slot, argMin(price, date_time) AS first_price, argMin(price_source, date_time) AS source
+  FROM {{ t.target }}
+  WHERE (asset_id, date_time) IN (
+      SELECT asset_id, arrayJoin(arrayMap(i -> from_slot - INTERVAL 1 DAY + toIntervalSecond(300 * i), range(toUInt32(({{ price_backfill_days() }} + 1) * 288 + 1))))
+      FROM c
+    )
+    AND observed_at <= date_time
+  GROUP BY asset_id
+) f
+INNER JOIN c ON f.asset_id = c.asset_id
+WHERE f.first_slot > c.from_slot
+{%- endmacro %}
+
+{# What each candidate gets: one row per candidate with a creation. ppfs: the first price over the actual want price of
+   its slot, for a share with a want (0 otherwise). #}
+{% macro price_backfill_new(t) -%}
+INSERT INTO {{ t.bf_new }}
+WITH
+  wants AS (
+    SELECT asset_id, min(want) AS want_asset_id
+    FROM (
+      SELECT asset_id, want_asset_id AS want FROM {{ t.map }}
+      WHERE asset_kind = 'share' AND want_asset_id != 0 AND asset_id IN (SELECT asset_id FROM {{ t.bf_first }})
+    )
+    GROUP BY asset_id
+  ),
+  want_first AS (
+    SELECT asset_id, date_time, price FROM {{ t.target }}
+    WHERE (asset_id, date_time) IN (
+      SELECT w.want_asset_id, f.first_slot FROM {{ t.bf_first }} f INNER JOIN wants w ON f.asset_id = w.asset_id
+    )
+      -- Not a backfilled want (a CLM): whether its rows exist yet depends on the run, and a share with no actual want
+      -- price at its first slot carries its first price, as a backfilled want price is constant anyway.
+      AND observed_at <= date_time
+  )
+SELECT
+  c.asset_id,
+  c.created_at,
+  toStartOfFiveMinutes(c.created_at),
+  f.first_slot,
+  f.first_price,
+  if(wf.price > 0, f.first_price / wf.price, 0),
+  if(wf.price > 0, w.want_asset_id, toUInt64(0)),
+  f.source
+FROM {{ t.creation }} c
+LEFT JOIN {{ t.bf_first }} f ON c.asset_id = f.asset_id
+LEFT JOIN wants w ON c.asset_id = w.asset_id
+LEFT JOIN want_first wf ON w.want_asset_id = wf.asset_id AND f.first_slot = wf.date_time
+WHERE c.asset_id IN (SELECT asset_id FROM {{ t.bf_cand }})
+SETTINGS join_use_nulls = 0
+{%- endmacro %}
+
+{# Candidates to rewrite: a backfill that changed (changed = 1, reported to the priced models from from_ts), or, with
+   everything or when recomputed this run (dirty), any backfill old or new. #}
+{% macro price_backfill_rewrite(t, everything) -%}
+INSERT INTO {{ t.bf_rewrite }}
+SELECT
+  c.asset_id,
+  if(o.first_slot > o.from_slot, (o.from_slot, o.first_slot, o.first_price, o.ppfs, o.source), (toDateTime(0, 'UTC'), toDateTime(0, 'UTC'), 0., 0., ''))
+    != if(n.first_slot > n.from_slot, (n.from_slot, n.first_slot, n.first_price, n.ppfs, n.source), (toDateTime(0, 'UTC'), toDateTime(0, 'UTC'), 0., 0., '')) AS changed,
+  least(
+    if(o.first_slot > o.from_slot, o.from_slot, toDateTime('2100-01-01 00:00:00', 'UTC')),
+    if(n.first_slot > n.from_slot, n.from_slot, toDateTime('2100-01-01 00:00:00', 'UTC'))
+  ) AS from_ts
+FROM {{ t.bf_cand }} c
+LEFT JOIN {{ t.bf_new }} n ON c.asset_id = n.asset_id
+LEFT JOIN {{ t.backfills }} o ON c.asset_id = o.asset_id
+WHERE changed
+  OR ((o.first_slot > o.from_slot OR n.first_slot > n.from_slot)
+    AND ({{ 1 if everything else 0 }} OR c.asset_id IN (SELECT asset_id FROM {{ t.assets }})))
+SETTINGS join_use_nulls = 0
+{%- endmacro %}
+
+{# Write the backfill rows of the rewritten candidates, those without a want (wants: 0) or with one (1). The shares
+   go second: a want can be a CLM backfilled in the first pass. #}
+{% macro price_backfill_write(t, wants) -%}
+INSERT INTO {{ t.target }}
+WITH b AS (
+  SELECT asset_id, first_slot, first_price, ppfs, want_asset_id, source,
+    toDateTime(arrayJoin(range(toUInt32(from_slot), toUInt32(first_slot), 300)), 'UTC') AS date_time
+  FROM {{ t.bf_new }}
+  WHERE first_slot > from_slot AND asset_id IN (SELECT asset_id FROM {{ t.bf_rewrite }})
+    AND {{ 'want_asset_id != 0' if wants else 'want_asset_id = 0' }}
+)
+SELECT
+  b.asset_id,
+  b.date_time,
+  {%- if wants %}
+  if(w.price > 0, b.ppfs * w.price, b.first_price),
+  {%- else %}
+  b.first_price,
+  {%- endif %}
+  b.source,
+  toUInt8(1),
+  b.first_slot
+FROM b
+{%- if wants %}
+LEFT JOIN (
+  SELECT asset_id, date_time, price FROM {{ t.target }}
+  WHERE (asset_id, date_time) IN (SELECT want_asset_id, date_time FROM b)
+) w ON b.want_asset_id = w.asset_id AND b.date_time = w.date_time
+SETTINGS join_use_nulls = 0
+{%- endif %}
 {%- endmacro %}

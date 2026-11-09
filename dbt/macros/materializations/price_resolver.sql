@@ -9,7 +9,8 @@
          whose map row or correction rows changed (from their first value), and the vaults holding a dirty want;
       2. recompute each dirty asset from the start of the day of its earliest change (one delete, masks applied);
       3. resolve the new slots of every asset, up to now minus var price_settle_minutes (rows of a slot have that
-         long to arrive before the slot is resolved; later ones make it dirty).
+         long to arrive before the slot is resolved; later ones make it dirty);
+      4. backfill: carry first values back to the creation of their vault or CLM (price_backfill).
   Each run appends a row to int_price_runs (head range, dirty assets with their start day and first changed slot):
   fact_asset_price_1d and the priced models read it to recompute what changed (macros/prices/price_runs.sql).
   Carry state: the last value of each asset at the end of every resolved range and at every day start, so a range
@@ -111,6 +112,41 @@
   {%- endfor -%}
 {% endmacro %}
 
+{# Backfill step of a run (SQL and rules in macros/prices/price_resolver_sql.sql): after the slots are resolved, carry
+   first values back to creation for the candidates, rewrite those that changed or were recomputed, and add the changed
+   ones to the run's dirty assets (t.assets) so the priced models reprice them. run_kind 'full' writes into a fresh
+   table (nothing to delete, nothing to report); 'rebuild' takes every asset. The first run with an empty
+   int_price_backfills (the deploy of the backfill) reports nothing either: it would make the priced models reprice
+   the whole history of every backfilled asset in one run. Their rows before the first prices stay unpriced until a
+   batched reimport. #}
+{% macro price_backfill(t, run_kind, watermark) %}
+  {%- set everything = run_kind != 'tick' -%}
+  {%- set bootstrap = run_kind == 'tick' and price_scalar('SELECT count() = 0 FROM ' ~ t.backfills) -%}
+  {%- for x in [t.bf_cand, t.bf_first, t.bf_new, t.bf_rewrite] -%}{%- do price_q('TRUNCATE TABLE ' ~ x) -%}{%- endfor -%}
+  {%- if run_kind == 'full' -%}{%- do price_q('TRUNCATE TABLE ' ~ t.backfills) -%}{%- endif -%}
+  {%- if run_kind == 'rebuild' -%}{%- do price_q('TRUNCATE TABLE ' ~ t.assets) -%}{%- endif -%}
+  {%- do price_q(price_backfill_candidates(t, everything, price_ts(watermark))) -%}
+  {%- if price_scalar('SELECT count() FROM ' ~ t.bf_cand) > 0 -%}
+    {%- do price_q(price_backfill_first(t)) -%}
+    {%- do price_q(price_backfill_new(t)) -%}
+    {%- do price_q(price_backfill_rewrite(t, everything)) -%}
+    {%- set n = run_query('SELECT count(), countIf(changed) FROM ' ~ t.bf_rewrite).rows[0] -%}
+    {%- if n[0] > 0 -%}
+      {%- if run_kind != 'full' -%}
+        {%- do price_q('DELETE FROM ' ~ t.target ~ ' WHERE asset_id IN (SELECT asset_id FROM ' ~ t.bf_rewrite ~ ') AND observed_at > date_time') -%}
+      {%- endif -%}
+      {%- if run_kind != 'full' and not bootstrap -%}
+        {%- do price_q('INSERT INTO ' ~ t.assets ~ ' SELECT asset_id, toStartOfDay(from_ts), from_ts FROM ' ~ t.bf_rewrite ~ ' WHERE changed') -%}
+      {%- endif -%}
+      {%- do price_q(price_backfill_write(t, false)) -%}
+      {%- do price_q(price_backfill_write(t, true)) -%}
+    {%- endif -%}
+    {%- do price_q('DELETE FROM ' ~ t.backfills ~ ' WHERE asset_id IN (SELECT asset_id FROM ' ~ t.bf_cand ~ ')') -%}
+    {%- do price_q('INSERT INTO ' ~ t.backfills ~ ' SELECT * FROM ' ~ t.bf_new) -%}
+    {{ log('  price backfill: ' ~ price_scalar('SELECT count() FROM ' ~ t.bf_cand) ~ ' candidates, ' ~ n[0] ~ ' rewritten, ' ~ n[1] ~ ' changed' ~ (' (first backfill: not reported to the priced models)' if bootstrap else ''), info=True) }}
+  {%- endif -%}
+{% endmacro %}
+
 {# A lightweight delete only masks rows; applying the mask drops them from disk (about 1 s a month). #}
 {% macro price_apply_masks(relation) %}
   {%- set rows = run_query("SELECT partition_id FROM system.parts WHERE database = '" ~ relation.schema ~ "' AND table = '"
@@ -165,6 +201,7 @@
         {%- for r_lo, r_hi in price_ranges(m_lo, m_hi) -%}{%- do price_resolve(tb, kind, r_lo, r_hi) -%}{%- endfor -%}
       {%- endfor -%}
     {%- endfor -%}
+    {%- do price_backfill(tb, 'full', head_to) -%}
     {%- do price_q('EXCHANGE TABLES ' ~ target_relation ~ ' AND ' ~ build) -%}
     {%- do price_q('DROP TABLE ' ~ build) -%}
 
@@ -225,6 +262,10 @@
     {%- for kind in ['oracle', 'share'] -%}
       {%- for r_lo, r_hi in price_ranges(watermark, head_to) -%}{%- do price_resolve(t, kind, r_lo, r_hi) -%}{%- endfor -%}
     {%- endfor -%}
+    {%- do price_backfill(t, run_kind, watermark) -%}
+    {%- if price_scalar('SELECT count() FROM ' ~ t.assets) > 0 -%}
+      {%- set dirty_sql = '(SELECT groupArray((asset_id, from_day, from_ts)) FROM ' ~ t.assets ~ ')' -%}
+    {%- endif -%}
   {%- endif -%}
 
   {%- do price_snapshot_inputs(t) -%}

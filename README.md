@@ -269,7 +269,8 @@ One price per asset and 5-minute slot, resolved once and reused by every model t
 | `int_price_obs` | Every raw price observation, keyed by source series: beefy_db oracle prices, Beefy API share prices, databarn v1 ppfs and price feeds, CLM subgraph share prices (`macros/prices/price_sources.sql`). Each run re-reads the last 3 days of each source and inserts the rows it does not have yet. |
 | `int_price_series_map` | Which series prices which asset, with every special case as a column: priority, validity windows (aliases such as oldBIFI and WROSE), unit fixes, the want of a vault share. Listed from the dimensions, so a new product or oracle is mapped with its whole history. |
 | `int_price_oracle_corrections`, `int_mootoken_price_corrections` | Hand-made correction windows, priority 90. |
-| `fact_asset_price_5m` | Dense 5-minute price of every asset (materialization `price_resolver`): in each slot the observation of highest priority, newest first; otherwise the last value carried for up to a day (a vault share keeps its ppfs and follows its want price). Each run resolves the new slots and recomputes, from the first changed slot, every asset whose observations, map rows or corrections changed. It logs what it changed in `int_price_runs`. `observed_at` is the slot of the value a row holds or carries, so a row's age is `date_time - observed_at`. |
+| `int_price_asset_creation` | Creation time of each vault and CLM share asset (envio, else databarn v1, else the API's declared date), for the backfill. |
+| `fact_asset_price_5m` | Dense 5-minute price of every asset (materialization `price_resolver`): in each slot the observation of highest priority, newest first; otherwise the last value carried for up to a day (a vault share keeps its ppfs and follows its want price). Each run resolves the new slots and recomputes, from the first changed slot, every asset whose observations, map rows or corrections changed. It logs what it changed in `int_price_runs`. `observed_at` is the slot of the value a row holds or carries, so a row's age is `date_time - observed_at`. Backfill: first deposits come minutes after deployment, before any source prices the share, so an asset's first value is carried back to the creation of its vault or CLM when it comes at most `price_backfill_days` (5) later. A vault carries its first ppfs times the want price of each slot. These rows have `is_carried = 1` and `observed_at > date_time`; `int_price_backfills` keeps what each asset got. |
 | `fact_asset_price_1d`, `fact_asset_price_latest` | Daily OHLC; last price of each asset. |
 
 **Priced models.** A model that stores a price or a USD value looks it up in `databarn.fact_asset_price_5m` on its row's 5-minute
@@ -290,6 +291,9 @@ resolves up to 10 minutes before the run. A new price reaches the marts 15 to 45
   incremental models fail and name the batched reimport to run: `make dbt reimport '<model>+' <since>`.
 - A table of an older schema (`fact_asset_price_5m` without `observed_at`) is rebuilt in full by the next run, which then
   counts as a re-resolve.
+- The first run with the backfill (empty `int_price_backfills`) writes the backfilled rows without reporting them to the
+  priced models, which would otherwise reprice the whole history of about 2,000 assets in one run. Their rows before
+  each product's first price stay unpriced until a batched reimport (`make dbt reimport '<model>+' <since>`).
 
 ## Development
 

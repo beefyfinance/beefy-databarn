@@ -30,7 +30,8 @@ DLT_STAGING_SUFFIX = "_staging"
 PRICE_RESOLVER_TABLES = frozenset({
     "int_price_asset_state", "int_price_asset_bounds", "int_price_runs", "int_price_map_applied",
     "int_price_corrections_applied", "int_price_scratch_slots", "int_price_scratch_states",
-    "int_price_scratch_assets", "int_price_consumers",
+    "int_price_scratch_assets", "int_price_consumers", "int_price_backfills", "int_price_scratch_bf_cand",
+    "int_price_scratch_bf_first", "int_price_scratch_bf_new", "int_price_scratch_bf_rewrite",
 })
 IN_PROGRESS_WINDOW = timedelta(hours=1)
 

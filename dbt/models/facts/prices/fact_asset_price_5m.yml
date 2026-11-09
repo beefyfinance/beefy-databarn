@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: fact_asset_price_5m
-    description: "Dense USD price of every asset (price series) in 5-minute slots: one row per asset per slot while a source is fresh. Per slot the highest-priority source value (int_price_series_map), else the last value carried forward: oracle values for 1 day, a vault's last ppfs at any age times its want price of the slot, other share values for 1 day; the CLM subgraph only after an hour with no other value. Written by the price_resolver materialization from int_price_obs, incrementally (late data and mapping changes recompute the assets they touch). Tokens map to it with token.asset_id. observed_at gives each row's age (date_time - observed_at). Price facts with the slot, not ASOF: LEFT JOIN fact_asset_price_5m p ON p.asset_id = f.asset_id AND p.date_time = toStartOfFiveMinutes(f.ts), with the price side cut to the facts' time range or looked up by key first ((asset_id, date_time) IN (...)). An ASOF join loads the whole price side into memory; fact_asset_price_1d is small enough for one."
+    description: "Dense USD price of every asset (price series) in 5-minute slots: one row per asset per slot while a source is fresh. Per slot the highest-priority source value (int_price_series_map), else the last value carried forward: oracle values for 1 day, a vault's last ppfs at any age times its want price of the slot, other share values for 1 day; the CLM subgraph only after an hour with no other value. Before an asset's first value, the first value is carried back to the creation of its vault or CLM when it comes at most 5 days later (backfilled rows: observed_at > date_time). Written by the price_resolver materialization from int_price_obs, incrementally (late data and mapping changes recompute the assets they touch). Tokens map to it with token.asset_id. observed_at gives each row's age (date_time - observed_at). Price facts with the slot, not ASOF: LEFT JOIN fact_asset_price_5m p ON p.asset_id = f.asset_id AND p.date_time = toStartOfFiveMinutes(f.ts), with the price side cut to the facts' time range or looked up by key first ((asset_id, date_time) IN (...)). An ASOF join loads the whole price side into memory; fact_asset_price_1d is small enough for one."
     config:
       meta:
         primary_key: ["asset_id", "date_time"]
@@ -17,7 +17,7 @@ models:
       - dbt_utils.expression_is_true:
           name: asset_price_5m_observed_at_matches_carry
           arguments:
-            expression: "if(is_carried = 1, observed_at < date_time, observed_at = date_time)"
+            expression: "if(is_carried = 1, observed_at != date_time, observed_at = date_time)"
           config:
             where: "date_time >= now() - INTERVAL 3 DAY"
     columns:
@@ -52,12 +52,12 @@ models:
         tests:
           - not_null
       - name: is_carried
-        description: "1 when no source has a value in this slot: last value carried forward (for a vault: its last ppfs times the want price of the slot)"
+        description: "1 when no source has a value in this slot: last value carried forward (for a vault: its last ppfs times the want price of the slot), or, before the asset's first value, that first value carried back to its creation (backfilled, observed_at > date_time)"
         data_type: UInt8
         tests:
           - not_null
       - name: observed_at
-        description: "Slot of the source value this row holds: date_time on an actual row, the slot of the value carried on a carried row (for a vault: of its last ppfs, the want price being the slot's). date_time - observed_at is the age of the value, without looking back for the last actual row."
+        description: "Slot of the source value this row holds: date_time on an actual row, the slot of the value carried on a carried row (for a vault: of its last ppfs, the want price being the slot's). date_time - observed_at is the age of the value, without looking back for the last actual row. After date_time on a backfilled row: the asset's first value, carried back to the creation of its vault or CLM (at most 5 days; a vault carries its first ppfs times the want price of the slot)."
         data_type: DateTime('UTC')
         tests:
           - not_null

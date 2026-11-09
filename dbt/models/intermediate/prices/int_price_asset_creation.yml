@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: int_price_asset_creation
+    description: "Creation time of each vault and CLM share asset (envio, else databarn v1, else the API's declared date). fact_asset_price_5m carries an asset's first value back to it when the first value comes at most var price_backfill_days (5) later."
+    columns:
+      - name: asset_id
+        description: "Price series (asset.asset_id)"
+        data_type: UInt64
+        tests:
+          - not_null
+          - unique
+      - name: created_at
+        description: "Earliest creation of the products whose share token maps to the asset (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
