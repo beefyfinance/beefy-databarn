@@ -1,5 +1,5 @@
 {#
-  Materialization of asset_price_5m: the dense 5-minute price of every asset, resolved from int_price_obs with
+  Materialization of fact_asset_price_5m: the dense 5-minute price of every asset, resolved from int_price_obs with
   int_price_series_map (SQL in macros/prices/price_resolver_sql.sql).
 
   - First run, --full-refresh: full build, all oracle assets first (a vault's ppfs takes its want price), then shares.
@@ -11,7 +11,7 @@
       3. resolve the new slots of every asset, up to now minus var price_settle_minutes (rows of a slot have that
          long to arrive before the slot is resolved; later ones make it dirty).
   Each run appends a row to int_price_runs (head range, dirty assets with their start day and first changed slot):
-  asset_price_1d and the priced models read it to recompute what changed (macros/prices/price_runs.sql).
+  fact_asset_price_1d and the priced models read it to recompute what changed (macros/prices/price_runs.sql).
   Carry state: the last value of each asset at the end of every resolved range and at every day start, so a range
   starts from it instead of re-reading raw values back in time.
 #}

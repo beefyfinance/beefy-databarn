@@ -1,5 +1,5 @@
 -- Fails when a databarn v1 vault has ppfs and a priced want on a day, but its share token has no price that month
--- in asset_price_1d: the databarn share series lost it (want decimals, product keys, the want oracle or the series
+-- in fact_asset_price_1d: the databarn share series lost it (want decimals, product keys, the want oracle or the series
 -- map). Whole months, so this stays cheap over the full history. Not the current month: it can still be loading.
 
 with ppfs as (
@@ -42,14 +42,14 @@ keyed as (
 -- Months a product's share token has a price.
 shares as (
   select distinct pa.chain_id as chain_id, pa.product_address as product_address, toStartOfMonth(p.date_day) as month
-  from {{ ref('asset_price_1d') }} p
+  from {{ ref('fact_asset_price_1d') }} p
   inner join {{ ref('int_product_price_assets') }} pa
     on p.asset_id = pa.asset_id
     and pa.role = 'share'
   where p.close > 0
 )
 
--- Days the want has a price, by key lookup on asset_price_1d.
+-- Days the want has a price, by key lookup on fact_asset_price_1d.
 select distinct k.chain_id as chain_id, k.product_address as product_address, k.beefy_key as beefy_key, toStartOfMonth(k.day) as month
 from keyed k
 left anti join shares s
@@ -57,6 +57,6 @@ left anti join shares s
   and k.product_address = s.product_address
   and toStartOfMonth(k.day) = s.month
 where (k.want_asset_id, k.day) in (
-  select asset_id, date_day from {{ ref('asset_price_1d') }}
+  select asset_id, date_day from {{ ref('fact_asset_price_1d') }}
   where close > 0 and asset_id in (select want_asset_id from keyed)
 )

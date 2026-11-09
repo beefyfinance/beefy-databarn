@@ -1,0 +1,87 @@
+version: 2
+
+# Temporary views under the old analytics names (dbt/CONVENTIONS.md, legacy layer). Delete this folder and drop
+# the analytics database once nobody reads them. deprecation_date makes dbt warn on every run after that date.
+
+models:
+  - name: legacy_account
+    description: "Deprecated: analytics.account, now dim.account. Read dim.account instead (model dim_account)."
+    deprecation_date: 2026-12-31
+  - name: legacy_account_balance_changes
+    description: "Deprecated: analytics.account_balance_changes, now fact.account_balance_change_obs. Read fact.account_balance_change_obs instead (model fact_account_balance_change_obs)."
+    deprecation_date: 2026-12-31
+  - name: legacy_account_balance_daily
+    description: "Deprecated: analytics.account_balance_daily, now fact.account_balance_1d. Read fact.account_balance_1d instead (model fact_account_balance_1d)."
+    deprecation_date: 2026-12-31
+  - name: legacy_api_revenue_summary
+    description: "Deprecated: analytics.api_revenue_summary, now api.revenue_summary. Read api.revenue_summary instead (model api_revenue_summary)."
+    deprecation_date: 2026-12-31
+  - name: legacy_asset
+    description: "Deprecated: analytics.asset, now dim.asset. Read dim.asset instead (model dim_asset)."
+    deprecation_date: 2026-12-31
+  - name: legacy_asset_price_1d
+    description: "Deprecated: analytics.asset_price_1d, now fact.asset_price_1d. Read fact.asset_price_1d instead (model fact_asset_price_1d)."
+    deprecation_date: 2026-12-31
+  - name: legacy_asset_price_5m
+    description: "Deprecated: analytics.asset_price_5m, now fact.asset_price_5m. Read fact.asset_price_5m instead (model fact_asset_price_5m)."
+    deprecation_date: 2026-12-31
+  - name: legacy_asset_price_latest
+    description: "Deprecated: analytics.asset_price_latest, now fact.asset_price_latest (columns renamed back to their old names). Read fact.asset_price_latest instead (model fact_asset_price_latest)."
+    deprecation_date: 2026-12-31
+  - name: legacy_chain
+    description: "Deprecated: analytics.chain, now dim.chain. Read dim.chain instead (model dim_chain)."
+    deprecation_date: 2026-12-31
+  - name: legacy_chain_stats
+    description: "Deprecated: analytics.chain_stats, now fact.chain_stats_1h. Read fact.chain_stats_1h instead (model fact_chain_stats_1h)."
+    deprecation_date: 2026-12-31
+  - name: legacy_chain_stats_latest
+    description: "Deprecated: analytics.chain_stats_latest, now fact.chain_stats_latest (columns renamed back to their old names). Read fact.chain_stats_latest instead (model fact_chain_stats_latest)."
+    deprecation_date: 2026-12-31
+  - name: legacy_daily_revenue_summary
+    description: "Deprecated: analytics.daily_revenue_summary, now mart.revenue_summary_1d. Read mart.revenue_summary_1d instead (model mart_revenue_summary_1d)."
+    deprecation_date: 2026-12-31
+  - name: legacy_harvests
+    description: "Deprecated: analytics.harvests, now fact.harvest_obs (without want_price). Read fact.harvest_obs instead (model fact_harvest_obs)."
+    deprecation_date: 2026-12-31
+  - name: legacy_platform
+    description: "Deprecated: analytics.platform, now dim.platform. Read dim.platform instead (model dim_platform)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product
+    description: "Deprecated: analytics.product, now dim.product. Read dim.product instead (model dim_product)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_bundle
+    description: "Deprecated: analytics.product_bundle, now dim.product_bundle. Read dim.product_bundle instead (model dim_product_bundle)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_classic
+    description: "Deprecated: analytics.product_classic, now dim.product_classic. Read dim.product_classic instead (model dim_product_classic)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_classic_boost
+    description: "Deprecated: analytics.product_classic_boost, now dim.product_classic_boost. Read dim.product_classic_boost instead (model dim_product_classic_boost)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_clm
+    description: "Deprecated: analytics.product_clm, now dim.product_clm. Read dim.product_clm instead (model dim_product_clm)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_reward_pool
+    description: "Deprecated: analytics.product_reward_pool, now dim.product_reward_pool. Read dim.product_reward_pool instead (model dim_product_reward_pool)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_stats
+    description: "Deprecated: analytics.product_stats, now fact.product_stats_1h. Read fact.product_stats_1h instead (model fact_product_stats_1h)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_stats_latest
+    description: "Deprecated: analytics.product_stats_latest, now fact.product_stats_latest (columns renamed back to their old names). Read fact.product_stats_latest instead (model fact_product_stats_latest)."
+    deprecation_date: 2026-12-31
+  - name: legacy_product_tvl_diff
+    description: "Deprecated: analytics.product_tvl_diff, now mart.product_tvl_change_latest (columns renamed back to their old names). Read mart.product_tvl_change_latest instead (model mart_product_tvl_change_latest)."
+    deprecation_date: 2026-12-31
+  - name: legacy_revenue_buyback_events
+    description: "Deprecated: analytics.revenue_buyback_events, now fact.buyback_obs. Read fact.buyback_obs instead (model fact_buyback_obs)."
+    deprecation_date: 2026-12-31
+  - name: legacy_token
+    description: "Deprecated: analytics.token, now dim.token. Read dim.token instead (model dim_token)."
+    deprecation_date: 2026-12-31
+  - name: legacy_yield_harvest_events
+    description: "Deprecated: analytics.yield_harvest_events, now fact.harvest_obs (rebuilt from fact_harvest_obs with the old column names). Read fact.harvest_obs instead (model fact_harvest_obs)."
+    deprecation_date: 2026-12-31
+  - name: legacy_zap_activity
+    description: "Deprecated: analytics.zap_activity, now fact.zap_obs. Read fact.zap_obs instead (model fact_zap_obs)."
+    deprecation_date: 2026-12-31

@@ -2,7 +2,7 @@
 
 {#
   Beefy API vault ids must exist in product, including new vaults that have
-  never harvested. analytics.harvests inner-joins on beefy_key, so a missing
+  never harvested. fact_harvest_obs inner-joins on beefy_key, so a missing
   product row drops every future harvest for that vault.
 
   ClickHouse-safe: NOT IN, not LEFT JOIN ... IS NULL (join_use_nulls=0).

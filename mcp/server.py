@@ -138,7 +138,7 @@ class _Budget:
 
 @tool
 def list_layers() -> dict:
-    """Explain the warehouse layers (marts, dimensions, api, data_quality, intermediate,
+    """Explain the warehouse layers (facts, dimensions, marts, api, data_quality, intermediate,
     staging, sources): what each is for, whether to recommend it, and how many models it has."""
     s = _snap()
     counts: dict[str, int] = {}
@@ -166,7 +166,7 @@ def list_layers() -> dict:
 @tool
 def search(query: str, limit: int = 20, include_internal: bool = False) -> dict:
     """Search models and columns by name or description (case-insensitive, all words must
-    match). Results are ordered marts, dimensions, api. Staging/intermediate models are
+    match). Results are ordered facts, dimensions, marts, api. Staging/intermediate models are
     hidden unless include_internal=true (only set it if the user asks about them)."""
     s = _snap()
     if s is None:
@@ -202,7 +202,7 @@ def search(query: str, limit: int = 20, include_internal: bool = False) -> dict:
 
 @tool
 def list_models(layer: str | None = None, tag: str | None = None, include_internal: bool = False) -> list[dict] | dict:
-    """List models: by default only the ones to recommend (marts, dimensions, api), marts
+    """List models: by default only the ones to recommend (facts, dimensions, marts, api), facts
     first. Pass layer=<name> to list one specific layer (including staging/intermediate),
     or include_internal=true to include them all."""
     s = _snap()
@@ -411,7 +411,7 @@ def column_lineage(model: str, column: str, direction: str = "upstream", depth: 
 def model_graph(name: str, direction: str = "upstream", depth: int = 2, include_internal: bool = False) -> dict:
     """Model-level dependency graph around `name`, direction 'upstream' (what it builds on)
     or 'downstream' (what uses it). Internal staging/intermediate models are skipped
-    unless include_internal=true, so you see marts, dimensions, api views and source tables."""
+    unless include_internal=true, so you see facts, dimensions, marts, api views and source tables."""
     s = _snap()
     if s is None:
         return UNAVAILABLE

@@ -12,8 +12,8 @@ from the dbt `target/` directory and reloads them when they change, so the exist
 
 The server is opinionated so agents recommend what people should actually use:
 
-- **Layers and audiences** live in `layers.py`. `marts`, `dimensions` and `api` are
-  *primary* (recommended, marts first). `data_quality` is *operational*. `staging` and
+- **Layers and audiences** live in `layers.py`. `facts`, `dimensions`, `marts` and `api` are
+  *primary* (recommended, facts first). `data_quality` is *operational*. `staging` and
   `intermediate` are *internal*: hidden from `search`, `list_models`, `model_graph` and
   `column_lineage` unless the caller passes `include_internal=true` or asks for that layer.
 - **Per-model override**: add `meta: {audience: primary | operational | internal}` to a
@@ -45,7 +45,7 @@ instructions tell agents to copy these verbatim and never guess URLs.
 | Tool | Purpose |
 | --- | --- |
 | `search(query)` | Find models / columns by name or description |
-| `list_models(layer?, tag?)` | Browse by layer (staging, intermediate, dimensions, marts, api) |
+| `list_models(layer?, tag?)` | Browse by layer (staging, intermediate, dimensions, facts, marts, api, data_quality) |
 | `get_model(name)` | Columns + types + tests, primary key, parents, children |
 | `column_lineage(model, column, direction, depth)` | Upstream sources or downstream impact of a column |
 | `model_graph(name, direction, depth)` | Model-level dependency graph |

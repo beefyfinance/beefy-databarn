@@ -25,17 +25,26 @@ lineage_layers:
     - name: intermediate
       rank: 2
       color: "#713f12"
+    - name: data_quality
+      rank: 3
+      color: "#57534e"
     - name: dimensions
       rank: 3
       color: "#4c1d95"
-    - name: marts
+    - name: facts
       rank: 4
+      color: "#1e40af"
+    - name: marts
+      rank: 5
       color: "#9d174d"
     - name: api
-      rank: 5
-      color: "#155e75"
-    - name: exposure
       rank: 6
+      color: "#155e75"
+    - name: legacy
+      rank: 7
+      color: "#78716c"
+    - name: exposure
+      rank: 8
       color: "#44403c"
   rules:
     - layer: staging
@@ -44,21 +53,39 @@ lineage_layers:
     - layer: intermediate
       match: folder
       pattern: "*intermediate*"
+    - layer: data_quality
+      match: folder
+      pattern: "*data_quality*"
     - layer: dimensions
       match: folder
       pattern: "*dimensions*"
+    - layer: facts
+      match: folder
+      pattern: "*facts*"
     - layer: marts
       match: folder
       pattern: "*marts*"
     - layer: api
       match: folder
       pattern: "*api*"
+    - layer: legacy
+      match: folder
+      pattern: "*legacy*"
     - layer: staging
       match: name_prefix
       pattern: "stg_"
     - layer: intermediate
       match: name_prefix
       pattern: "int_"
+    - layer: dimensions
+      match: name_prefix
+      pattern: "dim_"
+    - layer: facts
+      match: name_prefix
+      pattern: "fact_"
+    - layer: marts
+      match: name_prefix
+      pattern: "mart_"
     - layer: api
       match: name_prefix
       pattern: "api_"
@@ -67,6 +94,9 @@ health:
   naming_rules:
     staging: "^stg_"
     intermediate: "^int_"
-    dimensions: ".*"
-    marts: ".*"
+    data_quality: "^dq_"
+    dimensions: "^dim_"
+    facts: "^fact_.*_(obs|5m|1h|1d|1w|1mo|latest)$"
+    marts: "^mart_.*_(obs|5m|1h|1d|1w|1mo|latest)$"
     api: "^api_"
+    legacy: "^legacy_"

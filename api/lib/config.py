@@ -11,7 +11,7 @@ class Settings:
     CLICKHOUSE_PORT: int = int(os.getenv("API_CLICKHOUSE_PORT", "8123"))
     CLICKHOUSE_USER: str = os.getenv("API_CLICKHOUSE_USER", "api")
     CLICKHOUSE_PASSWORD: str = os.getenv("API_CLICKHOUSE_PASSWORD", "")
-    CLICKHOUSE_DB: str = os.getenv("API_CLICKHOUSE_DB", "analytics")
+    CLICKHOUSE_DB: str = os.getenv("API_CLICKHOUSE_DB", "api")
 
     # Rate limiting configuration
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv("API_RATE_LIMIT_PER_MINUTE", "100"))

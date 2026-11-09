@@ -7,7 +7,7 @@
 }}
 
 -- Table, not a view: append + ReplacingMergeTree; FINAL snapshot for this run.
--- account and zap_activity must read this snapshot from the same dbt run.
+-- account and fact_zap_obs must read this snapshot from the same dbt run.
 
 SELECT
   cast(t.chain_id as Int64) as network_id,

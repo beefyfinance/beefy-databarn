@@ -19,7 +19,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('chain')
+                to: ref('dim_chain')
                 field: chain_id
       - name: network_id
         description: "Network identifier"

@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: mart_revenue_summary_1d
+    description: "Daily totals of revenue (treasury share of fee batch harvests), yield (harvests) and BIFI buybacks, over the whole history, for the revenue dashboard and api_revenue_summary. Built from fact_fee_batch_obs, fact_harvest_obs and fact_buyback_obs."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["date_day"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - date_day
+      # Prod tests run at 06:15 UTC, 6h after the UTC day rolls. This mart has
+      # no date spine — a day exists only if yield, feebatch, or buyback landed.
+      # Hourly tests already treat the last 24h as incomplete, so require the
+      # last fully settled UTC day (today-2), not calendar yesterday.
+      - expect_date_exists:
+          name: expect_yesterday_exists
+          arguments:
+            expression: date_day
+            days_ago: 2
+    columns:
+      - name: date_day
+        description: "Date of the aggregation (day level)"
+        data_type: Date
+        tests:
+          - not_null
+          - unique
+      - name: revenue_usd
+        description: "Treasury share of the fee batch harvests of the day, in USD (fact_fee_batch_obs.treasury_usd)"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+      - name: yield_usd
+        description: "Want compounded by the harvests of the day, in USD (fact_harvest_obs.harvest_amount_usd)"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+      - name: bifi_buyback_usd
+        description: "BIFI bought back during the day, in USD (fact_buyback_obs.buyback_usd)"
+        data_type: Decimal(76, 20)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

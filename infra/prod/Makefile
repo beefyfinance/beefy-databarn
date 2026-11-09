@@ -38,7 +38,7 @@ help:
 	@$(MAKE) -s --no-print-directory mcp
 	@$(MAKE) -s --no-print-directory infra
 	@$(MAKE) -s --no-print-directory docker
-	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
+	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind fact_product_stats_1h from SINCE"
 	@echo "  make orphans             List ClickHouse tables no dbt model or dlt pipeline uses (read-only)"
 	@echo "  make orphans sql         Same, plus write DROP statements to dlt/orphan_tables_cleanup.sql (run by hand)"
 
@@ -503,21 +503,21 @@ docker:
 	esac
 
 # Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
-# product_stats.tvl_usd is built from tvls, not prices.
+# fact_product_stats_1h.tvl_usd is built from tvls, not prices.
 reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+ and int_price_obs+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_1h+ and int_price_obs+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
 	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
-	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
-	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
-	echo "=== dbt reimport int_price_obs+ since $$SINCE (asset_price_5m recomputes every asset from then) ===" && \
+	echo "=== dbt reimport int_product_stats__tvl_1h+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_product_stats__tvl_1h+' $$SINCE && \
+	echo "=== dbt reimport int_price_obs+ since $$SINCE (fact_asset_price_5m recomputes every asset from then) ===" && \
 	$(MAKE) dbt reimport 'int_price_obs+' $$SINCE
 
 # Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.

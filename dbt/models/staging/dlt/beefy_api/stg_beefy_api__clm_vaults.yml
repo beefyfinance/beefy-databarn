@@ -38,7 +38,7 @@ models:
         description: "Pool information (JSON string)"
       - name: name
         description: "Vault name"
-      - name: token
+      - name: dim_token
         description: "Token address"
       - name: token_address
         description: "Token address"
@@ -72,7 +72,7 @@ models:
         description: "Vault type"
       - name: is_gov_vault
         description: "Whether this is a governance vault"
-      - name: chain
+      - name: dim_chain
         description: "Chain identifier (part of unique key with earned_token_address)"
         tests:
           - not_null

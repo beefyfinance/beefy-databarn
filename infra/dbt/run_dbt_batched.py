@@ -5,7 +5,7 @@ Usage (from the dbt project dir, inside the uv env):
   run_dbt_batched.py reimport <selector> <since>
   run_dbt_batched.py refresh  <selector>
 
-A model opts in with config meta (e.g. product_stats.yml):
+A model opts in with config meta (e.g. fact_product_stats_1h.yml):
   meta:
     batch: month            # one dbt run per calendar month
     batch_start: "2021-07-31"  # where a full refresh starts

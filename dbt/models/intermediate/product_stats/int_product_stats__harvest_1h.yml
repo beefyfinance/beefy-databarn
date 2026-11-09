@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: int_product_stats__harvest_1h
+    description: "Hourly harvest aggregations per product (fees, amounts, counts). Source: int_harvests (price-corrected stg_beefy_db__harvests) joined to int_product_keys. One row per (chain_id, product_address, date_hour)."
+    tests:
+      - keys_match:
+          name: int_product_stats__harvest_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      # 30-day window: a full-history EXCEPT against unified takes ~1 min.
+      # Latest day excluded. Unified reloads this full-table source with a 30-day lookback.
+      # No source filter: CoalescingMergeTree folds every source into one row.
+      - keys_match:
+          name: int_product_stats__harvest_hourly_in_unified
+          config:
+            store_failures: true
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+          arguments:
+            to: ref('int_product_stats__unified_1h')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+    columns:
+      - name: date_hour
+        description: "Start of hour (UTC) for the aggregation"
+      - name: harvest_call_fee
+        description: "Sum of call fees in native token"
+      - name: harvest_call_fee_usd
+        description: "Sum of call fees in USD (fee * native_price)"
+      - name: gas_fee
+        description: "Sum of gas fees in native token"
+      - name: gas_fee_usd
+        description: "Sum of gas fees in USD"
+      - name: platform_fee
+        description: "Sum of platform fees in native token"
+      - name: platform_fee_usd
+        description: "Sum of platform fees in USD (platform_fee * native_price, or frxETH price on Fraxtal)"
+      - name: strategist_fee
+        description: "Sum of strategist fees in native token"
+      - name: strategist_fee_usd
+        description: "Sum of strategist fees in USD"
+      - name: harvest_amount
+        description: "Sum of harvest amounts in want token"
+      - name: harvest_amount_usd
+        description: "Sum of harvest amounts in USD (harvest_amount * want_price)"
+      - name: avg_native_price
+        description: "Average native token price in USD for the hour"
+      - name: harvest_txn_count
+        description: "Count of distinct harvest transactions in the hour"
+      - name: harvest_vault_count
+        description: "Always 1 per row; sum at chain level = number of vaults with at least one harvest"

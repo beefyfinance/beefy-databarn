@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: fact_asset_price_latest
+    description: "Latest USD price of every asset priced in the last day (from fact_asset_price_5m)."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["asset_id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - asset_id
+    columns:
+      - name: asset_id
+        description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
+        data_type: UInt64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_asset')
+                field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: dim_asset
+                field: asset_id
+                kind: one_to_many
+      - name: as_of
+        description: "Slot of the latest row of the asset in fact_asset_price_5m (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: price
+        description: "Latest USD price"
+        data_type: Float64
+        tests:
+          - not_null
+      - name: price_source
+        description: "Source of the latest price (see fact_asset_price_5m.price_source)"
+        data_type: String
+        tests:
+          - not_null
+      - name: observed_at
+        description: "Slot of the value the latest row holds or carries (fact_asset_price_5m.observed_at). now() - observed_at is the real age of the price; it can be older than as_of when the price is carried."
+        data_type: DateTime('UTC')
+        tests:
+          - not_null

@@ -8,49 +8,68 @@ in its dbt yml. Unknown layers default to `primary` so new folders are never hid
 """
 
 LAYERS: dict[str, dict] = {
-    "marts": {
+    "facts": {
         "audience": "primary",
         "rank": 0,
-        "title": "Marts",
-        "description": "Analysis-ready fact, event and stats tables (revenue, yield, buybacks, TVL, "
-        "harvests, product and chain stats). Start here for almost any analytical question.",
+        "title": "Facts",
+        "description": "Reusable fact tables in the fact database (fact_*): one row per observation (*_obs: "
+        "harvests, buybacks, zaps, balance changes) or per entity per period (*_5m, *_1h, *_1d: prices, product and "
+        "chain stats), plus *_latest views. Full history, keyed to the dimensions. Start here for almost any "
+        "analytical question.",
     },
     "dimensions": {
         "audience": "primary",
         "rank": 1,
         "title": "Dimensions",
-        "description": "Reference entities (chain, product, token, platform, account). Join marts to these "
-        "for names and attributes.",
+        "description": "Reference entities in the dim database (dim_*: chain, product, token, asset, platform, "
+        "account). Join facts to these for names and attributes.",
+    },
+    "marts": {
+        "audience": "primary",
+        "rank": 2,
+        "title": "Marts",
+        "description": "Tables shaped for one dashboard or question, in the mart database (mart_*: daily revenue "
+        "summary, TVL changes). Use them for that question; build anything else from the facts.",
     },
     "api": {
         "audience": "primary",
-        "rank": 2,
+        "rank": 3,
         "title": "API views",
-        "description": "Views backing the public REST API (api_*). Stable contracts for consumers; not for ad-hoc analysis.",
+        "description": "Views backing the public REST API, in the api database (api_*). Stable contracts for consumers; "
+        "not for ad-hoc analysis.",
+    },
+    "legacy": {
+        "audience": "internal",
+        "rank": 8,
+        "title": "Legacy (deprecated)",
+        "description": "Temporary views under the old analytics names (legacy_*: analytics.product_stats, ...) over "
+        "the new tables, for readers that have not moved yet. Never suggest them: point to the dim/fact/mart table "
+        "named in their description.",
     },
     "data_quality": {
         "audience": "operational",
-        "rank": 3,
+        "rank": 4,
         "title": "Data quality",
-        "description": "Monitoring models that flag gaps or mismatches. Only relevant when asked about data quality.",
+        "description": "Lists of known gaps or mismatches to inspect, in the dbt database (dq_*). Only relevant when "
+        "asked about data quality.",
     },
     "intermediate": {
         "audience": "internal",
-        "rank": 4,
+        "rank": 5,
         "title": "Intermediate (internal)",
-        "description": "Internal building blocks (int_*) that join and reshape staging models for the marts. "
+        "description": "Internal building blocks (int_*) that join and reshape staging models for the facts. "
         "Implementation detail: do not suggest these unless asked.",
     },
     "staging": {
         "audience": "internal",
-        "rank": 5,
+        "rank": 6,
         "title": "Staging (internal)",
         "description": "Internal 1:1 cleanups of raw source tables (stg_*): renaming, typing, deduplication. "
         "Implementation detail: do not suggest these unless asked.",
     },
     "source": {
         "audience": "source",
-        "rank": 6,
+        "rank": 7,
         "title": "Sources",
         "description": "Raw tables loaded by dlt pipelines (dlt.<pipeline>___<table>) and the Envio indexer. "
         "Refer to data origin in these terms.",

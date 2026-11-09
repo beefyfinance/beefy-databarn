@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: dim_chain
+    description: "Dimension table for chain reference data. Provides chain metadata for joining with fact tables."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: "chain_id"
+    tests:
+      - keys_match:
+          name: chain_in_int_chain_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_chain_keys')
+            columns: ["chain_id", "network_id", "beefy_key"]
+    columns:
+      - name: chain_id
+        description: "Unique identifier for the chain (primary key)"
+        data_type: Int64
+        tests:
+          - not_null
+          - unique
+          - dbt_expectations.expect_column_distinct_count_to_be_greater_than:
+              arguments:
+                value: 10
+      - name: network_id
+        description: "Network identifier"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: chain_name
+        description: "Chain name"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy-specific chain name/key"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_enabled
+        description: "Whether the chain is enabled in Beefy"
+        data_type: Bool
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: public_rpc_urls
+        description: "RPC endpoint URLs for the chain (array)"
+        data_type: Array(String)
+      - name: explorer_url
+        description: "Block explorer URL for the chain"
+        data_type: Nullable(String)
+      - name: multicall3_address
+        description: "Multicall3 contract address (normalized EVM address)"
+        data_type: String
+      - name: ui_lens_address
+        description: "App multicall contract address (normalized EVM address)"
+        data_type: String
+      - name: gas_type
+        description: "Gas type (e.g., eip1559, standard)"
+        data_type: Nullable(String)
+      - name: eol_date_time
+        description: "End of life timestamp as DateTime"
+        data_type: Nullable(DateTime)

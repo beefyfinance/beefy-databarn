@@ -4,7 +4,7 @@
 
 with oracle_assets as (
   select asset_id, assumeNotNull(beefy_price_oracle_key) as beefy_price_oracle_key
-  from {{ ref('asset') }}
+  from {{ ref('dim_asset') }}
   where asset_source = 'beefy_db_oracle'
 ),
 
@@ -14,7 +14,7 @@ manager_tokens as (
     representation_address,
     min(asset_id) as consumer_asset_id,
     uniqExact(asset_id) as asset_count
-  from {{ ref('token') }}
+  from {{ ref('dim_token') }}
   where token_kind = 'beefy_clm_manager'
   group by chain_id, representation_address
 )
@@ -27,7 +27,7 @@ select
   t.consumer_asset_id as consumer_asset_id,
   t.asset_count as asset_count
 from {{ ref('int_product_keys') }} pk
-inner join {{ ref('product') }} p
+inner join {{ ref('dim_product') }} p
   on pk.chain_id = p.chain_id
   and pk.product_address = p.product_address
   and p.product_type = 'clm_manager'

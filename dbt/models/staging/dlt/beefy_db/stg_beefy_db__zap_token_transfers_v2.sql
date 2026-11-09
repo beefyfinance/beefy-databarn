@@ -7,7 +7,7 @@
 }}
 
 -- Table, not a view: append + ReplacingMergeTree; FINAL snapshot for this run.
--- zap_activity must read the same snapshot as the other zap staging tables.
+-- fact_zap_obs must read the same snapshot as the other zap staging tables.
 
 SELECT
   cast(t.chain_id as Int64) as network_id,

@@ -4,20 +4,20 @@
 
 {% set models = [
   ('int_price_obs', 'ts', 6),
-  ('int_product_stats__share_price_hourly', 'date_hour', 6),
-  ('int_product_stats__tvl_hourly', 'date_hour', 6),
-  ('int_product_stats__apy_hourly', 'date_hour', 6),
-  ('int_product_stats__lps_breakdown_hourly', 'date_hour', 6),
-  ('int_product_stats__unified_hourly', 'date_hour', 6),
-  ('product_stats', 'date_hour', 6),
-  ('chain_stats', 'date_hour', 6),
-  ('asset_price_5m', 'date_time', 6),
-  ('asset_price_1d', 'date_day', 48),
+  ('int_product_stats__share_price_1h', 'date_hour', 6),
+  ('int_product_stats__tvl_1h', 'date_hour', 6),
+  ('int_product_stats__apy_1h', 'date_hour', 6),
+  ('int_product_stats__lps_breakdown_1h', 'date_hour', 6),
+  ('int_product_stats__unified_1h', 'date_hour', 6),
+  ('fact_product_stats_1h', 'date_hour', 6),
+  ('fact_chain_stats_1h', 'date_hour', 6),
+  ('fact_asset_price_5m', 'date_time', 6),
+  ('fact_asset_price_1d', 'date_day', 48),
   ('int_harvests', 'txn_timestamp', 24),
   ('int_yield', 'txn_timestamp', 24),
-  ('harvests', 'txn_timestamp', 24),
-  ('int_databarn_v1__vault_stats_hourly', 'date_hour', 72),
-  ('int_beefy_clm_subgraph__clm_stats_hourly', 'date_hour', 72),
+  ('fact_harvest_obs', 'txn_timestamp', 24),
+  ('int_databarn_v1__vault_stats_1h', 'date_hour', 72),
+  ('int_beefy_clm_subgraph__clm_stats_1h', 'date_hour', 72),
 ] %}
 
 select model, latest, max_age_hours

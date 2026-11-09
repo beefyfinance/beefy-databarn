@@ -6,8 +6,8 @@ select
   t.representation_address as representation_address,
   t.symbol as symbol,
   a.beefy_price_oracle_key as beefy_price_oracle_key
-from {{ ref('token') }} t
-inner join {{ ref('asset') }} a
+from {{ ref('dim_token') }} t
+inner join {{ ref('dim_asset') }} a
   on t.asset_id = a.asset_id
 where t.token_kind = 'beefy_classic_vault'
   and a.asset_source = 'beefy_db_oracle'

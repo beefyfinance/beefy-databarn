@@ -212,62 +212,52 @@ make up              # Rolling update (redeploy stack)
   - `infra/prod/`: Production deployment files (Makefile, docker-stack.yml, docker-compose.build.yml)
   - `infra/dev/`: Development docker-compose configuration
   - `infra/dbt/`: dbt container configuration (Dockerfile, cron jobs)
-- `dbt/`: dbt project with staging, intermediate, and marts models
+- `dbt/`: dbt project (layers and naming in `dbt/CONVENTIONS.md`)
 - `dlt/`: Future data ingestion pipelines
 - `hasura/`: Future GraphQL API setup
 
 ## dbt Models
 
-The dbt project follows best practices with three layers that progressively transform raw source data into business-ready analytical models.
+Layers, naming and grain follow [dbt/CONVENTIONS.md](dbt/CONVENTIONS.md). In short: one folder, one model prefix and
+one ClickHouse database per layer; every fact and mart name ends with its grain.
+
+| layer | folder | model | ClickHouse | what |
+|---|---|---|---|---|
+| staging | `staging/<source>/` | `stg_<source>__<table>` | `dbt.stg_*` | 1:1 cleanup of a source table |
+| intermediate | `intermediate/<domain>/` | `int_*` | `dbt.int_*` | building blocks |
+| data quality | `data_quality/` | `dq_*` | `dbt.dq_*` | lists of known gaps to inspect |
+| dimension | `dimensions/` | `dim_<entity>` | `dim.<entity>` | one row per entity |
+| fact | `facts/<domain>/` | `fact_<subject>_<grain>` | `fact.<subject>_<grain>` | reusable: one row per observation (`_obs`) or per entity per period (`_5m`, `_1h`, `_1d`), and `_latest` views |
+| mart | `marts/<consumer>/` | `mart_<subject>_<grain>` | `mart.<subject>_<grain>` | shaped for one dashboard or question |
+| api | `api/` | `api_<endpoint>` | `api.<endpoint>` | REST API contracts |
+| legacy | `legacy/` | `legacy_<old name>` | `analytics.<old name>` | temporary: the old `analytics` names over the new tables, until 2026-12-31 |
+
+The table name is the model name without its layer prefix (`fact_product_stats_1h` is `fact.product_stats_1h`):
+`macros/generate_alias_name.sql` strips it, and fails the build when a model lacks its prefix or, for facts and marts,
+its grain.
 
 ### Data Flow
 
 ```mermaid
 graph LR
-    A[PostgreSQL<br/>Source Tables] -->|External Table Engine| B[Staging Layer<br/>External Tables]
-    B -->|Transform & Clean| C[Intermediate Layer<br/>Views]
-    C -->|Aggregate & Model| D[Marts Layer<br/>Tables]
-    D -->|Query| E[Grafana<br/>Dashboards]
-    
-    style A fill:#FFB6C1
-    style B fill:#87CEEB
-    style C fill:#90EE90
-    style D fill:#DDA0DD
-    style E fill:#F0E68C
+    A[dlt / Envio<br/>raw tables] --> B[staging<br/>dbt.stg_*]
+    B --> C[intermediate<br/>dbt.int_*]
+    C --> D[dim.*]
+    C --> E[fact.*]
+    D --> E
+    E --> F[mart.*]
+    F --> G[api.*]
+    E --> H[Grafana / ad-hoc]
+    F --> H
 ```
-
-### Layer Details
-
-1. **Staging** (`models/staging/`): 
-   - Creates ClickHouse external tables using PostgreSQL table engines
-   - These tables act as read-only views that query the source database on-demand
-   - No data is copied; queries are federated to PostgreSQL
-   - Example: `stg_beefy_db__harvests` queries the `harvests` table from beefy-db PostgreSQL
-   - Materialized as views (no storage overhead)
-
-2. **Intermediate** (`models/intermediate/`):
-   - Cleans and standardizes data from staging
-   - Handles data quality issues (nulls, invalid values, outliers)
-   - Applies business logic and calculations
-   - Joins related tables and enriches with dimension data
-   - Example: `int_price` standardizes price data across sources
-   - Materialized as views for flexibility
-
-3. **Marts** (`models/marts/`):
-   - Business-ready analytical models organized by domain
-   - **Dimensions** (`dimensions/`): Reference data (chains, products)
-   - **Revenue** (`revenue/`): Revenue-generating events (buyback events)
-   - **Yield** (`yield/`): Yield-generating events (harvest events)
-   - Optimized for analytical queries with proper indexing
-   - Materialized as tables for query performance
 
 ### Example: Harvest Events Flow
 
-1. **Source**: PostgreSQL `harvests` table contains raw harvest transaction data
-2. **Staging**: `stg_beefy_db__harvests` creates an external table that queries PostgreSQL directly
-3. **Intermediate**: Data is cleaned (filters invalid prices, removes outliers)
-4. **Marts**: `yield_harvest_events` joins with dimensions (chain, product) and calculates USD values
-5. **Consumption**: Grafana queries `yield_harvest_events` for dashboards and analytics
+1. **Source**: the beefy-db `harvests` table, loaded by dlt into `dlt.beefy_db___harvests`
+2. **Staging**: `stg_beefy_db__harvests` types and deduplicates it
+3. **Intermediate**: `int_harvests` cleans it and prices each harvest from `fact_asset_price_5m`
+4. **Fact**: `fact_harvest_obs` (`fact.harvest_obs`) joins the product dimension and computes USD values
+5. **Mart**: `mart_revenue_summary_1d` sums it per day with buybacks and fee batches; `api_revenue_summary` serves it
 
 ### Prices
 
@@ -278,15 +268,15 @@ One price per asset and 5-minute slot, resolved once and reused by every model t
 | `int_price_obs` | Every raw price observation, keyed by source series: beefy_db oracle prices, Beefy API share prices, databarn v1 ppfs and price feeds, CLM subgraph share prices (`macros/prices/price_sources.sql`). Each run re-reads the last 3 days of each source and inserts the rows it does not have yet. |
 | `int_price_series_map` | Which series prices which asset, with every special case as a column: priority, validity windows (aliases such as oldBIFI and WROSE), unit fixes, the want of a vault share. Listed from the dimensions, so a new product or oracle is mapped with its whole history. |
 | `int_price_oracle_corrections`, `int_mootoken_price_corrections` | Hand-made correction windows, priority 90. |
-| `asset_price_5m` | Dense 5-minute price of every asset (materialization `price_resolver`): in each slot the observation of highest priority, newest first; otherwise the last value carried for up to a day (a vault share keeps its ppfs and follows its want price). Each run resolves the new slots and recomputes, from the first changed slot, every asset whose observations, map rows or corrections changed. It logs what it changed in `int_price_runs`. `observed_at` is the slot of the value a row holds or carries, so a row's age is `date_time - observed_at`. |
-| `asset_price_1d`, `asset_price_latest` | Daily OHLC; last price of each asset. |
+| `fact_asset_price_5m` | Dense 5-minute price of every asset (materialization `price_resolver`): in each slot the observation of highest priority, newest first; otherwise the last value carried for up to a day (a vault share keeps its ppfs and follows its want price). Each run resolves the new slots and recomputes, from the first changed slot, every asset whose observations, map rows or corrections changed. It logs what it changed in `int_price_runs`. `observed_at` is the slot of the value a row holds or carries, so a row's age is `date_time - observed_at`. |
+| `fact_asset_price_1d`, `fact_asset_price_latest` | Daily OHLC; last price of each asset. |
 
-**Priced models.** A model that stores a price or a USD value looks it up in `asset_price_5m` on its row's 5-minute
+**Priced models.** A model that stores a price or a USD value looks it up in `fact.asset_price_5m` on its row's 5-minute
 slot, with a key lookup (`WHERE (asset_id, date_time) IN (SELECT asset_id, slot FROM facts)`), never an ASOF join
 (ClickHouse loads the whole right side of an ASOF join into memory). Small marts are priced in full each run
-(`revenue_buyback_events`, `zap_activity`, `int_yield`). Incremental ones also recompute the rows of the assets a
-resolver run changed (`macros/prices/price_runs.sql`): `int_harvests`, `int_databarn_v1__vault_stats_hourly`, the
-`int_product_stats__*_hourly` models, `product_stats`, `account_balance_changes`, `account_balance_daily`.
+(`fact_buyback_obs`, `fact_zap_obs`, `int_yield`). Incremental ones also recompute the rows of the assets a
+resolver run changed (`macros/prices/price_runs.sql`): `int_harvests`, `int_databarn_v1__vault_stats_1h`, the
+`int_product_stats__*_1h` models, `fact_product_stats_1h`, `fact_account_balance_change_obs`, `fact_account_balance_1d`.
 
 **Latency.** beefy_db writes prices every 15 minutes and dlt loads them within minutes; dbt runs every 30 minutes and
 resolves up to 10 minutes before the run. A new price reaches the marts 15 to 45 minutes after it is observed.
@@ -295,9 +285,9 @@ resolves up to 10 minutes before the run. A new price reaches the marts 15 to 45
 - Late raw data older than 3 days (a dlt reimport): `make reimport-prices <since>` reimports dlt, then
   `make dbt reimport 'int_price_obs+' <since>`.
 - A price correction or a series map edit: the next dbt run recomputes the affected assets and their priced rows.
-- After a re-resolve of `asset_price_5m` (`--full-refresh`, or `incremental_since` more than 31 days back), the priced
+- After a re-resolve of `fact_asset_price_5m` (`--full-refresh`, or `incremental_since` more than 31 days back), the priced
   incremental models fail and name the batched reimport to run: `make dbt reimport '<model>+' <since>`.
-- A table of an older schema (`asset_price_5m` without `observed_at`) is rebuilt in full by the next run, which then
+- A table of an older schema (`fact_asset_price_5m` without `observed_at`) is rebuilt in full by the next run, which then
   counts as a re-resolve.
 
 ## Development

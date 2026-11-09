@@ -23,7 +23,7 @@ models:
         description: "Vault name"
       - name: type
         description: "Vault type"
-      - name: token
+      - name: dim_token
         description: "Token address"
       - name: token_address
         description: "Token address"
@@ -57,7 +57,7 @@ models:
         description: "Network"
       - name: is_gov_vault
         description: "Whether this is a governance vault"
-      - name: chain
+      - name: dim_chain
         description: "Chain information"
       - name: strategy
         description: "Strategy information"

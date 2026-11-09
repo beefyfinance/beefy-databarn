@@ -22,19 +22,35 @@ clean-targets:
 
 models:
   beefy_databarn:
+    # One folder per layer, one ClickHouse database per user-facing layer (CONVENTIONS.md). Model names carry the
+    # layer prefix; generate_alias_name strips it in dim/fact/mart/api, where the database already says the layer.
     staging:
       +schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       +tags: ["staging"]
     intermediate:
       +schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       +tags: ["intermediate"]
+    data_quality:
+      +schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
+      +tags: ["data_quality"]
     dimensions:
-      +schema: "{{ env_var('DBT_CLICKHOUSE_DB', 'analytics') }}"
+      +schema: dim
       +tags: ["dimensions"]
       +materialized: table
+    facts:
+      +schema: fact
+      +tags: ["facts"]
     marts:
-      +schema: "{{ env_var('DBT_CLICKHOUSE_DB', 'analytics') }}"
+      +schema: mart
       +tags: ["marts"]
+    api:
+      +schema: api
+      +tags: ["api"]
+    # Temporary: views under the old analytics names, over the new tables, while readers move (CONVENTIONS.md).
+    legacy:
+      +schema: analytics
+      +tags: ["legacy"]
+      +materialized: view
 
 data_tests:
   +severity: error # all tests default to error

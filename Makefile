@@ -36,7 +36,7 @@ help: ## Show this help message
 	@echo "  make setup               Initial setup (copy .env, install deps)"
 	@echo "  make start               Start infrastructure and initialize"
 	@echo "  make dev                 Full development workflow"
-	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind product_stats from SINCE"
+	@echo "  make reimport-prices <since>  Reload prices+tvls then rewind fact_product_stats_1h from SINCE"
 
 # Infrastructure commands - using subcommands
 infra:
@@ -548,21 +548,21 @@ _print-urls:
 	echo "  - Prometheus: http://localhost:$${PROMETHEUS_HOST_PORT:-19090} (no auth)"
 
 # Reload ClickHouse prices and tvls from SINCE, then rewind incremental product stats.
-# product_stats.tvl_usd is built from tvls, not prices.
+# fact_product_stats_1h.tvl_usd is built from tvls, not prices.
 reimport-prices:
 	@SINCE="$(word 2,$(MAKECMDGOALS))" && \
 	if [ -z "$$SINCE" ]; then \
 		echo "Usage: make reimport-prices <since>"; \
-		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_hourly+ and int_price_obs+)"; \
+		echo "  since: YYYY-MM-DD (dlt prices+tvls, then dbt int_product_stats__tvl_1h+ and int_price_obs+)"; \
 		exit 1; \
 	fi && \
 	echo "=== dlt reimport beefy_db prices since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db prices $$SINCE && \
 	echo "=== dlt reimport beefy_db tvls since $$SINCE ===" && \
 	$(MAKE) dlt reimport beefy_db tvls $$SINCE && \
-	echo "=== dbt reimport int_product_stats__tvl_hourly+ since $$SINCE ===" && \
-	$(MAKE) dbt reimport 'int_product_stats__tvl_hourly+' $$SINCE && \
-	echo "=== dbt reimport int_price_obs+ since $$SINCE (asset_price_5m recomputes every asset from then) ===" && \
+	echo "=== dbt reimport int_product_stats__tvl_1h+ since $$SINCE ===" && \
+	$(MAKE) dbt reimport 'int_product_stats__tvl_1h+' $$SINCE && \
+	echo "=== dbt reimport int_price_obs+ since $$SINCE (fact_asset_price_5m recomputes every asset from then) ===" && \
 	$(MAKE) dbt reimport 'int_price_obs+' $$SINCE
 
 # Report ClickHouse tables that no dbt model / dlt pipeline produces or reads any more.

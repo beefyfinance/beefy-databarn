@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: dim_platform
+    description: "Dimension table for platform reference data. Provides platform metadata for joining with fact tables."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: "platform_id"
+    columns:
+      - name: platform_id
+        description: "Unique identifier for the platform (primary key)"
+        data_type: String
+        tests:
+          - not_null
+          - unique
+      - name: platform_name
+        description: "Platform name"
+        data_type: String
+        tests:
+          - not_null
+      - name: website
+        description: "Platform website URL"
+        data_type: Nullable(String)
+      - name: twitter
+        description: "Platform Twitter handle or URL"
+        data_type: Nullable(String)
+      - name: documentation
+        description: "Platform documentation URL"
+        data_type: Nullable(String)
+      - name: description
+        description: "Platform description"
+        data_type: Nullable(String)
+      - name: platform_type
+        description: "Platform type"
+        data_type: Nullable(String)
+      - name: risks
+        description: "Platform risks information (JSON string)"
+        data_type: Array(String)
+        tests:
+          - not_null
+          - expect_array_length_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 6

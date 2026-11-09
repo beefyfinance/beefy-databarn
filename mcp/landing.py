@@ -3,7 +3,7 @@ import html
 
 import links
 
-LAYERS = "Recommended: marts (analysis-ready facts) and dimensions (chain, product, token, ...), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
+LAYERS = "Recommended: facts (fact.*_obs observations, fact.*_1h/_1d/_5m stats and prices), dimensions (dim.chain, dim.product, dim.token, ...) and marts (mart.*, one use case each), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
 
 EXAMPLES = [
     "Which models hold daily revenue, and what are their columns?",

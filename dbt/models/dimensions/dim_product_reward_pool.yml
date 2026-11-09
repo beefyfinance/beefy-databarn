@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: dim_product_reward_pool
+    description: "Dimension table for the reward pool product (vault) reference data. Provides product/vault metadata for joining with fact tables."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id", "reward_pool_address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - reward_pool_address
+      - relationships_multi_key:
+          name: relationships_reward_pool_address_token
+          arguments:
+            to: ref('dim_token')
+            from_columns: ["chain_id", "reward_pool_address"]
+            to_columns: ["chain_id", "representation_address"]
+      - relationships_multi_key:
+          name: relationships_underlying_product_address_product
+          arguments:
+            to: ref('dim_product')
+            from_columns: ["chain_id", "underlying_product_address"]
+            to_columns: ["chain_id", "product_address"]
+    columns:
+      - name: chain_id
+        description: "Chain ID where the reward pool exists"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_chain')
+                field: chain_id
+      - name: reward_pool_address
+        description: "Reward pool contract address"
+        data_type: String
+        tests:
+          - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: dim_product
+                field: product_address
+                kind: one_to_one
+              - to: dim_token
+                field: representation_address
+                kind: one_to_one
+      - name: beefy_key
+        description: "Beefy-specific reward pool/product identifier"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_wants_price_oracle_key
+        description: "Beefy API oracleId of the staked token (beefy wants token), not the vault share (stg_beefy_api__gov_vaults.oracle_id, defaults to beefy_key if null)"
+        data_type: String
+        tests:
+          - not_null
+      - name: display_name
+        description: "Reward pool display name"
+        data_type: String
+        tests:
+          - not_null
+      - name: platform_id
+        description: "Platform identifier"
+        data_type: String
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_platform')
+                field: platform_id
+      - name: is_active
+        description: "Whether the reward pool is currently active"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: underlying_product_address
+        description: "Underlying product contract address"
+        data_type: String
+        tests:
+          - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: dim_product
+                field: product_address
+                kind: one_to_many
+      - name: reward_token_representation_addresses
+        description: "Reward token contract addresses"
+        data_type: Array(String)
+        tests:
+          - not_null
+      - name: creation_block
+        description: "Block number when the product was initialized (from envio)"
+        data_type: Nullable(Int64)
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "is null or creation_block != 0"
+      - name: creation_datetime
+        description: "Timestamp when the product was initialized (from envio)"
+        data_type: Nullable(DateTime64(3, 'UTC'))
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "is null or creation_datetime >= '2020-01-01'"
+      - name: declared_creation_date
+        description: "User-declared creation date from the API (created_at)"
+        data_type: Nullable(DateTime64(3, 'UTC'))

@@ -1,4 +1,4 @@
-{#- Pre-hook of account_balance_daily: delete the days its incremental run rebuilds (from the day before its last
+{#- Pre-hook of fact_account_balance_1d: delete the days its incremental run rebuilds (from the day before its last
     day, or the incremental_since / incremental_until range), so rows no longer produced (a position closed by a late
     change) go away. Runs after the model is compiled, on the same table state, so the window matches the model's. -#}
 {% macro account_balance_daily_clear_window() -%}

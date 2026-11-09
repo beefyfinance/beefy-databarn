@@ -1,5 +1,5 @@
 {#
-  SQL of the price resolver (materialization price_resolver, model asset_price_5m). t: relation names (see
+  SQL of the price resolver (materialization price_resolver, model fact_asset_price_5m). t: relation names (see
   price_resolver_tables). lo/hi: slot range [lo, hi) as SQL DateTime expressions. flt: SQL predicate on asset_id ('1' for every asset). kind: 'oracle' or 'share'.
 #}
 

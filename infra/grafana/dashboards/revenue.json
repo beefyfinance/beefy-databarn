@@ -16,7 +16,7 @@
             "type": "vertamedia-clickhouse-datasource",
             "uid": "ClickHouse"
           },
-          "rawSql": "SELECT date, revenue FROM analytics.revenue_summary ORDER BY date",
+          "rawSql": "SELECT date_day AS date, revenue_usd AS revenue FROM mart.revenue_summary_1d ORDER BY date",
           "format": "table",
           "refId": "A"
         }
@@ -38,7 +38,7 @@
             "type": "vertamedia-clickhouse-datasource",
             "uid": "ClickHouse"
           },
-          "rawSql": "SELECT toStartOfMonth(date) as month, sum(revenue) as total_revenue FROM analytics.revenue_summary GROUP BY month ORDER BY month",
+          "rawSql": "SELECT toStartOfMonth(date_day) AS month, sum(revenue_usd) AS total_revenue FROM mart.revenue_summary_1d GROUP BY month ORDER BY month",
           "format": "table",
           "refId": "A"
         }

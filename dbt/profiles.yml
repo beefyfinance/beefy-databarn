@@ -3,7 +3,7 @@ beefy_databarn:
   outputs:
     dev:
       type: clickhouse
-      schema: "{{ env_var('DBT_CLICKHOUSE_DB', 'analytics') }}"
+      schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       host: "{{ env_var('DBT_CLICKHOUSE_HOST', 'clickhouse') }}"
       port: "{{ env_var('DBT_CLICKHOUSE_PORT', '8123') | int }}"
       user: "{{ env_var('DBT_CLICKHOUSE_USER', 'dbt') }}"
@@ -15,7 +15,7 @@ beefy_databarn:
       sync_request_timeout: 900
     prod:
       type: clickhouse
-      schema: "{{ env_var('DBT_CLICKHOUSE_DB', 'analytics') }}"
+      schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       host: "{{ env_var('DBT_CLICKHOUSE_HOST', 'clickhouse') }}"
       port: "{{ env_var('DBT_CLICKHOUSE_PORT', '8123') | int }}"
       user: "{{ env_var('DBT_CLICKHOUSE_USER', 'dbt') }}"

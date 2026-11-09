@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: fact_fee_batch_obs
+    description: "One row per fee batch harvest (an observation): the protocol fees collected on a chain and their split between the treasury (revenue) and the reward pool, in USD as recorded by beefy_db."
+    columns:
+      - name: txn_timestamp
+        description: "Transaction timestamp (UTC)"
+        tests:
+          - not_null
+      - name: chain_id
+        description: "Chain ID of the fee batch"
+        tests:
+          - not_null
+      - name: block_number
+        description: "Block number of the fee batch transaction"
+      - name: txn_hash
+        description: "Transaction hash (lowercase)"
+      - name: harvest_usd
+        description: "Total fees of the batch in USD"
+      - name: treasury_usd
+        description: "Part of the fees going to the treasury, in USD. This is the revenue."
+      - name: reward_pool_usd
+        description: "Part of the fees going to the reward pool, in USD"
+      - name: native_price
+        description: "Native token price in USD at the batch, as recorded"
+      - name: stable_price
+        description: "Stable token price in USD at the batch, as recorded"

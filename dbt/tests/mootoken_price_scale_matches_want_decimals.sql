@@ -9,10 +9,10 @@
 with shares as (
   -- Share prices observed from /mootokenprices in the last day (not carried slots), by share token.
   select a.chain_id as chain_id, a.share_token_address as product_address, argMax(p.price, p.date_time) as share_price
-  from {{ ref('asset_price_5m') }} p
+  from {{ ref('fact_asset_price_5m') }} p
   inner join (
     select asset_id, assumeNotNull(chain_id) as chain_id, assumeNotNull(share_token_address) as share_token_address
-    from {{ ref('asset') }}
+    from {{ ref('dim_asset') }}
     where asset_source = 'beefy_api_share'
   ) a
     on p.asset_id = a.asset_id
@@ -24,7 +24,7 @@ with shares as (
 
 wants as (
   select asset_id, argMax(price, date_time) as want_price
-  from {{ ref('asset_price_5m') }}
+  from {{ ref('fact_asset_price_5m') }}
   where date_time >= now() - interval 2 day
     and asset_id in (
       select {{ asset_id_from_beefy_price_oracle_id('beefy_wants_price_oracle_id') }} from {{ ref('int_product_keys') }}

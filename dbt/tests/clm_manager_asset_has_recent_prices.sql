@@ -8,7 +8,7 @@
 
 with recently_priced as (
   select distinct asset_id
-  from {{ ref('asset_price_5m') }}
+  from {{ ref('fact_asset_price_5m') }}
   where date_time >= now() - interval {{ max_age_hours }} hour
 )
 
@@ -21,12 +21,12 @@ select
   t.asset_id as asset_id,
   a.asset_source as asset_source,
   a.beefy_price_oracle_key as beefy_price_oracle_key
-from {{ ref('token') }} t
-inner join {{ ref('product') }} p
+from {{ ref('dim_token') }} t
+inner join {{ ref('dim_product') }} p
   on t.chain_id = p.chain_id
   and t.representation_address = p.product_address
   and p.product_type = 'clm_manager'
-left join {{ ref('asset') }} a
+left join {{ ref('dim_asset') }} a
   on t.asset_id = a.asset_id
 where t.token_kind = 'beefy_clm_manager'
   and ifNull(t.asset_id, 0) not in (select asset_id from recently_priced)

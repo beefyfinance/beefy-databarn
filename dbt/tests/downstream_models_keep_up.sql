@@ -3,17 +3,17 @@
 -- Each lag allows for the hourly truncation of the downstream model. Sparse events get a day.
 
 {% set edges = [
-  ('asset_price_5m', 'date_time', 'int_product_stats__share_price_hourly', 'date_hour', 2),
-  ('int_product_stats__share_price_hourly', 'date_hour', 'int_product_stats__unified_hourly', 'date_hour', 2),
-  ('int_product_stats__tvl_hourly', 'date_hour', 'int_product_stats__unified_hourly', 'date_hour', 2),
-  ('int_product_stats__apy_hourly', 'date_hour', 'int_product_stats__unified_hourly', 'date_hour', 2),
-  ('int_product_stats__unified_hourly', 'date_hour', 'product_stats', 'date_hour', 2),
-  ('product_stats', 'date_hour', 'chain_stats', 'date_hour', 2),
-  ('int_price_obs', 'ts', 'asset_price_5m', 'date_time', 2),
-  ('asset_price_5m', 'date_time', 'asset_price_1d', 'date_day', 48),
+  ('fact_asset_price_5m', 'date_time', 'int_product_stats__share_price_1h', 'date_hour', 2),
+  ('int_product_stats__share_price_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
+  ('int_product_stats__tvl_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
+  ('int_product_stats__apy_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
+  ('int_product_stats__unified_1h', 'date_hour', 'fact_product_stats_1h', 'date_hour', 2),
+  ('fact_product_stats_1h', 'date_hour', 'fact_chain_stats_1h', 'date_hour', 2),
+  ('int_price_obs', 'ts', 'fact_asset_price_5m', 'date_time', 2),
+  ('fact_asset_price_5m', 'date_time', 'fact_asset_price_1d', 'date_day', 48),
   ('int_harvests', 'txn_timestamp', 'int_yield', 'txn_timestamp', 24),
-  ('int_yield', 'txn_timestamp', 'harvests', 'txn_timestamp', 24),
-  ('account_balance_changes', 'block_timestamp', 'account_balance_daily', 'date_day', 48),
+  ('int_yield', 'txn_timestamp', 'fact_harvest_obs', 'txn_timestamp', 24),
+  ('fact_account_balance_change_obs', 'block_timestamp', 'fact_account_balance_1d', 'date_day', 48),
 ] %}
 
 select upstream, downstream, upstream_latest, downstream_latest, max_lag_hours

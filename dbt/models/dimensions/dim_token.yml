@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: dim_token
+    description: "Dimension table for token reference data, one row per (chain_id, representation_address): API token list, vault want and share tokens (retired vaults included) and CLM subgraph tokens. asset_id links a token to its price series (asset dimension, fact_asset_price_5m / fact_asset_price_1d); the same token on several chains shares one asset."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id", "address"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - representation_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the token exists (foreign key to chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_chain')
+                field: chain_id
+          - unique:
+              name: unique_native_tokens_per_chain
+              config:
+                where: "is_native"
+      - name: representation_address
+        description: "Representation token address (bytes), 0x0000000000000000000000000000000000000000 for native tokens"
+        data_type: String
+        tests:
+          - not_null
+      - name: erc20_address
+        description: "ERC20 token address (bytes), null for native tokens"
+        data_type: Nullable(String)
+      - name: is_native
+        description: "Whether token is native"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: symbol
+        description: "Token symbol"
+        data_type: String
+        tests:
+          - not_null
+      - name: name
+        description: "Token name"
+        data_type: String
+        tests:
+          - not_null
+      - name: decimals
+        description: "Number of decimals for the token"
+        data_type: Int64
+        tests:
+          - not_null
+
+      - name: token_kind
+        description: "Single kind of this token contract: 'native', 'erc20', 'lp_token' (oracle type lps, e.g. vault wants), or a Beefy share token 'beefy_classic_vault', 'beefy_clm_manager', 'beefy_reward_pool' ('beefy_' || product.product_type). Share kinds win over the token list."
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["native", "erc20", "lp_token", "beefy_classic_vault", "beefy_clm_manager", "beefy_reward_pool", "beefy_classic_boost"]
+      - name: asset_id
+        description: "Price series of this token (foreign key to asset.asset_id). beefy_db oracle first (token list oracle, then vault want oracle); vault share tokens without an oracle use the beefy_api share price. Null when no price source is known. A want oracle never prices a share token."
+        data_type: Nullable(UInt64)
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_asset')
+                field: asset_id
+              config:
+                where: "asset_id is not null"
+        meta:
+          docglow:
+            relationships:
+              - to: dim_asset
+                field: asset_id
+                kind: one_to_many

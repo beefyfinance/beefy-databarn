@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: fact_asset_price_5m
+    description: "Dense USD price of every asset (price series) in 5-minute slots: one row per asset per slot while a source is fresh. Per slot the highest-priority source value (int_price_series_map), else the last value carried forward: oracle values for 1 day, a vault's last ppfs at any age times its want price of the slot, other share values for 1 day; the CLM subgraph only after an hour with no other value. Written by the price_resolver materialization from int_price_obs, incrementally (late data and mapping changes recompute the assets they touch). Tokens map to it with token.asset_id. observed_at gives each row's age (date_time - observed_at). Price facts with the slot, not ASOF: LEFT JOIN fact_asset_price_5m p ON p.asset_id = f.asset_id AND p.date_time = toStartOfFiveMinutes(f.ts), with the price side cut to the facts' time range or looked up by key first ((asset_id, date_time) IN (...)). An ASOF join loads the whole price side into memory; fact_asset_price_1d is small enough for one."
+    config:
+      meta:
+        primary_key: ["asset_id", "date_time"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - asset_id
+              - date_time
+          config:
+            where: "date_time >= now() - INTERVAL 3 DAY"
+      - dbt_utils.expression_is_true:
+          name: asset_price_5m_observed_at_matches_carry
+          arguments:
+            expression: "if(is_carried = 1, observed_at < date_time, observed_at = date_time)"
+          config:
+            where: "date_time >= now() - INTERVAL 3 DAY"
+    columns:
+      - name: asset_id
+        description: "Price series (foreign key to asset.asset_id); tokens link with token.asset_id"
+        data_type: UInt64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_asset')
+                field: asset_id
+        meta:
+          docglow:
+            relationships:
+              - to: dim_asset
+                field: asset_id
+                kind: one_to_many
+      - name: date_time
+        description: "Start of the 5-minute slot (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: price
+        description: "USD price"
+        data_type: Float64
+        tests:
+          - not_null
+      - name: price_source
+        description: "Source of the value: 'beefy_db' oracle price, 'beefy_db_alias' price of the oracle that priced a renamed oracle's token before it existed (oldBIFI before 2023-10-24), 'api' /mootokenprices share price, 'dbv1_product' / 'dbv1_feed' databarn v1 ppfs (vault stats / share-rate feed) times the want price, 'clm_subgraph' / 'classic_subgraph' CLM subgraph share price, 'corr_oracle' / 'corr_share' hardcoded correction. On a carried row, the source of the value carried."
+        data_type: LowCardinality(String)
+        tests:
+          - not_null
+      - name: is_carried
+        description: "1 when no source has a value in this slot: last value carried forward (for a vault: its last ppfs times the want price of the slot)"
+        data_type: UInt8
+        tests:
+          - not_null
+      - name: observed_at
+        description: "Slot of the source value this row holds: date_time on an actual row, the slot of the value carried on a carried row (for a vault: of its last ppfs, the want price being the slot's). date_time - observed_at is the age of the value, without looking back for the last actual row."
+        data_type: DateTime('UTC')
+        tests:
+          - not_null

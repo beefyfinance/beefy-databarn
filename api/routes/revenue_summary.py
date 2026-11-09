@@ -38,7 +38,7 @@ class RevenueSummaryResponse(BaseModel):
 @limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 @cached()
 async def get_revenue_summary(request: Request):
-    rows = execute_query("SELECT * FROM analytics.api_revenue_summary")
+    rows = execute_query("SELECT * FROM api.revenue_summary")
     if not rows or not rows[0]:
         return RevenueSummaryResponse(
             revenue_usd_30d=0.0,

@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: dq_missing_products_in_envio
+    description: "Data quality model that identifies products from the product dimension that exist on chains tracked by envio but are not present in any envio staging models. This helps debug data coverage gaps."
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_chain')
+                field: chain_id
+      - name: chain_name
+        description: "Chain name"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product contract address"
+        data_type: String
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy-specific vault/product identifier"
+        data_type: String
+        tests:
+          - not_null
+      - name: display_name
+        description: "Product/vault display name"
+        data_type: String
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the vault is currently active"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: missing_in_envio_model
+        description: "The envio staging model where this product is missing (stg_envio__classic_vault, stg_envio__clm_manager, stg_envio__reward_pool, or stg_envio__classic_boost)"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["stg_envio__classic_vault", "stg_envio__clm_manager", "stg_envio__reward_pool", "stg_envio__classic_boost"]
+

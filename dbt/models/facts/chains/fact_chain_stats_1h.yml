@@ -1,0 +1,221 @@
+version: 2
+
+models:
+  - name: fact_chain_stats_1h
+    description: "Timeseries of chain-level statistics including TVL, APR/APY, and fee metrics aggregated from fact_product_stats_1h. Includes averages and quantile distributions (min, p25, p50, p75, max) for APR/APY and fee fields."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id", "date_hour"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - date_hour
+    columns:
+      - name: chain_id
+        description: "Chain ID (foreign key to chain.chain_id)"
+        data_type: Int64
+        codec: ZSTD(3)
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_chain')
+                field: chain_id
+      - name: chain_name
+        description: "Human-readable chain name"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: beefy_key
+        description: "Beefy-specific chain identifier (foreign key to chain.beefy_key)"
+        data_type: String
+        codec: LZ4
+        tests:
+          - not_null
+      - name: beefy_enabled
+        description: "Whether the chain is currently enabled on Beefy"
+        data_type: Bool
+        codec: LZ4
+        tests:
+          - not_null
+      - name: date_hour
+        description: "Date hour when this snapshot was captured"
+        data_type: DateTime('UTC')
+        codec: DoubleDelta, LZ4
+        tests:
+          - not_null
+      - name: tvl_usd
+        description: "Total value locked in USD across all product types (vault + gov + CLM)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000000000
+                inclusive: true
+      - name: vault_tvl_usd
+        description: "TVL attributed to vault assets in USD"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: clm_tvl_usd
+        description: "TVL attributed to CLM (Concentrated Liquidity Manager) assets in USD"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: avg_beefy_performance_fee
+        description: "Average Beefy performance fee across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_lp_fee
+        description: "Average LP fee across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_compoundings_per_year
+        description: "Average compoundings per year across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apy
+        description: "Average APY across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: avg_total_apy
+        description: "Average total APY across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: avg_vault_apr
+        description: "Average vault APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_trading_apr
+        description: "Average trading APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_clm_apr
+        description: "Average CLM APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_reward_pool_apr
+        description: "Average reward pool APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_reward_pool_trading_apr
+        description: "Average reward pool trading APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_vault_apy
+        description: "Average vault APY across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_liquid_staking_apr
+        description: "Average liquid staking APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_composable_pool_apr
+        description: "Average composable pool APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_merkl_apr
+        description: "Average Merkl APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_linea_ignition_apr
+        description: "Average Linea Ignition APR across all products"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: beefy_performance_fee_quantiles
+        description: "Quantiles array for Beefy performance fee: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: lp_fee_quantiles
+        description: "Quantiles array for LP fee: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: compoundings_per_year_quantiles
+        description: "Quantiles array for compoundings per year: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: apy_quantiles
+        description: "Quantiles array for APY: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: total_apy_quantiles
+        description: "Quantiles array for total APY: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: vault_apy_quantiles
+        description: "Quantiles array for vault APY: [min, p25, p50, p75, max]"
+        data_type: Array(Float64)
+        codec: ZSTD(3)
+      - name: underlying_amount_compounded_usd
+        description: "Total underlying amount compounded in USD across all products"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_call_fee
+        description: "Sum of harvest call fees in native token (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_call_fee_usd
+        description: "Sum of harvest call fees in USD (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: gas_fee
+        description: "Sum of gas fees in native token (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: gas_fee_usd
+        description: "Sum of gas fees in USD (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: platform_fee
+        description: "Sum of platform fees in native token (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: platform_fee_usd
+        description: "Sum of platform fees in USD (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: strategist_fee
+        description: "Sum of strategist fees in native token (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: strategist_fee_usd
+        description: "Sum of strategist fees in USD (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_amount
+        description: "Sum of harvest amounts in want token (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_amount_usd
+        description: "Sum of harvest amounts in USD (chain-hour)"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: avg_native_price
+        description: "Average native price across products with harvests in the hour"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_txn_count
+        description: "Total count of distinct harvest transactions (chain-hour)"
+        data_type: Nullable(UInt64)
+        codec: ZSTD(3)
+      - name: harvest_vault_count
+        description: "Number of vaults with at least one harvest in the hour"
+        data_type: Nullable(UInt64)
+        codec: ZSTD(3)

@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: int_product_stats__lps_breakdown_1h
+    description: "Hourly LPS breakdown aggregations"
+    config:
+      meta:
+        # Full refresh and reimport one month at a time (a full build does not fit one query locally);
+        # see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
+    tests:
+      - keys_match:
+          name: int_product_stats__lps_breakdown_hourly_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+      # 30-day window: a full-history EXCEPT against unified takes ~1 min.
+      # Latest day excluded. Unified reloads this full-table source with a 30-day lookback.
+      # No source filter: CoalescingMergeTree folds every source into one row.
+      - keys_match:
+          name: int_product_stats__lps_breakdown_hourly_in_unified
+          config:
+            store_failures: true
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+          arguments:
+            to: ref('int_product_stats__unified_1h')
+            columns: ["chain_id", "product_address", "date_hour"]
+            to_where: "date_hour >= toStartOfHour(now('UTC')) - interval 30 day and date_hour < toStartOfHour(now('UTC')) - interval 1 day"
+    columns:
+      - name: lp_price
+        description: "LP or want token USD price (API, else databarn v1 for classic vaults, CLM subgraph for CLMs)"
+        data_type: float64
+        constraints:
+          - type: not_null
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: total_supply
+        description: "Total supply of the LP, CLM share or want token (API, else CLM subgraph or databarn v1)"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000000000
+                inclusive: true
+      - name: underlying_liquidity
+        description: "Underlying liquidity"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000000000
+                inclusive: true
+      - name: underlying_price
+        description: "Underlying price"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true

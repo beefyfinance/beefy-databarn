@@ -17,7 +17,7 @@ models:
         description: "Period finish dates (JSON string)"
       - name: name
         description: "Boost name"
-      - name: chain
+      - name: dim_chain
         description: "Chain information"
       - name: pool_id
         description: "Pool ID"

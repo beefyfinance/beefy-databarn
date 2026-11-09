@@ -74,7 +74,7 @@ SELECT
   {{ price_series_id('subgraph', 'chain_id', 'product_address') }} AS series_id,
   date_hour AS ts,
   toFloat64(assumeNotNull(share_token_price_usd)) AS value
-FROM {{ ref('int_beefy_clm_subgraph__share_price_hourly') }}
+FROM {{ ref('int_beefy_clm_subgraph__share_price_1h') }}
 WHERE share_token_price_usd IS NOT NULL AND {{ price_obs_window('date_hour') }}
 {%- endmacro %}
 

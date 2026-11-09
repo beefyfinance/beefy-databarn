@@ -46,7 +46,10 @@ GRANT SELECT, INSERT, ALTER, CREATE TABLE, DROP TABLE, TRUNCATE, OPTIMIZE,
 
 -- The worker reads the warehouse and the dev envio databases.
 GRANT SELECT ON dbt.*              TO beefy_indexer_worker_dev_mrt;
-GRANT SELECT ON analytics.*        TO beefy_indexer_worker_dev_mrt;
+GRANT SELECT ON dim.*              TO beefy_indexer_worker_dev_mrt;
+GRANT SELECT ON fact.*             TO beefy_indexer_worker_dev_mrt;
+GRANT SELECT ON mart.*             TO beefy_indexer_worker_dev_mrt;
+GRANT SELECT ON analytics.*        TO beefy_indexer_worker_dev_mrt; -- old-name views, until dropped
 GRANT SELECT ON dlt.*              TO beefy_indexer_worker_dev_mrt;
 GRANT SELECT ON envio_dev_mrt_*.*  TO beefy_indexer_worker_dev_mrt;
 

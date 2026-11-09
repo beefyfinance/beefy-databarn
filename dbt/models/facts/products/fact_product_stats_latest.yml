@@ -1,0 +1,180 @@
+version: 2
+
+models:
+  - name: fact_product_stats_latest
+    description: "Latest product stats by product (chain_id + product_address). Contains the most recent snapshot for each product from the fact_product_stats_1h timeseries table."
+    config:
+      contract:
+        enforced: true
+      meta:
+        primary_key: ["chain_id", "product_address"]
+    tests:
+      - relationships_multi_key:
+          name: relationships_product_stats_latest_product
+          arguments:
+            to: ref('dim_product')
+            from_columns: ["chain_id", "product_address"]
+            to_columns: ["chain_id", "product_address"]
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists (foreign key to chain.chain_id)"
+        data_type: Int64
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_chain')
+                field: chain_id
+      - name: chain_name
+        description: "Chain name (from chain.chain_name)"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_type
+        description: "Type of product (classic_vault, clm_manager, reward_pool, or classic_boost)"
+        data_type: String
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["classic_vault", "clm_manager", "reward_pool", "classic_boost"]
+      - name: beefy_key
+        description: "Beefy-specific vault/product identifier (foreign key to product.beefy_key)"
+        data_type: String
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product contract address (foreign key to product.product_address)"
+        data_type: String
+        tests:
+          - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: dim_product
+                field: product_address
+                kind: one_to_many
+      - name: display_name
+        description: "Product/vault display name"
+        data_type: String
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the vault is currently active"
+        data_type: Bool
+        tests:
+          - not_null
+      - name: platform_id
+        description: "Platform identifier (foreign key to platform.platform_id)"
+        data_type: Nullable(String)
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_platform')
+                field: platform_id
+      - name: as_of
+        description: "Hour of the latest fact_product_stats_1h row of this product (UTC)"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: tvl_usd
+        description: "Total value locked in USD (latest value)"
+        data_type: Nullable(Float64)
+      - name: apy
+        description: "Annual percentage yield (latest value)"
+        data_type: Nullable(Float64)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: compoundings_per_year
+        description: "Number of compoundings per year (latest value)"
+        data_type: Nullable(Int64)
+      - name: beefy_performance_fee
+        description: "Beefy performance fee (latest value)"
+        data_type: Nullable(Float64)
+      - name: lp_fee
+        description: "LP fee (latest value)"
+        data_type: Nullable(Float64)
+      - name: total_apy
+        description: "Total APY (latest value)"
+        data_type: Nullable(Float64)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: vault_apr
+        description: "Vault APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: trading_apr
+        description: "Trading APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: clm_apr
+        description: "CLM APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: reward_pool_apr
+        description: "Reward pool APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: reward_pool_trading_apr
+        description: "Reward pool trading APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: vault_apy
+        description: "Vault APY (latest value)"
+        data_type: Nullable(Float64)
+      - name: liquid_staking_apr
+        description: "Liquid staking APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: composable_pool_apr
+        description: "Composable pool APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: merkl_apr
+        description: "Merkl APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: linea_ignition_apr
+        description: "Linea Ignition APR (latest value)"
+        data_type: Nullable(Float64)
+      - name: lp_price
+        description: "LP token price (latest value)"
+        data_type: Nullable(Float64)
+      - name: breakdown_tokens
+        description: "Tokens Addresses (latest value)"
+        data_type: Array(String)
+        meta:
+          docglow:
+            relationships:
+              - to: dim_token
+                field: representation_address
+                kind: many_to_many
+      - name: breakdown_balances
+        description: "Balances information (JSON) (latest value)"
+        data_type: Array(Decimal(76, 20))
+      - name: total_supply
+        description: "Total supply (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_liquidity
+        description: "Underlying liquidity (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_balances
+        description: "Underlying balances (latest value)"
+        data_type: Array(Decimal(76, 20))
+      - name: underlying_price
+        description: "Underlying token price in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_amount_compounded
+        description: "Underlying amount compounded (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_token_price_usd
+        description: "Underlying token price in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))
+      - name: underlying_amount_compounded_usd
+        description: "Underlying amount compounded in USD (latest value)"
+        data_type: Nullable(Decimal(76, 20))

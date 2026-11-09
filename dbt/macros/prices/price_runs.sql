@@ -1,5 +1,5 @@
 {#
-  Price consumers: a model that stores prices or values priced from asset_price_5m recomputes what each resolver run
+  Price consumers: a model that stores prices or values priced from fact_asset_price_5m recomputes what each resolver run
   changed. int_price_runs holds, per run, the head range it resolved and the dirty assets, each with the day its
   recompute started and the slot of its first changed price. A consumer reads the runs it has not applied yet
   (int_price_consumers keeps the last run each consumer applied, written by price_consumer_done as a post-hook).
@@ -59,7 +59,7 @@
   a subquery of the run log is much slower, and a query is capped at 256 KiB. A longer list goes to the scratch table
   int_price_reprice_keys and each listed key is recomputed from the earliest start of the list.
   A head range starting more than var price_reprice_max_days (default 31) before the window is a re-resolve of
-  asset_price_5m (--full-refresh or incremental_since): recomputing it in one run does not fit in memory, so the
+  fact_asset_price_5m (--full-refresh or incremental_since): recomputing it in one run does not fit in memory, so the
   model fails and names the batched reimport to run. A batched reimport (incremental_since) needs none of this and
   marks the runs applied.
   Use with price_repriced(rp, key_expr, time_expr).
@@ -75,7 +75,7 @@
   {%- set head = run_query("SELECT " ~ p['head_from'] ~ " < " ~ thr ~ ", toString(" ~ trunc_open ~ p['head_from'] ~ ")), "
       ~ p['head_from'] ~ " < " ~ thr ~ " - INTERVAL " ~ (var('price_reprice_max_days', 31) | int) ~ " DAY").rows[0] -%}
   {%- if head[2] -%}
-    {{ exceptions.raise_compiler_error(model_name ~ ": asset_price_5m was re-resolved from " ~ head[1] ~ ", too far back to reprice in one run. "
+    {{ exceptions.raise_compiler_error(model_name ~ ": fact_asset_price_5m was re-resolved from " ~ head[1] ~ ", too far back to reprice in one run. "
         ~ "Run the batched reimport: make dbt reimport '" ~ model_name ~ "+' " ~ (head[1] | string)[:10]) }}
   {%- endif -%}
   {%- if head[0] -%}
@@ -131,7 +131,7 @@
   {%- endif -%}
 {%- endmacro %}
 
-{# Pre-hook of a daily rollup of asset_price_5m (asset_price_1d): delete the days its run rebuilds, the head range of
+{# Pre-hook of a daily rollup of fact_asset_price_5m (fact_asset_price_1d): delete the days its run rebuilds, the head range of
    the pending resolver runs and each dirty asset from its recompute day, so a day left with no 5-minute price (a
    series unmapped or cut short) loses its row. delete+insert alone only replaces the days the run produces. #}
 {% macro price_rollup_clear_pending(model_name) -%}
