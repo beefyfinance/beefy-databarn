@@ -141,7 +141,11 @@
   {%- set obs_to_s = price_scalar('SELECT toString(max(ingested_at)) FROM ' ~ t.obs) -%}
   {%- set last = run_query("SELECT toString(watermark), toString(obs_mark) FROM " ~ t.runs ~ " ORDER BY run_id DESC LIMIT 1") -%}
   {%- set since = incremental_since_var() -%}
-  {%- set full = flags.FULL_REFRESH or not existed or (last.rows | length) == 0 -%}
+  {#- A table of an older schema (no observed_at) is rebuilt: a tick could not write to it. -#}
+  {%- set outdated = existed and price_scalar("SELECT count() = 0 FROM system.columns WHERE database = '" ~ target_relation.schema
+      ~ "' AND table = '" ~ target_relation.identifier ~ "' AND name = 'observed_at'") -%}
+  {%- if outdated -%}{{ log('price_resolver: ' ~ target_relation ~ ' has no observed_at column, full build', info=True) }}{%- endif -%}
+  {%- set full = flags.FULL_REFRESH or not existed or outdated or (last.rows | length) == 0 -%}
   {%- set run_kind = 'full' if full else ('rebuild' if since is not none else 'tick') -%}
   {%- set dirty_sql = "[]" -%}
   {{ log('price_resolver: ' ~ run_kind ~ ' up to ' ~ now_end, info=True) }}

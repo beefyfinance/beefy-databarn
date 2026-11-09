@@ -51,7 +51,8 @@ SELECT asset_id, min(slot), argMinState(value, slot) FROM {{ t.slots }} WHERE sl
       date_time DateTime('UTC') CODEC(DoubleDelta, ZSTD(1)),
       price Float64 CODEC(Gorilla, ZSTD(1)),
       price_source LowCardinality(String),
-      is_carried UInt8
+      is_carried UInt8,
+      observed_at DateTime('UTC') CODEC(DoubleDelta, ZSTD(1))
     ) ENGINE = MergeTree PARTITION BY toYYYYMM(date_time) ORDER BY (asset_id, date_time)",
     "CREATE TABLE IF NOT EXISTS " ~ t.bounds ~ " (
       asset_id UInt64,
@@ -172,7 +173,8 @@ SELECT
   )), 'UTC') AS date_time,
   value,
   source,
-  toUInt8(date_time != slot)
+  toUInt8(date_time != slot),
+  slot
 FROM (
   SELECT
     asset_id, slot, value, source,
@@ -227,7 +229,7 @@ WHERE NOT (s.obs_kind = 'ppfs' AND want = 0)
    the last usd value at most 1 day old. #}
 {% macro price_stage2_write(t, lo, hi) -%}
 INSERT INTO {{ t.target }}
-SELECT asset_id, date_time, price, source, is_carried
+SELECT asset_id, date_time, price, source, is_carried, observed_at
 FROM (
   SELECT
     e.asset_id AS asset_id,
@@ -239,7 +241,8 @@ FROM (
       nan
     ) AS price,
     e.source AS source,
-    toUInt8(e.date_time != e.slot) AS is_carried
+    toUInt8(e.date_time != e.slot) AS is_carried,
+    e.slot AS observed_at
   FROM (
     SELECT
       asset_id, slot, usd, ppfs, source, want_asset_id,
