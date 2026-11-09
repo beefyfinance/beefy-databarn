@@ -3,7 +3,7 @@ import html
 
 import links
 
-LAYERS = "Recommended: facts (fact.*_obs observations, fact.*_1h/_1d/_5m stats and prices), dimensions (dim.chain, dim.product, dim.token, ...) and marts (mart.*, one use case each), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
+LAYERS = "Recommended: facts (databarn.fact_*_obs observations, databarn.fact_*_1h/_1d/_5m stats and prices), dimensions (databarn.dim_chain, databarn.dim_product, databarn.dim_token, ...) and marts (databarn.mart_*, one use case each), plus api views. Internal: staging (stg_*) and intermediate (int_*) are hidden by default. Origins are reported as raw source tables (dlt pipeline tables, Envio)."
 
 EXAMPLES = [
     "Which models hold daily revenue, and what are their columns?",

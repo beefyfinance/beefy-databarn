@@ -115,7 +115,7 @@ class Snapshot:
         """Find a model or source by short name, schema-qualified name or unique_id."""
         name = name.strip().removeprefix("analytics.")
         if "." in name and not name.startswith(("model.", "source.")):
-            # database.table as queried (fact.product_stats_1h): the alias drops the model's layer prefix
+            # database.table as queried (databarn.fact_product_stats_1h, api.revenue_summary)
             for node in self.models.values():
                 if f"{node.get('schema')}.{node.get('alias') or node.get('name')}" == name:
                     return node["unique_id"], node

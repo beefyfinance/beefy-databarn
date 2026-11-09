@@ -25,10 +25,10 @@ client = clickhouse_connect.get_client(
     verify = 'True',
     username=args.username, 
     password=args.password,
-    database='fact',
+    database='databarn',
 )
 
 start = time.perf_counter()
-result = client.query('SELECT count(*) FROM fact.zap_obs')
+result = client.query('SELECT count(*) FROM fact_zap_obs')
 elapsed = time.perf_counter() - start
 print(f"Query took {elapsed:.3f}s, result rows: {result.result_rows}")

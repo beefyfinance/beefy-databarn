@@ -5,7 +5,7 @@ Nothing here ever runs DDL. `find_orphans` only SELECTs from `system.*` (plus
 human to review and run by hand.
 
 Sources of truth for "what should exist":
-- dbt databases (`dbt`, `dim`, `fact`, `mart`, `api`, `analytics`): every model/seed/snapshot in `target/manifest.json`.
+- dbt databases (`dbt`, `databarn`, `api`, `analytics`): every model/seed/snapshot in `target/manifest.json`.
 - dlt database: dataset names from `dlt/*_pipeline.py`, plus the tables dbt reads via `source('dlt', ...)`.
 """
 

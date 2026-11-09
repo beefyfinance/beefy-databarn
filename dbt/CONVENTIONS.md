@@ -20,24 +20,26 @@ The layout before November 2026, which this replaced:
 
 ## 1. Layers
 
-Each layer has one folder, one model prefix and one ClickHouse database. The database is the layer, so the table name
-drops the prefix.
+Each layer has one folder and one model prefix. The table is named like the model, prefix included. Everything users
+query sits in one database, `databarn`, where the prefix sorts the tables into dimensions, facts and marts; the API
+views have their own database.
 
 | layer | what goes in it | folder | model name | database.table | audience |
 |---|---|---|---|---|---|
 | staging | 1:1 cleanup of a source table | `staging/<source>/` | `stg_<source>__<table>` | `dbt.stg_…` (unchanged) | internal |
 | intermediate | building blocks | `intermediate/<domain>/` | `int_<domain>__<what>[_<grain>]` | `dbt.int_…` (unchanged) | internal |
-| dimension | one row per entity, current state | `dimensions/` | `dim_<entity>` | `dim.<entity>` | users |
-| fact | one row per observation, or per entity per period. Reusable | `facts/<domain>/` | `fact_<subject>_<grain>` | `fact.<subject>_<grain>` | users |
-| mart | shaped for one consumer or question | `marts/<consumer>/` | `mart_<subject>_<grain>` | `mart.<subject>_<grain>` | users |
+| dimension | one row per entity, current state | `dimensions/` | `dim_<entity>` | `databarn.dim_<entity>` | users |
+| fact | one row per observation, or per entity per period. Reusable | `facts/<domain>/` | `fact_<subject>_<grain>` | `databarn.fact_<subject>_<grain>` | users |
+| mart | shaped for one consumer or question | `marts/<consumer>/` | `mart_<subject>_<grain>` | `databarn.mart_<subject>_<grain>` | users |
 | api | REST API contracts | `api/` | `api_<endpoint>` | `api.<endpoint>` | API |
 | legacy | temporary: old `analytics` names over the new tables | `legacy/` | `legacy_<old name>` | `analytics.<old name>` | old readers |
 | data quality | lists of known problems to inspect | `data_quality/` | `dq_<check>` | `dbt.dq_<check>` | operators |
 
-Why a prefix in the model name and none in the table name: dbt needs model names to be unique across the project, and
-`ref('fact_product_stats_1h')` reads clearly in SQL. In the database, the database name already says the layer, so
-`fact.product_stats_1h JOIN dim.product` is enough. A `generate_alias_name` macro strips `dim_`, `fact_`, `mart_` and
-`api_` (section 5). The mapping is mechanical: `fact.X` is `fact_X.sql`, `mart.X` is `mart_X.sql`.
+Why one database: a client lists one database at a time, so a database per layer meant switching back and forth to
+find a table, while prefixes in one list sort the same way and keep everything in view
+(`databarn.fact_product_stats_1h JOIN databarn.dim_product`). The table name is the model name, so a table is found
+in the project by its name. Only `api` (and the temporary `legacy`) live in a database of their own and drop the
+prefix there (`api_revenue_summary` is `api.revenue_summary`, section 5).
 
 The `dbt` database holds everything users should not browse: `stg_`, `int_` and `dq_` keep their prefix there, so
 one database still sorts into three groups.
@@ -79,10 +81,10 @@ history, its keys and a stated grain, and other models reuse it.
 
 ### Dependency rules
 
-- `dim` and `fact` read `stg`, `int`, `dim` and other `fact` models. They never read `mart`, `api` or `dq_` models.
-- `mart` reads `dim`, `fact` and other `mart` models. It does not read `stg`: if a mart needs a source,
+- `dim_` and `fact_` read `stg_`, `int_`, `dim_` and other `fact_` models. They never read `mart_`, `api_` or `dq_` models.
+- `mart_` reads `dim_`, `fact_` and other `mart_` models. It does not read `stg`: if a mart needs a source,
   the logic belongs in a fact or an intermediate model. (`daily_revenue_summary` reads three staging models today.)
-- `api` reads `mart` (or `fact`) models only. Nothing reads `api`, `dq_` or `legacy_` models.
+- `api_` reads `mart_` (or `fact_`) models only. Nothing reads `api`, `dq_` or `legacy_` models.
 
 These rules can be checked with a small test over the manifest, or with `dbt-project-evaluator`.
 
@@ -126,49 +128,49 @@ Columns (smaller, can come later): events today use `txn_timestamp` and `block_t
 
 ## 3. Rename map (November 2026)
 
-### Dimensions → `dim`
+### Dimensions → `databarn.dim_*`
 
 | today | model | table |
 |---|---|---|
-| `analytics.account` | `dim_account` | `dim.account` |
-| `analytics.asset` | `dim_asset` | `dim.asset` |
-| `analytics.chain` | `dim_chain` | `dim.chain` |
-| `analytics.platform` | `dim_platform` | `dim.platform` |
-| `analytics.product` | `dim_product` | `dim.product` |
-| `analytics.product_bundle` | `dim_product_bundle` | `dim.product_bundle` |
-| `analytics.product_classic` | `dim_product_classic` | `dim.product_classic` |
-| `analytics.product_classic_boost` | `dim_product_classic_boost` | `dim.product_classic_boost` |
-| `analytics.product_clm` | `dim_product_clm` | `dim.product_clm` |
-| `analytics.product_reward_pool` | `dim_product_reward_pool` | `dim.product_reward_pool` |
-| `analytics.token` | `dim_token` | `dim.token` |
+| `analytics.account` | `dim_account` | `databarn.dim_account` |
+| `analytics.asset` | `dim_asset` | `databarn.dim_asset` |
+| `analytics.chain` | `dim_chain` | `databarn.dim_chain` |
+| `analytics.platform` | `dim_platform` | `databarn.dim_platform` |
+| `analytics.product` | `dim_product` | `databarn.dim_product` |
+| `analytics.product_bundle` | `dim_product_bundle` | `databarn.dim_product_bundle` |
+| `analytics.product_classic` | `dim_product_classic` | `databarn.dim_product_classic` |
+| `analytics.product_classic_boost` | `dim_product_classic_boost` | `databarn.dim_product_classic_boost` |
+| `analytics.product_clm` | `dim_product_clm` | `databarn.dim_product_clm` |
+| `analytics.product_reward_pool` | `dim_product_reward_pool` | `databarn.dim_product_reward_pool` |
+| `analytics.token` | `dim_token` | `databarn.dim_token` |
 
-### Facts → `fact`
+### Facts → `databarn.fact_*`
 
 | today | model | table | grain |
 |---|---|---|---|
-| `asset_price_5m` | `facts/prices/fact_asset_price_5m` | `fact.asset_price_5m` | asset × 5m |
-| `asset_price_1d` | `facts/prices/fact_asset_price_1d` | `fact.asset_price_1d` | asset × day |
-| `asset_price_latest` | `facts/prices/fact_asset_price_latest` | `fact.asset_price_latest` | asset |
-| `product_stats` | `facts/products/fact_product_stats_1h` | `fact.product_stats_1h` | product × hour |
-| `product_stats_latest` | `facts/products/fact_product_stats_latest` | `fact.product_stats_latest` | product |
-| `chain_stats` | `facts/chains/fact_chain_stats_1h` | `fact.chain_stats_1h` | chain × hour |
-| `chain_stats_latest` | `facts/chains/fact_chain_stats_latest` | `fact.chain_stats_latest` | chain |
-| `harvests` + `yield_harvest_events` | `facts/products/fact_harvest_obs` | `fact.harvest_obs` | harvest |
-| `revenue_buyback_events` | `facts/revenue/fact_buyback_obs` | `fact.buyback_obs` | buyback |
-| `zap_activity` | `facts/zaps/fact_zap_obs` | `fact.zap_obs` | source transaction |
-| `account_balance_changes` | `facts/accounts/fact_account_balance_change_obs` | `fact.account_balance_change_obs` | balance change |
-| `account_balance_daily` | `facts/accounts/fact_account_balance_1d` | `fact.account_balance_1d` | account × token × day |
+| `asset_price_5m` | `facts/prices/fact_asset_price_5m` | `databarn.fact_asset_price_5m` | asset × 5m |
+| `asset_price_1d` | `facts/prices/fact_asset_price_1d` | `databarn.fact_asset_price_1d` | asset × day |
+| `asset_price_latest` | `facts/prices/fact_asset_price_latest` | `databarn.fact_asset_price_latest` | asset |
+| `product_stats` | `facts/products/fact_product_stats_1h` | `databarn.fact_product_stats_1h` | product × hour |
+| `product_stats_latest` | `facts/products/fact_product_stats_latest` | `databarn.fact_product_stats_latest` | product |
+| `chain_stats` | `facts/chains/fact_chain_stats_1h` | `databarn.fact_chain_stats_1h` | chain × hour |
+| `chain_stats_latest` | `facts/chains/fact_chain_stats_latest` | `databarn.fact_chain_stats_latest` | chain |
+| `harvests` + `yield_harvest_events` | `facts/products/fact_harvest_obs` | `databarn.fact_harvest_obs` | harvest |
+| `revenue_buyback_events` | `facts/revenue/fact_buyback_obs` | `databarn.fact_buyback_obs` | buyback |
+| `zap_activity` | `facts/zaps/fact_zap_obs` | `databarn.fact_zap_obs` | source transaction |
+| `account_balance_changes` | `facts/accounts/fact_account_balance_change_obs` | `databarn.fact_account_balance_change_obs` | balance change |
+| `account_balance_daily` | `facts/accounts/fact_account_balance_1d` | `databarn.fact_account_balance_1d` | account × token × day |
 
 `harvests` and `yield_harvest_events` held the same rows. `fact_harvest_obs` replaces both and adds `want_price`; the
 yield names map to `harvest_amount`, `want_price` and `harvest_amount_usd`. `fact_fee_batch_obs` is new (fee batch
 harvests, from `stg_beefy_db__feebatch_harvests`).
 
-### Marts → `mart`
+### Marts → `databarn.mart_*`
 
 | today | model | table |
 |---|---|---|
-| `daily_revenue_summary` | `marts/revenue/mart_revenue_summary_1d` | `mart.revenue_summary_1d` |
-| `product_tvl_diff` | `marts/products/mart_product_tvl_change_latest` | `mart.product_tvl_change_latest` |
+| `daily_revenue_summary` | `marts/revenue/mart_revenue_summary_1d` | `databarn.mart_revenue_summary_1d` |
+| `product_tvl_diff` | `marts/products/mart_product_tvl_change_latest` | `databarn.mart_product_tvl_change_latest` |
 
 `mart_revenue_summary_1d` reads `fact_buyback_obs`, `fact_harvest_obs` and `fact_fee_batch_obs` instead of the staging
 models. Its buybacks are now priced like `fact_buyback_obs` (the resolved BIFI price of the 5-minute slot, else the
@@ -199,16 +201,16 @@ Intermediate models sit in sub-folders by domain (`prices/`, `product_stats/`, `
 dbt/models/
   staging/<source>/stg_<source>__<table>.sql                  → dbt.stg_*
   intermediate/<domain>/int_<domain>__<what>[_<grain>].sql     → dbt.int_*
-  dimensions/dim_<entity>.sql                                  → dim.<entity>
+  dimensions/dim_<entity>.sql                                  → databarn.dim_<entity>
   facts/
-    prices/    fact_asset_price_{5m,1d,latest}.sql              → fact.asset_price_*
+    prices/    fact_asset_price_{5m,1d,latest}.sql              → databarn.fact_asset_price_*
     products/  fact_product_stats_{1h,latest}.sql, fact_harvest_obs.sql
     chains/    fact_chain_stats_{1h,latest}.sql
     accounts/  fact_account_balance_change_obs.sql, fact_account_balance_1d.sql
     revenue/   fact_buyback_obs.sql, fact_fee_batch_obs.sql
     zaps/      fact_zap_obs.sql
   marts/
-    revenue/   mart_revenue_summary_1d.sql                      → mart.revenue_summary_1d
+    revenue/   mart_revenue_summary_1d.sql                      → databarn.mart_revenue_summary_1d
     products/  mart_product_tvl_change_latest.sql
   api/api_revenue_summary.sql                                  → api.revenue_summary
   data_quality/dq_*.sql                                        → dbt.dq_*
@@ -217,20 +219,21 @@ dbt/models/
 ClickHouse, as a client lists it:
 
 ```
-dim     account asset chain platform product product_* token
-fact    account_balance_1d account_balance_change_obs asset_price_1d asset_price_5m asset_price_latest buyback_obs
-        chain_stats_1h chain_stats_latest harvest_obs product_stats_1h product_stats_latest zap_obs
-mart    product_tvl_change_latest revenue_summary_1d
-api     revenue_summary
-dbt     stg_* int_* dq_*   (internal and operators)
-dlt     raw loads     (internal)
+databarn  dim_account dim_asset dim_chain dim_platform dim_product dim_product_* dim_token
+          fact_account_balance_1d fact_account_balance_change_obs fact_asset_price_1d fact_asset_price_5m
+          fact_asset_price_latest fact_buyback_obs fact_chain_stats_1h fact_chain_stats_latest fact_fee_batch_obs
+          fact_harvest_obs fact_product_stats_1h fact_product_stats_latest fact_zap_obs
+          mart_product_tvl_change_latest mart_revenue_summary_1d
+api       revenue_summary
+dbt       stg_* int_* dq_*   (internal and operators)
+dlt       raw loads          (internal)
 ```
 
 ## 5. Where this lives
 
 - `dbt_project.yml`: one `+schema` per folder. `staging`, `intermediate` and `data_quality` go to the dbt database
-  (`DBT_CLICKHOUSE_STAGING_DB`), the other layers to `dim`, `fact`, `mart` and `api`.
-- `macros/generate_alias_name.sql`: strips the prefix in the four user-facing databases, and fails the build on a
+  (`DBT_CLICKHOUSE_STAGING_DB`), dimensions, facts and marts to `databarn`, api to `api`, legacy to `analytics`.
+- `macros/generate_alias_name.sql`: strips the prefix in `api` and `analytics` only, and fails the build on a
   model without its layer prefix or, for facts and marts, without its grain.
 - `infra/clickhouse/init-clickhouse.sh`: creates the databases and grants them.
 - `mcp/layers.py`, `docglow.yml`: the layers as the MCP server and the docs show them.

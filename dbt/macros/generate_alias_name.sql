@@ -1,8 +1,9 @@
 {#-
   Table name of a model from its layer (CONVENTIONS.md). The first folder under models/ is the layer:
   - every model name starts with its layer's prefix;
-  - in dim, fact, mart and api the database already says the layer, so the table drops the prefix
-    (fact_product_stats_1h -> fact.product_stats_1h). So does legacy (legacy_product_stats -> analytics.product_stats); stg_, int_ and dq_ share the dbt database and keep theirs;
+  - the table is the model name (databarn.fact_product_stats_1h, dbt.int_tvl), except in api and legacy, which have a
+    database of their own and drop the prefix (api_revenue_summary -> api.revenue_summary,
+    legacy_product_stats -> analytics.product_stats);
   - facts and marts end with their grain (_obs, _5m, _1h, _1d, _1w, _1mo, _latest).
   A model with its own alias keeps it.
 -#}
@@ -16,7 +17,7 @@
     {%- set prefixes = {'staging': 'stg_', 'intermediate': 'int_', 'data_quality': 'dq_',
                         'dimensions': 'dim_', 'facts': 'fact_', 'marts': 'mart_', 'api': 'api_',
                         'legacy': 'legacy_'} -%}
-    {%- set stripped = ['dimensions', 'facts', 'marts', 'api', 'legacy'] -%}
+    {%- set stripped = ['api', 'legacy'] -%}
     {%- set grains = ['_obs', '_5m', '_1h', '_1d', '_1w', '_1mo', '_latest'] -%}
     {%- if layer not in prefixes -%}
       {{ exceptions.raise_compiler_error("Model " ~ node.name ~ " is in models/" ~ layer ~ "/, which is not a layer: " ~ (prefixes.keys() | join(', '))) }}

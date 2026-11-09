@@ -5,83 +5,83 @@ version: 2
 
 models:
   - name: legacy_account
-    description: "Deprecated: analytics.account, now dim.account. Read dim.account instead (model dim_account)."
+    description: "Deprecated: analytics.account, now databarn.dim_account. Read databarn.dim_account instead."
     deprecation_date: 2026-12-31
   - name: legacy_account_balance_changes
-    description: "Deprecated: analytics.account_balance_changes, now fact.account_balance_change_obs. Read fact.account_balance_change_obs instead (model fact_account_balance_change_obs)."
+    description: "Deprecated: analytics.account_balance_changes, now databarn.fact_account_balance_change_obs. Read databarn.fact_account_balance_change_obs instead."
     deprecation_date: 2026-12-31
   - name: legacy_account_balance_daily
-    description: "Deprecated: analytics.account_balance_daily, now fact.account_balance_1d. Read fact.account_balance_1d instead (model fact_account_balance_1d)."
+    description: "Deprecated: analytics.account_balance_daily, now databarn.fact_account_balance_1d. Read databarn.fact_account_balance_1d instead."
     deprecation_date: 2026-12-31
   - name: legacy_api_revenue_summary
-    description: "Deprecated: analytics.api_revenue_summary, now api.revenue_summary. Read api.revenue_summary instead (model api_revenue_summary)."
+    description: "Deprecated: analytics.api_revenue_summary, now api.revenue_summary. Read api.revenue_summary instead."
     deprecation_date: 2026-12-31
   - name: legacy_asset
-    description: "Deprecated: analytics.asset, now dim.asset. Read dim.asset instead (model dim_asset)."
+    description: "Deprecated: analytics.asset, now databarn.dim_asset. Read databarn.dim_asset instead."
     deprecation_date: 2026-12-31
   - name: legacy_asset_price_1d
-    description: "Deprecated: analytics.asset_price_1d, now fact.asset_price_1d. Read fact.asset_price_1d instead (model fact_asset_price_1d)."
+    description: "Deprecated: analytics.asset_price_1d, now databarn.fact_asset_price_1d. Read databarn.fact_asset_price_1d instead."
     deprecation_date: 2026-12-31
   - name: legacy_asset_price_5m
-    description: "Deprecated: analytics.asset_price_5m, now fact.asset_price_5m. Read fact.asset_price_5m instead (model fact_asset_price_5m)."
+    description: "Deprecated: analytics.asset_price_5m, now databarn.fact_asset_price_5m. Read databarn.fact_asset_price_5m instead."
     deprecation_date: 2026-12-31
   - name: legacy_asset_price_latest
-    description: "Deprecated: analytics.asset_price_latest, now fact.asset_price_latest (columns renamed back to their old names). Read fact.asset_price_latest instead (model fact_asset_price_latest)."
+    description: "Deprecated: analytics.asset_price_latest, now databarn.fact_asset_price_latest (columns renamed back to their old names). Read databarn.fact_asset_price_latest instead."
     deprecation_date: 2026-12-31
   - name: legacy_chain
-    description: "Deprecated: analytics.chain, now dim.chain. Read dim.chain instead (model dim_chain)."
+    description: "Deprecated: analytics.chain, now databarn.dim_chain. Read databarn.dim_chain instead."
     deprecation_date: 2026-12-31
   - name: legacy_chain_stats
-    description: "Deprecated: analytics.chain_stats, now fact.chain_stats_1h. Read fact.chain_stats_1h instead (model fact_chain_stats_1h)."
+    description: "Deprecated: analytics.chain_stats, now databarn.fact_chain_stats_1h. Read databarn.fact_chain_stats_1h instead."
     deprecation_date: 2026-12-31
   - name: legacy_chain_stats_latest
-    description: "Deprecated: analytics.chain_stats_latest, now fact.chain_stats_latest (columns renamed back to their old names). Read fact.chain_stats_latest instead (model fact_chain_stats_latest)."
+    description: "Deprecated: analytics.chain_stats_latest, now databarn.fact_chain_stats_latest (columns renamed back to their old names). Read databarn.fact_chain_stats_latest instead."
     deprecation_date: 2026-12-31
   - name: legacy_daily_revenue_summary
-    description: "Deprecated: analytics.daily_revenue_summary, now mart.revenue_summary_1d. Read mart.revenue_summary_1d instead (model mart_revenue_summary_1d)."
+    description: "Deprecated: analytics.daily_revenue_summary, now databarn.mart_revenue_summary_1d. Read databarn.mart_revenue_summary_1d instead."
     deprecation_date: 2026-12-31
   - name: legacy_harvests
-    description: "Deprecated: analytics.harvests, now fact.harvest_obs (without want_price). Read fact.harvest_obs instead (model fact_harvest_obs)."
+    description: "Deprecated: analytics.harvests, now databarn.fact_harvest_obs (without want_price). Read databarn.fact_harvest_obs instead."
     deprecation_date: 2026-12-31
   - name: legacy_platform
-    description: "Deprecated: analytics.platform, now dim.platform. Read dim.platform instead (model dim_platform)."
+    description: "Deprecated: analytics.platform, now databarn.dim_platform. Read databarn.dim_platform instead."
     deprecation_date: 2026-12-31
   - name: legacy_product
-    description: "Deprecated: analytics.product, now dim.product. Read dim.product instead (model dim_product)."
+    description: "Deprecated: analytics.product, now databarn.dim_product. Read databarn.dim_product instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_bundle
-    description: "Deprecated: analytics.product_bundle, now dim.product_bundle. Read dim.product_bundle instead (model dim_product_bundle)."
+    description: "Deprecated: analytics.product_bundle, now databarn.dim_product_bundle. Read databarn.dim_product_bundle instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_classic
-    description: "Deprecated: analytics.product_classic, now dim.product_classic. Read dim.product_classic instead (model dim_product_classic)."
+    description: "Deprecated: analytics.product_classic, now databarn.dim_product_classic. Read databarn.dim_product_classic instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_classic_boost
-    description: "Deprecated: analytics.product_classic_boost, now dim.product_classic_boost. Read dim.product_classic_boost instead (model dim_product_classic_boost)."
+    description: "Deprecated: analytics.product_classic_boost, now databarn.dim_product_classic_boost. Read databarn.dim_product_classic_boost instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_clm
-    description: "Deprecated: analytics.product_clm, now dim.product_clm. Read dim.product_clm instead (model dim_product_clm)."
+    description: "Deprecated: analytics.product_clm, now databarn.dim_product_clm. Read databarn.dim_product_clm instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_reward_pool
-    description: "Deprecated: analytics.product_reward_pool, now dim.product_reward_pool. Read dim.product_reward_pool instead (model dim_product_reward_pool)."
+    description: "Deprecated: analytics.product_reward_pool, now databarn.dim_product_reward_pool. Read databarn.dim_product_reward_pool instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_stats
-    description: "Deprecated: analytics.product_stats, now fact.product_stats_1h. Read fact.product_stats_1h instead (model fact_product_stats_1h)."
+    description: "Deprecated: analytics.product_stats, now databarn.fact_product_stats_1h. Read databarn.fact_product_stats_1h instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_stats_latest
-    description: "Deprecated: analytics.product_stats_latest, now fact.product_stats_latest (columns renamed back to their old names). Read fact.product_stats_latest instead (model fact_product_stats_latest)."
+    description: "Deprecated: analytics.product_stats_latest, now databarn.fact_product_stats_latest (columns renamed back to their old names). Read databarn.fact_product_stats_latest instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_tvl_diff
-    description: "Deprecated: analytics.product_tvl_diff, now mart.product_tvl_change_latest (columns renamed back to their old names). Read mart.product_tvl_change_latest instead (model mart_product_tvl_change_latest)."
+    description: "Deprecated: analytics.product_tvl_diff, now databarn.mart_product_tvl_change_latest (columns renamed back to their old names). Read databarn.mart_product_tvl_change_latest instead."
     deprecation_date: 2026-12-31
   - name: legacy_revenue_buyback_events
-    description: "Deprecated: analytics.revenue_buyback_events, now fact.buyback_obs. Read fact.buyback_obs instead (model fact_buyback_obs)."
+    description: "Deprecated: analytics.revenue_buyback_events, now databarn.fact_buyback_obs. Read databarn.fact_buyback_obs instead."
     deprecation_date: 2026-12-31
   - name: legacy_token
-    description: "Deprecated: analytics.token, now dim.token. Read dim.token instead (model dim_token)."
+    description: "Deprecated: analytics.token, now databarn.dim_token. Read databarn.dim_token instead."
     deprecation_date: 2026-12-31
   - name: legacy_yield_harvest_events
-    description: "Deprecated: analytics.yield_harvest_events, now fact.harvest_obs (rebuilt from fact_harvest_obs with the old column names). Read fact.harvest_obs instead (model fact_harvest_obs)."
+    description: "Deprecated: analytics.yield_harvest_events, now databarn.fact_harvest_obs (rebuilt from fact_harvest_obs with the old column names). Read databarn.fact_harvest_obs instead."
     deprecation_date: 2026-12-31
   - name: legacy_zap_activity
-    description: "Deprecated: analytics.zap_activity, now fact.zap_obs. Read fact.zap_obs instead (model fact_zap_obs)."
+    description: "Deprecated: analytics.zap_activity, now databarn.fact_zap_obs. Read databarn.fact_zap_obs instead."
     deprecation_date: 2026-12-31

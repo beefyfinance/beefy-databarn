@@ -12,7 +12,7 @@ LAYERS: dict[str, dict] = {
         "audience": "primary",
         "rank": 0,
         "title": "Facts",
-        "description": "Reusable fact tables in the fact database (fact_*): one row per observation (*_obs: "
+        "description": "Reusable fact tables in the databarn database (databarn.fact_*): one row per observation (*_obs: "
         "harvests, buybacks, zaps, balance changes) or per entity per period (*_5m, *_1h, *_1d: prices, product and "
         "chain stats), plus *_latest views. Full history, keyed to the dimensions. Start here for almost any "
         "analytical question.",
@@ -21,21 +21,21 @@ LAYERS: dict[str, dict] = {
         "audience": "primary",
         "rank": 1,
         "title": "Dimensions",
-        "description": "Reference entities in the dim database (dim_*: chain, product, token, asset, platform, "
+        "description": "Reference entities in the databarn database (databarn.dim_*: chain, product, token, asset, platform, "
         "account). Join facts to these for names and attributes.",
     },
     "marts": {
         "audience": "primary",
         "rank": 2,
         "title": "Marts",
-        "description": "Tables shaped for one dashboard or question, in the mart database (mart_*: daily revenue "
+        "description": "Tables shaped for one dashboard or question, in the databarn database (databarn.mart_*: daily revenue "
         "summary, TVL changes). Use them for that question; build anything else from the facts.",
     },
     "api": {
         "audience": "primary",
         "rank": 3,
         "title": "API views",
-        "description": "Views backing the public REST API, in the api database (api_*). Stable contracts for consumers; "
+        "description": "Views backing the public REST API, in the api database (api.*, models api_*). Stable contracts for consumers; "
         "not for ad-hoc analysis.",
     },
     "legacy": {
@@ -43,7 +43,7 @@ LAYERS: dict[str, dict] = {
         "rank": 8,
         "title": "Legacy (deprecated)",
         "description": "Temporary views under the old analytics names (legacy_*: analytics.product_stats, ...) over "
-        "the new tables, for readers that have not moved yet. Never suggest them: point to the dim/fact/mart table "
+        "the new tables, for readers that have not moved yet. Never suggest them: point to the databarn table "
         "named in their description.",
     },
     "data_quality": {

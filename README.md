@@ -218,23 +218,24 @@ make up              # Rolling update (redeploy stack)
 
 ## dbt Models
 
-Layers, naming and grain follow [dbt/CONVENTIONS.md](dbt/CONVENTIONS.md). In short: one folder, one model prefix and
-one ClickHouse database per layer; every fact and mart name ends with its grain.
+Layers, naming and grain follow [dbt/CONVENTIONS.md](dbt/CONVENTIONS.md). In short: one folder and one model prefix per
+layer; the user-facing tables (`dim_*`, `fact_*`, `mart_*`) all sit in the `databarn` database under their model name,
+the API views in `api`; every fact and mart name ends with its grain.
 
 | layer | folder | model | ClickHouse | what |
 |---|---|---|---|---|
 | staging | `staging/<source>/` | `stg_<source>__<table>` | `dbt.stg_*` | 1:1 cleanup of a source table |
 | intermediate | `intermediate/<domain>/` | `int_*` | `dbt.int_*` | building blocks |
 | data quality | `data_quality/` | `dq_*` | `dbt.dq_*` | lists of known gaps to inspect |
-| dimension | `dimensions/` | `dim_<entity>` | `dim.<entity>` | one row per entity |
-| fact | `facts/<domain>/` | `fact_<subject>_<grain>` | `fact.<subject>_<grain>` | reusable: one row per observation (`_obs`) or per entity per period (`_5m`, `_1h`, `_1d`), and `_latest` views |
-| mart | `marts/<consumer>/` | `mart_<subject>_<grain>` | `mart.<subject>_<grain>` | shaped for one dashboard or question |
+| dimension | `dimensions/` | `dim_<entity>` | `databarn.dim_<entity>` | one row per entity |
+| fact | `facts/<domain>/` | `fact_<subject>_<grain>` | `databarn.fact_<subject>_<grain>` | reusable: one row per observation (`_obs`) or per entity per period (`_5m`, `_1h`, `_1d`), and `_latest` views |
+| mart | `marts/<consumer>/` | `mart_<subject>_<grain>` | `databarn.mart_<subject>_<grain>` | shaped for one dashboard or question |
 | api | `api/` | `api_<endpoint>` | `api.<endpoint>` | REST API contracts |
 | legacy | `legacy/` | `legacy_<old name>` | `analytics.<old name>` | temporary: the old `analytics` names over the new tables, until 2026-12-31 |
 
-The table name is the model name without its layer prefix (`fact_product_stats_1h` is `fact.product_stats_1h`):
-`macros/generate_alias_name.sql` strips it, and fails the build when a model lacks its prefix or, for facts and marts,
-its grain.
+The table name is the model name (`fact_product_stats_1h` is `databarn.fact_product_stats_1h`), except in `api` and
+`analytics`, which drop the prefix. `macros/generate_alias_name.sql` does this, and fails the build when a model lacks
+its prefix or, for facts and marts, its grain.
 
 ### Data Flow
 
@@ -242,10 +243,10 @@ its grain.
 graph LR
     A[dlt / Envio<br/>raw tables] --> B[staging<br/>dbt.stg_*]
     B --> C[intermediate<br/>dbt.int_*]
-    C --> D[dim.*]
-    C --> E[fact.*]
+    C --> D[databarn.dim_*]
+    C --> E[databarn.fact_*]
     D --> E
-    E --> F[mart.*]
+    E --> F[databarn.mart_*]
     F --> G[api.*]
     E --> H[Grafana / ad-hoc]
     F --> H
@@ -256,7 +257,7 @@ graph LR
 1. **Source**: the beefy-db `harvests` table, loaded by dlt into `dlt.beefy_db___harvests`
 2. **Staging**: `stg_beefy_db__harvests` types and deduplicates it
 3. **Intermediate**: `int_harvests` cleans it and prices each harvest from `fact_asset_price_5m`
-4. **Fact**: `fact_harvest_obs` (`fact.harvest_obs`) joins the product dimension and computes USD values
+4. **Fact**: `fact_harvest_obs` (`databarn.fact_harvest_obs`) joins the product dimension and computes USD values
 5. **Mart**: `mart_revenue_summary_1d` sums it per day with buybacks and fee batches; `api_revenue_summary` serves it
 
 ### Prices
@@ -271,7 +272,7 @@ One price per asset and 5-minute slot, resolved once and reused by every model t
 | `fact_asset_price_5m` | Dense 5-minute price of every asset (materialization `price_resolver`): in each slot the observation of highest priority, newest first; otherwise the last value carried for up to a day (a vault share keeps its ppfs and follows its want price). Each run resolves the new slots and recomputes, from the first changed slot, every asset whose observations, map rows or corrections changed. It logs what it changed in `int_price_runs`. `observed_at` is the slot of the value a row holds or carries, so a row's age is `date_time - observed_at`. |
 | `fact_asset_price_1d`, `fact_asset_price_latest` | Daily OHLC; last price of each asset. |
 
-**Priced models.** A model that stores a price or a USD value looks it up in `fact.asset_price_5m` on its row's 5-minute
+**Priced models.** A model that stores a price or a USD value looks it up in `databarn.fact_asset_price_5m` on its row's 5-minute
 slot, with a key lookup (`WHERE (asset_id, date_time) IN (SELECT asset_id, slot FROM facts)`), never an ASOF join
 (ClickHouse loads the whole right side of an ASOF join into memory). Small marts are priced in full each run
 (`fact_buyback_obs`, `fact_zap_obs`, `int_yield`). Incremental ones also recompute the rows of the assets a

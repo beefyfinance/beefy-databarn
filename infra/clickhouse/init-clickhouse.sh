@@ -77,11 +77,10 @@ clickhouse-client \
   --user default \
   --password "$CLICKHOUSE_PASSWORD" \
   --multiquery <<SQL
-    -- User-facing layers (dbt/CONVENTIONS.md). analytics only holds the legacy views (dbt/models/legacy/): the old
-    -- table names over the new tables, while its readers move; then it is dropped.
-    CREATE DATABASE IF NOT EXISTS dim;
-    CREATE DATABASE IF NOT EXISTS fact;
-    CREATE DATABASE IF NOT EXISTS mart;
+    -- User-facing tables: databarn (dim_*, fact_*, mart_*) and api (dbt/CONVENTIONS.md). analytics only holds the
+    -- legacy views (dbt/models/legacy/): the old table names over the new tables, while its readers move; then it is
+    -- dropped.
+    CREATE DATABASE IF NOT EXISTS databarn;
     CREATE DATABASE IF NOT EXISTS api;
     CREATE DATABASE IF NOT EXISTS analytics;
     CREATE DATABASE IF NOT EXISTS dbt;
@@ -152,14 +151,12 @@ clickhouse-client \
     -- Grants (idempotent)
     -------------------------
 
-    -- dlt: RW on dlt.*, R on dbt/dim/fact/mart/api/analytics/project ingest
+    -- dlt: RW on dlt.*, R on dbt/databarn/api/analytics/project ingest
     REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*      FROM dlt;
     REVOKE ALL PRIVILEGES ON dlt.*                     FROM dlt;
     REVOKE ALL PRIVILEGES ON dbt.*                     FROM dlt;
     REVOKE ALL PRIVILEGES ON analytics.*               FROM dlt;
-    REVOKE ALL PRIVILEGES ON dim.*                     FROM dlt;
-    REVOKE ALL PRIVILEGES ON fact.*                    FROM dlt;
-    REVOKE ALL PRIVILEGES ON mart.*                    FROM dlt;
+    REVOKE ALL PRIVILEGES ON databarn.*               FROM dlt;
     REVOKE ALL PRIVILEGES ON api.*                     FROM dlt;
     REVOKE ALL PRIVILEGES ON zapalytics.*              FROM dlt;
     REVOKE ALL PRIVILEGES ON envio.*                   FROM dlt;
@@ -168,14 +165,12 @@ clickhouse-client \
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dlt.*                      TO dlt;
     GRANT ${READ_PERM}                ON dbt.*                      TO dlt; -- required to update incremental materialized views
     GRANT ${READ_PERM}                ON analytics.*                TO dlt; -- required to update incremental materialized views
-    GRANT ${READ_PERM}                ON dim.*                      TO dlt;
-    GRANT ${READ_PERM}                ON fact.*                     TO dlt;
-    GRANT ${READ_PERM}                ON mart.*                     TO dlt;
+    GRANT ${READ_PERM}                ON databarn.*                TO dlt;
     GRANT ${READ_PERM}                ON api.*                      TO dlt;
     GRANT ${READ_PERM}                ON zapalytics.*               TO dlt;
     GRANT ${READ_PERM}                ON envio.*                    TO dlt;
 
-    -- dbt: R on dlt.*, RW on dbt.*, dim.*, fact.*, mart.*, api.* & analytics.*, RW+CREATE DATABASE on
+    -- dbt: R on dlt.*, RW on dbt.*, databarn.* , api.* & analytics.*, RW+CREATE DATABASE on
     -- dbt_test__audit.* (dbt store_failures always issues CREATE DATABASE)
     REVOKE ALL PRIVILEGES ON INFORMATION_SCHEMA.*     FROM dbt;
     REVOKE ALL PRIVILEGES ON dlt.*                    FROM dbt;
@@ -183,9 +178,7 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON zapalytics.*             FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON analytics.*              FROM dbt;
-    REVOKE ALL PRIVILEGES ON dim.*                    FROM dbt;
-    REVOKE ALL PRIVILEGES ON fact.*                   FROM dbt;
-    REVOKE ALL PRIVILEGES ON mart.*                   FROM dbt;
+    REVOKE ALL PRIVILEGES ON databarn.*              FROM dbt;
     REVOKE ALL PRIVILEGES ON api.*                    FROM dbt;
     REVOKE ALL PRIVILEGES ON dbt_test__audit.*        FROM dbt;
     REVOKE ALL PRIVILEGES ON dev_*.*                  FROM dbt;
@@ -196,9 +189,7 @@ clickhouse-client \
     GRANT ${READ_PERM}                ON zapalytics.*               TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
-    GRANT ${READ_PERM}, ${WRITE_PERM} ON dim.*                      TO dbt;
-    GRANT ${READ_PERM}, ${WRITE_PERM} ON fact.*                     TO dbt;
-    GRANT ${READ_PERM}, ${WRITE_PERM} ON mart.*                     TO dbt;
+    GRANT ${READ_PERM}, ${WRITE_PERM} ON databarn.*                TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON api.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM}, CREATE DATABASE ON dbt_test__audit.* TO dbt;
     GRANT SHOW                        ON dev_*.*                    TO dbt; -- daily dev DB size alert reads system.parts
@@ -207,36 +198,28 @@ clickhouse-client \
     REVOKE ALL PRIVILEGES ON dlt.*           FROM grafana;
     REVOKE ALL PRIVILEGES ON dbt.*           FROM grafana;
     REVOKE ALL PRIVILEGES ON analytics.*     FROM grafana;
-    REVOKE ALL PRIVILEGES ON dim.*           FROM grafana;
-    REVOKE ALL PRIVILEGES ON fact.*          FROM grafana;
-    REVOKE ALL PRIVILEGES ON mart.*          FROM grafana;
+    REVOKE ALL PRIVILEGES ON databarn.*     FROM grafana;
     REVOKE ALL PRIVILEGES ON api.*           FROM grafana;
     REVOKE ALL PRIVILEGES ON envio.*         FROM grafana;
     REVOKE ALL PRIVILEGES ON zapalytics.*    FROM grafana;
     GRANT ${READ_PERM} ON dlt.*           TO grafana;
     GRANT ${READ_PERM} ON dbt.*           TO grafana;
     GRANT ${READ_PERM} ON analytics.*     TO grafana;
-    GRANT ${READ_PERM} ON dim.*           TO grafana;
-    GRANT ${READ_PERM} ON fact.*          TO grafana;
-    GRANT ${READ_PERM} ON mart.*          TO grafana;
+    GRANT ${READ_PERM} ON databarn.*     TO grafana;
     GRANT ${READ_PERM} ON api.*           TO grafana;
     GRANT ${READ_PERM} ON envio.*         TO grafana;
     GRANT ${READ_PERM} ON zapalytics.*    TO grafana;
 
     -- api: R on warehouse + project DBs
     REVOKE ALL PRIVILEGES ON analytics.*    FROM api;
-    REVOKE ALL PRIVILEGES ON dim.*          FROM api;
-    REVOKE ALL PRIVILEGES ON fact.*         FROM api;
-    REVOKE ALL PRIVILEGES ON mart.*         FROM api;
+    REVOKE ALL PRIVILEGES ON databarn.*    FROM api;
     REVOKE ALL PRIVILEGES ON api.*          FROM api;
     REVOKE ALL PRIVILEGES ON dlt.*          FROM api;
     REVOKE ALL PRIVILEGES ON dbt.*          FROM api;
     REVOKE ALL PRIVILEGES ON envio.*        FROM api;
     REVOKE ALL PRIVILEGES ON zapalytics.*   FROM api;
     GRANT ${READ_PERM} ON analytics.*    TO api;
-    GRANT ${READ_PERM} ON dim.*          TO api;
-    GRANT ${READ_PERM} ON fact.*         TO api;
-    GRANT ${READ_PERM} ON mart.*         TO api;
+    GRANT ${READ_PERM} ON databarn.*    TO api;
     GRANT ${READ_PERM} ON api.*          TO api;
     GRANT ${READ_PERM} ON dlt.*          TO api;
     GRANT ${READ_PERM} ON dbt.*          TO api;
@@ -245,29 +228,21 @@ clickhouse-client \
 
     -- envio: SELECT on the user-facing layers, project write on envio.*
     REVOKE ALL PRIVILEGES ON analytics.*             FROM envio;
-    REVOKE ALL PRIVILEGES ON dim.*                   FROM envio;
-    REVOKE ALL PRIVILEGES ON fact.*                  FROM envio;
-    REVOKE ALL PRIVILEGES ON mart.*                  FROM envio;
+    REVOKE ALL PRIVILEGES ON databarn.*             FROM envio;
     REVOKE ALL PRIVILEGES ON api.*                   FROM envio;
     REVOKE ALL PRIVILEGES ON envio.*                 FROM envio;
     GRANT ${READ_PERM}                             ON analytics.*    TO envio;
-    GRANT ${READ_PERM}                             ON dim.*          TO envio;
-    GRANT ${READ_PERM}                             ON fact.*         TO envio;
-    GRANT ${READ_PERM}                             ON mart.*         TO envio;
+    GRANT ${READ_PERM}                             ON databarn.*    TO envio;
     GRANT ${READ_PERM}                             ON api.*          TO envio;
     GRANT ${PROJECT_WRITE_PERM}, ${RESET_DB_PERM}  ON envio.*        TO envio;
 
     -- zapalytics: SELECT on the user-facing layers, project write on zapalytics.*
     REVOKE ALL PRIVILEGES ON analytics.*             FROM zapalytics;
-    REVOKE ALL PRIVILEGES ON dim.*                   FROM zapalytics;
-    REVOKE ALL PRIVILEGES ON fact.*                  FROM zapalytics;
-    REVOKE ALL PRIVILEGES ON mart.*                  FROM zapalytics;
+    REVOKE ALL PRIVILEGES ON databarn.*             FROM zapalytics;
     REVOKE ALL PRIVILEGES ON api.*                   FROM zapalytics;
     REVOKE ALL PRIVILEGES ON zapalytics.*            FROM zapalytics;
     GRANT ${READ_PERM}            ON analytics.*    TO zapalytics;
-    GRANT ${READ_PERM}            ON dim.*          TO zapalytics;
-    GRANT ${READ_PERM}            ON fact.*         TO zapalytics;
-    GRANT ${READ_PERM}            ON mart.*         TO zapalytics;
+    GRANT ${READ_PERM}            ON databarn.*    TO zapalytics;
     GRANT ${READ_PERM}            ON api.*          TO zapalytics;
     GRANT ${PROJECT_WRITE_PERM}   ON zapalytics.*   TO zapalytics;
 
@@ -458,5 +433,5 @@ clickhouse-client \
         TO dev_role;
 SQL
 
-echo "✓ Databases dim, fact, mart, api, analytics, dbt, dbt_test__audit, dlt, envio & zapalytics initialized"
+echo "✓ Databases databarn, api, analytics, dbt, dbt_test__audit, dlt, envio & zapalytics initialized"
 echo "✓ Users, grants, profiles, quotas reset & synced to env"

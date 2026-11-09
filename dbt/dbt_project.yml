@@ -22,8 +22,8 @@ clean-targets:
 
 models:
   beefy_databarn:
-    # One folder per layer, one ClickHouse database per user-facing layer (CONVENTIONS.md). Model names carry the
-    # layer prefix; generate_alias_name strips it in dim/fact/mart/api, where the database already says the layer.
+    # One folder per layer (CONVENTIONS.md). The table is the model name: stg_/int_/dq_ in the dbt database,
+    # dim_/fact_/mart_ in databarn. api and legacy have a database of their own and drop the prefix.
     staging:
       +schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       +tags: ["staging"]
@@ -34,14 +34,14 @@ models:
       +schema: "{{ env_var('DBT_CLICKHOUSE_STAGING_DB', 'dbt') }}"
       +tags: ["data_quality"]
     dimensions:
-      +schema: dim
+      +schema: databarn
       +tags: ["dimensions"]
       +materialized: table
     facts:
-      +schema: fact
+      +schema: databarn
       +tags: ["facts"]
     marts:
-      +schema: mart
+      +schema: databarn
       +tags: ["marts"]
     api:
       +schema: api
