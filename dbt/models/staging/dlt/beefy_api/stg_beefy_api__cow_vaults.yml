@@ -23,7 +23,7 @@ models:
         description: "Zap information (JSON string)"
       - name: name
         description: "Vault name"
-      - name: dim_token
+      - name: token
         description: "Token address"
       - name: token_address
         description: "Token address"
@@ -57,7 +57,7 @@ models:
         description: "Fee tier"
       - name: is_gov_vault
         description: "Whether this is a governance vault"
-      - name: dim_chain
+      - name: chain
         description: "Chain information"
       - name: strategy
         description: "Strategy information"

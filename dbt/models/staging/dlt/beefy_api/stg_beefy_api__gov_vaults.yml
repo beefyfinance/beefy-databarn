@@ -42,7 +42,7 @@ models:
         description: "Vault type"
       - name: version
         description: "Vault version"
-      - name: dim_token
+      - name: token
         description: "Token address"
       - name: token_address
         description: "Token address"
@@ -72,7 +72,7 @@ models:
         description: "Network"
       - name: is_gov_vault
         description: "Whether this is a governance vault"
-      - name: dim_chain
+      - name: chain
         description: "Chain identifier (part of unique key with earn_contract_address)"
         tests:
           - not_null
