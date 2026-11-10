@@ -31,6 +31,8 @@
 
 -- Last databarn v1 vault stats of each hour, valued with a want oracle price at most 1 day old.
 -- Fallback for int_product_stats__tvl_1h and int_product_stats__lps_breakdown_1h.
+-- Only until int_product_stats__retirement.databarn_v1_until (retirement or chain eol + 1 month): v1 stops importing
+-- a vault about a month after it retires, so its later share supply is not known.
 -- After a databarn_v1 backfill: make dbt reimport int_databarn_v1__vault_stats_1h+ <since>.
 -- Incremental runs also recompute the hours a resolver run re-priced (price_reprice: each dirty want from the hour
 -- of its first changed price).
@@ -99,3 +101,12 @@ inner join (
 ) wants
   on wants.asset_id = {{ want_asset }}
   and wants.date_time = toStartOfFiveMinutes(stats.stats_datetime)
+-- Products with a bound only; join_use_nulls = 0 gives the others the epoch, which means no bound.
+left join (
+  select chain_id, product_address, assumeNotNull(databarn_v1_until) as databarn_v1_until
+  from {{ ref('int_product_stats__retirement') }}
+  where databarn_v1_until is not null
+) r
+  on r.chain_id = pk.chain_id
+  and r.product_address = pk.product_address
+where r.databarn_v1_until = toDateTime(0, 'UTC') or stats.date_hour < r.databarn_v1_until

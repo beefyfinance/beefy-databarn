@@ -44,10 +44,16 @@ WITH
     INNER JOIN {{ ref('int_chain_keys') }} c ON pk.chain_id = c.chain_id
     LEFT JOIN oracles w ON pk.beefy_wants_price_oracle_key = w.oracle_key
   ),
+  -- databarn_v1_until: v1 ppfs is used until 1 month after the vault retired or its chain went eol
+  -- (int_product_stats__retirement). v1 keeps reporting some retired vaults for years (2026-11: 105M observations
+  -- past that bound, 626 series off by more than 1%, up to 3x), but stops importing most of them about a month after
+  -- eol. After the bound the resolver carries the last v1 ppfs times the want price, unless another series prices it.
   databarn_products AS (
-    SELECT wd.product_id AS product_id, wd.want_decimals AS want_decimals, p.asset_id AS asset_id, p.want_asset_id AS want_asset_id
+    SELECT wd.product_id AS product_id, wd.want_decimals AS want_decimals, p.asset_id AS asset_id, p.want_asset_id AS want_asset_id,
+      ifNull(r.databarn_v1_until, toDateTime('2100-01-01 00:00:00', 'UTC')) AS valid_to
     FROM {{ ref('int_databarn_v1__want_decimals') }} wd
     INNER JOIN products p ON wd.chain_id = p.chain_id AND wd.product_address = p.product_address
+    LEFT JOIN {{ ref('int_product_stats__retirement') }} r ON r.chain_id = p.chain_id AND r.product_address = p.product_address
     WHERE p.want_asset_id != 0
   ),
   share_rate_feeds AS (
@@ -147,7 +153,7 @@ WITH
     SELECT
       {{ price_series_id('dbv1_product', 'dp.product_id') }}, 'dbv1_product', dp.asset_id, 'share', 'ppfs', 40,
       dp.want_asset_id, toFloat64(18 - dp.want_decimals), 1., toDateTime(0, 'UTC'), toDateTime(0, 'UTC'),
-      toDateTime('2100-01-01 00:00:00', 'UTC')
+      dp.valid_to
     FROM databarn_products dp
 
     UNION ALL
@@ -155,7 +161,7 @@ WITH
     SELECT
       {{ price_series_id('dbv1_feed', 'f.price_feed_id') }}, 'dbv1_feed', dp.asset_id, 'share', 'ppfs', 40,
       dp.want_asset_id, toFloat64(18 - dp.want_decimals), 1., toDateTime(0, 'UTC'), toDateTime(0, 'UTC'),
-      toDateTime('2100-01-01 00:00:00', 'UTC')
+      dp.valid_to
     FROM share_rate_feeds f
     INNER JOIN databarn_products dp ON f.product_id = dp.product_id
 

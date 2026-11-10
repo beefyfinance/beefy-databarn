@@ -40,4 +40,4 @@ models:
       - name: valid_from
         description: "First time the series prices this asset"
       - name: valid_to
-        description: "End of the validity (aliases)"
+        description: "End of the validity (exclusive): an alias replaced by its successor, a databarn v1 ppfs series at int_product_stats__retirement.databarn_v1_until (retirement or chain eol + 1 month)"
