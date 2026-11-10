@@ -19,6 +19,7 @@ The level of a model is the number of batched models above it in the selection. 
   2. each of its batched models, one run per month from <since> (or batch_start) to tomorrow;
      for refresh the first batch is a --full-refresh, later batches append to it
 Without batchable models in the selection it is a single plain dbt run, as before.
+After a reimport, macros/purge_deleted_rows.sql drops the rows its deletes hid (they stay on disk otherwise).
 """
 
 from __future__ import annotations
@@ -113,8 +114,19 @@ def main() -> None:
     models = selected_models(selector)
     if all(model.batch_start is None for model in models.values()):
         dbt("run", "--select", selector, *full_refresh, *since_vars)
-        return
+    else:
+        run_batched(models, since, full_refresh, since_vars)
+    if mode == "reimport":
+        purge_deleted_rows(models)
 
+
+def purge_deleted_rows(models: dict[str, Model]) -> None:
+    """A reimport hides the whole old history behind lightweight deletes: drop those rows from disk."""
+    names = sorted(model.name for model in models.values())
+    dbt("run-operation", "purge_deleted_rows", "--args", json.dumps({"models": names}))
+
+
+def run_batched(models: dict[str, Model], since: str | None, full_refresh: list[str], since_vars: list[str]) -> None:
     names = sorted(model.name for model in models.values() if model.batch_start is not None)
     print(f"Batching by month: {', '.join(names)}", flush=True)
 

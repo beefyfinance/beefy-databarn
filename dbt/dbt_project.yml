@@ -22,6 +22,9 @@ clean-targets:
 
 models:
   beefy_databarn:
+    # Incremental tables: drop the rows their lightweight deletes hid, and let merges do it too
+    # (macros/purge_deleted_rows.sql).
+    +post-hook: "{{ purge_deleted_rows_hook() }}"
     # One folder per layer (CONVENTIONS.md). The table is the model name: stg_/int_/dq_ in the dbt database,
     # dim_/fact_/mart_ in databarn. api and legacy have a database of their own and drop the prefix.
     staging:

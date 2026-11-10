@@ -22,6 +22,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Runs start every 30 minutes and overlapping ones are skipped: alert when a run eats most of its slot.
+DBT_RUN_SLOW_ALERT_MINUTES = float(os.environ.get("DBT_RUN_SLOW_ALERT_MINUTES", "25"))
+
 
 def publish_docs():
     """Generate Docglow static docs. Failure must not block dbt run."""
@@ -73,6 +76,11 @@ def run_dbt():
         else:
             logger.error("dbt run failed")
             alerts.alert_run_failed(started, result.returncode)
+
+        duration = time.time() - started
+        if duration > DBT_RUN_SLOW_ALERT_MINUTES * 60:
+            logger.warning(f"dbt run took {duration / 60:.0f} min")
+            alerts.alert_run_slow(started, duration, DBT_RUN_SLOW_ALERT_MINUTES)
             
     except Exception as e:
         logger.error(f"Error running dbt: {e}", exc_info=True)

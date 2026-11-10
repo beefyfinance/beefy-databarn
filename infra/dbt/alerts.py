@@ -110,6 +110,30 @@ def alert_run_failed(started: float, returncode: int) -> None:
     _alert("dbt_run", "dbt run failed (prod)", _failure_description(started, returncode, "run"))
 
 
+def _slowest_nodes(started: float, *, max_items: int = 5) -> str:
+    if not _results_written_since(started):
+        return "No run_results.json from this run."
+    try:
+        results = json.loads(RUN_RESULTS_PATH.read_text()).get("results", [])
+    except (OSError, json.JSONDecodeError):
+        return "Could not read dbt run_results.json."
+    slowest = sorted(results, key=lambda r: r.get("execution_time") or 0, reverse=True)[:max_items]
+    return "\n".join(
+        f"• {as_inline_code(_display_name(r.get('unique_id') or 'unknown'))}: {(r.get('execution_time') or 0) / 60:.1f} min"
+        for r in slowest
+    )
+
+
+def alert_run_slow(started: float, duration_s: float, threshold_min: float) -> None:
+    """A run longer than its slot delays the next one (the scheduler skips overlapping runs)."""
+    _alert(
+        "dbt_run_slow",
+        "dbt run slow (prod)",
+        f"dbt run took {duration_s / 60:.0f} min (alert above {threshold_min:g} min). Slowest models "
+        "(model time includes its post-hooks, e.g. purge_deleted_rows):\n" + _slowest_nodes(started),
+    )
+
+
 def alert_run_exception(exc: BaseException) -> None:
     _alert("dbt_run", "dbt run failed (prod)", f"dbt run raised {type(exc).__name__}: {exc}")
 
