@@ -95,5 +95,3 @@ FROM (
     AND {{ window['clm'] }}
 )
 GROUP BY chain_id, product_address, date_hour
--- Stops 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
-HAVING {{ product_is_tracked() }}

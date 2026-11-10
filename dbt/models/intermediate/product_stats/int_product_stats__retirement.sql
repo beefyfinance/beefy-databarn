@@ -7,12 +7,11 @@
   )
 }}
 
--- When product stats stop: 3 months after the product retires or its chain goes eol, whichever comes first.
--- Grain is (chain_id, product_address), every product of int_product_keys. tracked_until is null while neither
--- has happened. Read by macros/product_is_tracked.sql, the HAVING of the hourly snapshot models (tvl, apy,
--- apy_breakdown, lps_breakdown, share_price). Rows already written are kept: the cutoff only stops new ones.
--- Why: the Beefy API keeps serving retired vaults (/apy/breakdown, /lps/breakdown) with their last values frozen,
--- so without a cutoff an eol vault would show an APY forever.
+-- When each product retired and when its chain went eol. Grain is (chain_id, product_address), every product of
+-- int_product_keys; dates are null while it has not happened.
+-- databarn_v1_until bounds databarn v1 data: v1 stops importing a vault about a month after it retires, so past
+-- that its share supply and ppfs are no longer known. Product stats themselves are not cut: the Beefy API keeps
+-- serving retired vaults, and users who never withdrew still have TVL in them.
 
 {% set never = "toDateTime('2106-01-01 00:00:00', 'UTC')" %}
 
@@ -88,8 +87,8 @@ select
   retired_at,
   chain_eol_at,
   cast(
-    nullIf(least(ifNull(retired_at, {{ never }}), ifNull(chain_eol_at, {{ never }})), {{ never }}) + INTERVAL 3 MONTH
+    nullIf(least(ifNull(retired_at, {{ never }}), ifNull(chain_eol_at, {{ never }})), {{ never }}) + INTERVAL 1 MONTH
     as Nullable(DateTime('UTC'))
-  ) as tracked_until
+  ) as databarn_v1_until
 -- Every date column is Nullable, so a product missing from a LEFT JOIN gets NULL, not the epoch.
 from products

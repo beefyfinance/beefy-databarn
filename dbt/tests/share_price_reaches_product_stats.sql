@@ -28,8 +28,6 @@ shares as (
   where p.date_time >= (select window_end from anchor) - interval {{ window_days }} day
     and p.date_time < (select window_end from anchor)
   group by chain_id, product_address, date_hour
-  -- Product stats stop 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
-  having {{ product_is_tracked() }}
 ),
 
 stats as (

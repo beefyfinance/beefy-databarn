@@ -1,18 +1,16 @@
 version: 2
 
 models:
-  - name: int_product_stats__tracking
+  - name: int_product_stats__retirement
     description: >
-      When product stats stop: 3 months after the product retires or its chain goes eol, whichever comes first.
-      One row per product of int_product_keys. Read by the product_is_tracked() macro, the HAVING of the hourly
-      snapshot models (tvl, apy, apy_breakdown, lps_breakdown, share_price; not harvests or yield).
-      Rows written before the cutoff took effect are kept.
+      When each product retired and when its chain went eol, and until when databarn v1 data is used for it.
+      One row per product of int_product_keys.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
             combination_of_columns: ["chain_id", "product_address"]
       - keys_match:
-          name: int_product_stats__tracking_in_int_product_keys
+          name: int_product_stats__retirement_in_int_product_keys
           arguments:
             to: ref('int_product_keys')
             columns: ["chain_id", "product_address"]
@@ -31,9 +29,9 @@ models:
           for vaults gone from the API, a boost's period_finish or the retirement of the vault it stakes.
       - name: chain_eol_at
         description: "When the chain went eol (beefy-v2 chain config)"
-      - name: tracked_until
-        description: "Last moment stats are produced (exclusive): the earlier of retired_at and chain_eol_at, plus 3 months. Null while both are null."
+      - name: databarn_v1_until
+        description: "Last moment databarn v1 data is used (exclusive): the earlier of retired_at and chain_eol_at, plus 1 month (v1 stops importing a vault about 30 days after its eol). Null while both are null."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "is null or tracked_until > '2020-01-01'"
+                expression: "is null or databarn_v1_until > '2020-01-01'"

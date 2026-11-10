@@ -60,5 +60,3 @@ WHERE (
 WHERE p.date_time >= toDateTime('{{ since }}', 'UTC'){% if until is not none %} AND p.date_time < toDateTime('{{ until }}', 'UTC'){% endif %}
 {% endif %}
 GROUP BY t.chain_id, t.representation_address, date_hour
--- Stops 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
-HAVING {{ product_is_tracked() }}

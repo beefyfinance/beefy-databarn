@@ -52,5 +52,3 @@ SELECT
   argMax(apy, date_time) as apy
 FROM apy_with_product
 GROUP BY chain_id, product_address, toStartOfHour(date_time)
--- Stops 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
-HAVING {{ product_is_tracked() }}
