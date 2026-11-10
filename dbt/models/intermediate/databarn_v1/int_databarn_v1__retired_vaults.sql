@@ -33,7 +33,12 @@ vaults as (
     nullIf(JSONExtractString(p.product_data, 'vault', 'want_address'), '') as want_address,
     JSONLength(p.product_data, 'vault', 'assets') > 1 as want_is_lp,
     nullIf(JSONExtractString(p.product_data, 'vault', 'token_name'), '') as share_token_symbol,
-    nullIf(JSONExtractString(p.product_data, 'vault', 'platform_id'), '') as platform_id
+    nullIf(JSONExtractString(p.product_data, 'vault', 'platform_id'), '') as platform_id,
+    if(
+      JSONExtractBool(p.product_data, 'vault', 'eol'),
+      parseDateTimeBestEffortOrNull(JSONExtractString(p.product_data, 'vault', 'eol_date'), 'UTC'),
+      null
+    ) as retired_at
   from {{ ref('stg_databarn_v1__products') }} p
   inner join {{ ref('int_chain_keys') }} c
     on {{ normalize_network_beefy_key('p.chain_key') }} = c.beefy_key
@@ -52,7 +57,8 @@ select
   v.want_address as want_address,
   d.want_decimals as want_decimals,
   v.want_is_lp as want_is_lp,
-  coalesce(v.share_token_symbol, v.beefy_key) as share_token_symbol
+  coalesce(v.share_token_symbol, v.beefy_key) as share_token_symbol,
+  v.retired_at as retired_at
 from vaults v
 inner join {{ ref('int_databarn_v1__want_decimals') }} d
   on v.databarn_v1_product_id = d.product_id

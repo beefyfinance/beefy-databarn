@@ -44,3 +44,5 @@ models:
         description: "Vault share token symbol. Can repeat across vaults: a moo symbol is reused by redeployed vaults."
         tests:
           - not_null
+      - name: retired_at
+        description: "When databarn v1 marked the vault eol (vault.eol_date). Null when v1 does not have it as eol."

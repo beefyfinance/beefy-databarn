@@ -183,3 +183,5 @@ SELECT
   CAST(argMax(underlying_price, (priority, date_time)) AS Nullable(Float64)) as underlying_price
 FROM breakdown
 GROUP BY chain_id, product_address, toStartOfHour(date_time)
+-- Stops 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
+HAVING {{ product_is_tracked() }}

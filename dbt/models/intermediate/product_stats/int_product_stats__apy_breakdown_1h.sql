@@ -79,3 +79,5 @@ WHERE
   and ab.date_time < toDateTime('{{ until }}')
   {% endif %}
 GROUP BY p.chain_id, p.product_address, toStartOfHour(ab.date_time)
+-- Stops 3 months after the product retires or its chain goes eol (int_product_stats__tracking).
+HAVING {{ product_is_tracked() }}
