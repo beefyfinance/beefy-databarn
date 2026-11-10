@@ -44,6 +44,9 @@ left anti join stats st
   on s.chain_id = st.chain_id
   and s.product_address = st.product_address
   and s.month = st.month
+-- Product stats stop 3 months after the product retires or its chain goes eol (int_product_stats__tracking): only
+-- months that start before the cutoff. Asset prices do not stop, so the fact_asset_price_1d branch keeps them all.
+where {{ product_is_tracked('s.chain_id', 's.product_address', 's.month') }}
 
 union all
 
