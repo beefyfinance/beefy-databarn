@@ -31,7 +31,7 @@ shares as (
 ),
 
 stats as (
-  select chain_id, product_address, date_hour, cast(toFloat64(share_token_price_usd) as Nullable(Float64)) as stats_price
+  select chain_id, product_address, date_hour, cast(toFloat64(share_price_usd) as Nullable(Float64)) as stats_price
   from {{ ref('fact_product_stats_1h') }}
   where date_hour >= (select window_end from anchor) - interval {{ window_days }} day
 )

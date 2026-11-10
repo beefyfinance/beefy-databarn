@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: fact_product_stats_1h
-    description: "Timeseries of product stats including TVL, APY, merged breakdowns (APY and LPS), and price. Provides a complete historical view of all product metrics from API snapshots."
+    description: "One row per product per hour: TVL, APY and its breakdown, share and want prices, the want token breakdown, CLM pool state and the hour's harvests. Columns are grouped by prefix: apr_* / apy_* (API /apy/breakdown, which only lists the components that apply to the product type), want_* (the deposit token), clm_pool_* (the AMM pool under a CLM), harvest_* (sums over the harvests of the hour, NULL when there was none). NULL means the source has nothing for that product and hour, see each column for the product types it applies to. Boosts only have share_price_usd and want_price_usd: no source publishes TVL or APY per boost."
     config:
       contract:
         enforced: true
@@ -20,11 +20,11 @@ models:
             from_columns: ["chain_id", "product_address"]
             to_columns: ["chain_id", "product_address"]
       - relationships_array_multi_key:
-          name: relationships_product_stats_breakdown_tokens_token
+          name: relationships_product_stats_want_tokens_token
           arguments:
             to: ref('dim_token')
             from_chain_column: chain_id
-            from_array_column: breakdown_tokens
+            from_array_column: want_tokens
             to_chain_column: chain_id
             to_address_column: representation_address
       - dbt_utils.unique_combination_of_columns:
@@ -107,7 +107,7 @@ models:
         tests:
           - not_null
       - name: tvl_usd
-        description: "Total value locked in USD"
+        description: "Total value locked in USD. beefy_db, corrected (int_product_tvl_corrections); databarn v1 or the CLM subgraph for hours beefy_db missed. No source for boosts."
         data_type: Nullable(Float64)
         codec: ZSTD(3)
         tests:
@@ -117,7 +117,7 @@ models:
                 max_value: 1000000000
                 inclusive: true
       - name: apy
-        description: "Annual percentage yield"
+        description: "Total APY, as a fraction (0.05 = 5%). The /apy/breakdown totalApy when the API has it (from December 2025, consistent with the apr_* components), else the APY beefy_db recorded (history from 2021). No source for boosts."
         data_type: Nullable(Float64)
         codec: ZSTD(3)
         tests:
@@ -125,75 +125,167 @@ models:
               arguments:
                 min_value: 0
                 max_value: 1000000
+                inclusive: true
+      - name: share_price_usd
+        description: "USD value of one vault share (1e18 raw share units) at the end of the hour, corrections applied (fact_asset_price_5m). Moo-token price for classic vaults, beefy_db oracle for CLM managers and reward pools, the staked vault share for boosts. Not the want price: a non-18-decimal want reads far from it (a USDC vault is about 1e12 * ppfs)."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+      - name: want_price_usd
+        description: "USD price of one want (deposit) token at the end of the hour: the /lps/breakdown price (its LP oracle in fact_asset_price_5m, else the snapshot), else the want oracle price (int_product_stats__want_price_1h). Classic vault and boost: the vault LP or token. CLM manager: its own share (equals share_price_usd). Reward pool: the CLM share it stakes. Per 1e18 raw units of the want, like share_price_usd: a 6- or 8-decimal want (USDC or WBTC pairs, Pendle PTs) reads in the billions."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+      - name: apy_vault
+        description: "Vault APY: apr_vault compounded compoundings_per_year times. Classic vaults."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_vault
+        description: "Vault APR: the strategy rewards, before compounding, after fees. Classic vaults."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_trading
+        description: "Trading fees APR of the want LP. Classic vaults on an AMM LP."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_clm
+        description: "CLM trading fees APR. CLM managers, reward pools of a CLM, and classic vaults that deposit into a CLM."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_reward_pool
+        description: "Reward pool rewards APR. Reward pools."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_reward_pool_trading
+        description: "Trading fees APR of the CLM under a reward pool. Reward pools (some)."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_liquid_staking
+        description: "Liquid staking APR of the want. Classic vaults on a liquid staking token."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_composable_pool
+        description: "Balancer composable pool APR. Classic vaults on such a pool."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_merkl
+        description: "Merkl campaign APR. Any product type with a campaign."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: apr_linea_ignition
+        description: "Linea Ignition campaign APR. Products in the campaign."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: fee_rate_performance
+        description: "Beefy performance fee rate taken on harvests, as a fraction. All but boosts."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+                inclusive: true
+      - name: fee_rate_lp
+        description: "Trading fee rate of the want LP, as a fraction. Classic vaults on an AMM LP."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
                 inclusive: true
       - name: compoundings_per_year
-        description: "Number of compoundings per year"
+        description: "Harvests per year assumed by the API to compound apr_vault into apy_vault. All but boosts."
         data_type: Nullable(Int64)
-        codec: ZSTD(3)
-      - name: beefy_performance_fee
-        description: "Beefy performance fee"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: lp_fee
-        description: "LP fee"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: total_apy
-        description: "Total APY"
-        data_type: Nullable(Float64)
         codec: ZSTD(3)
         tests:
           - dbt_utils.accepted_range:
               arguments:
                 min_value: 0
-                max_value: 1000000
+                max_value: 1000000000
                 inclusive: true
-      - name: vault_apr
-        description: "Vault APR"
-        data_type: Nullable(Float64)
+      - name: want_total_supply
+        description: "Total supply of the want token (/lps/breakdown; databarn v1 or the CLM subgraph for older hours). CLM manager: its share supply."
+        data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
-      - name: trading_apr
-        description: "Trading APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: clm_apr
-        description: "CLM APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: reward_pool_apr
-        description: "Reward pool APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: reward_pool_trading_apr
-        description: "Reward pool trading APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: vault_apy
-        description: "Vault APY"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: liquid_staking_apr
-        description: "Liquid staking APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: composable_pool_apr
-        description: "Composable pool APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: merkl_apr
-        description: "Merkl APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: linea_ignition_apr
-        description: "Linea Ignition APR"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: lp_price
-        description: "LP token price"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: breakdown_tokens
-        description: "Tokens Addresses"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000000000
+                inclusive: true
+      - name: want_tokens
+        description: "Tokens the want is made of (/lps/breakdown), in the order of want_balances. Empty when the hour has no breakdown snapshot."
         data_type: Array(LowCardinality(String))
         codec: LZ4
         meta:
@@ -202,91 +294,79 @@ models:
               - to: dim_token
                 field: representation_address
                 kind: many_to_many
-      - name: breakdown_balances
-        description: "Balances information (JSON)"
+      - name: want_balances
+        description: "Want reserves of each token of want_tokens, in token units."
         data_type: Array(Decimal(76, 20))
         codec: LZ4
-      - name: total_supply
-        description: "Total supply"
+      - name: clm_pool_liquidity
+        description: "Liquidity of the whole AMM pool under the CLM. CLM managers and their reward pools."
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
-      - name: underlying_liquidity
-        description: "Underlying liquidity"
-        data_type: Nullable(Decimal(76, 20))
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000000000
+                inclusive: true
+      - name: clm_pool_liquidity_price_usd
+        description: "USD price of one unit of clm_pool_liquidity. CLM managers and their reward pools."
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: underlying_balances
-        description: "Underlying balances"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: clm_pool_balances
+        description: "Balances of the whole AMM pool under the CLM, in the order of want_tokens. CLM managers and their reward pools."
         data_type: Array(Decimal(76, 20))
         codec: LZ4
-      - name: underlying_price
-        description: "Underlying token price in USD"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: underlying_amount_compounded
-        description: "Underlying amount compounded"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: underlying_token_price_usd
-        description: "Underlying token price in USD"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: underlying_amount_compounded_usd
-        description: "Underlying amount compounded in USD"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: harvest_call_fee
-        description: "Sum of harvest call fees in native token (hourly)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: harvest_call_fee_usd
-        description: "Sum of harvest call fees in USD (hourly)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: gas_fee
-        description: "Sum of gas fees in native token (hourly)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: gas_fee_usd
-        description: "Sum of gas fees in USD (hourly)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: platform_fee
-        description: "Sum of platform fees in native token (hourly)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: platform_fee_usd
-        description: "Sum of platform fees in USD (hourly)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: strategist_fee
-        description: "Sum of strategist fees in native token (hourly)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: strategist_fee_usd
-        description: "Sum of strategist fees in USD (hourly)"
-        data_type: Nullable(Float64)
+      - name: harvest_count
+        description: "Distinct harvest transactions in the hour. NULL when there was none."
+        data_type: Nullable(UInt64)
         codec: ZSTD(3)
       - name: harvest_amount
-        description: "Sum of harvest amounts in want token (hourly)"
+        description: "Want compounded by the harvests of the hour, in want token units."
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
       - name: harvest_amount_usd
-        description: "Sum of harvest amounts in USD (hourly)"
+        description: "harvest_amount in USD (want price of each harvest's 5-minute slot)."
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: avg_native_price
-        description: "Average native token price in USD for the hour"
+      - name: harvest_call_fee
+        description: "Harvest call fees of the hour, in native token."
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_call_fee_usd
+        description: "harvest_call_fee in USD."
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: harvest_txn_count
-        description: "Count of distinct harvest transactions in the hour"
-        data_type: Nullable(UInt64)
+      - name: harvest_gas_fee
+        description: "Gas paid by the harvests of the hour, in native token."
+        data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
-      - name: harvest_vault_count
-        description: "1 if product had at least one harvest in the hour; sum at chain level = vaults with harvests"
-        data_type: Nullable(UInt8)
+      - name: harvest_gas_fee_usd
+        description: "harvest_gas_fee in USD."
+        data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: share_token_price_usd
-        description: "USD value of one vault share (1e18 raw share units) at the end of the hour, corrections applied. Moo-token price for classic vaults, beefy_db oracle for CLM managers and reward pools. Null for boosts: price them through token.asset_id. Not the want token price: a non-18-decimal want reads far from it (a USDC vault is about 1e12 * ppfs)."
+      - name: harvest_platform_fee
+        description: "Platform (Beefy) fees of the hour, in native token (frxETH on Fraxtal)."
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_platform_fee_usd
+        description: "harvest_platform_fee in USD."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_strategist_fee
+        description: "Strategist fees of the hour, in native token."
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_strategist_fee_usd
+        description: "harvest_strategist_fee in USD."
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_native_price_usd
+        description: "Average native token price over the harvests of the hour, in USD."
         data_type: Nullable(Float64)
         codec: ZSTD(3)

@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: int_product_stats__want_price_1h
+    description: "Hourly price of the product's want (deposit) token: last 5-minute price of each hour of the beefy_wants_price_oracle_key asset in fact_asset_price_5m. One row per (chain_id, product_address, date_hour). Fallback of fact_product_stats_1h.want_price_usd when the product has no /lps/breakdown snapshot (boosts, vaults the API stopped breaking down)."
+    config:
+      meta:
+        primary_key: ["chain_id", "product_address", "date_hour"]
+        # Full refresh and reimport one month at a time (all of fact_asset_price_5m does not fit one query);
+        # see infra/dbt/run_dbt_batched.py.
+        batch: month
+        batch_start: "2020-10-01"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          config:
+            where: "date_hour >= toStartOfHour(now('UTC')) - interval 7 day"
+          arguments:
+            combination_of_columns:
+              - chain_id
+              - product_address
+              - date_hour
+      - keys_match:
+          name: int_product_stats__want_price_1h_in_int_product_keys
+          config:
+            store_failures: true
+          arguments:
+            to: ref('int_product_keys')
+            columns: ["chain_id", "product_address"]
+    columns:
+      - name: chain_id
+        description: "Chain ID where the product exists"
+        data_type: Int64
+        tests:
+          - not_null
+      - name: product_address
+        description: "Product contract address"
+        data_type: LowCardinality(String)
+        tests:
+          - not_null
+      - name: date_hour
+        description: "Hour start"
+        data_type: DateTime('UTC')
+        tests:
+          - not_null
+      - name: want_price_usd
+        description: "USD price of one want token at the end of the hour"
+        data_type: Float64
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

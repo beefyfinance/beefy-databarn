@@ -50,5 +50,3 @@ models:
         description: "Average native token price in USD for the hour"
       - name: harvest_txn_count
         description: "Count of distinct harvest transactions in the hour"
-      - name: harvest_vault_count
-        description: "Always 1 per row; sum at chain level = number of vaults with at least one harvest"

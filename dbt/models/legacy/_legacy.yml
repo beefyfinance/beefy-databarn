@@ -32,7 +32,7 @@ models:
     description: "Deprecated: analytics.chain, now databarn.dim_chain. Read databarn.dim_chain instead."
     deprecation_date: 2026-12-31
   - name: legacy_chain_stats
-    description: "Deprecated: analytics.chain_stats, now databarn.fact_chain_stats_1h. Read databarn.fact_chain_stats_1h instead."
+    description: "Deprecated: analytics.chain_stats, now databarn.fact_chain_stats_1h (columns renamed back to their old names). Read databarn.fact_chain_stats_1h instead."
     deprecation_date: 2026-12-31
   - name: legacy_chain_stats_latest
     description: "Deprecated: analytics.chain_stats_latest, now databarn.fact_chain_stats_latest (columns renamed back to their old names). Read databarn.fact_chain_stats_latest instead."
@@ -65,7 +65,7 @@ models:
     description: "Deprecated: analytics.product_reward_pool, now databarn.dim_product_reward_pool. Read databarn.dim_product_reward_pool instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_stats
-    description: "Deprecated: analytics.product_stats, now databarn.fact_product_stats_1h. Read databarn.fact_product_stats_1h instead."
+    description: "Deprecated: analytics.product_stats, now databarn.fact_product_stats_1h (columns renamed back to their old names). Read databarn.fact_product_stats_1h instead."
     deprecation_date: 2026-12-31
   - name: legacy_product_stats_latest
     description: "Deprecated: analytics.product_stats_latest, now databarn.fact_product_stats_latest (columns renamed back to their old names). Read databarn.fact_product_stats_latest instead."

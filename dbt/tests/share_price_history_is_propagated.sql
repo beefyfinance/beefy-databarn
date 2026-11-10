@@ -30,7 +30,7 @@ shares as (
 stats as (
   select distinct chain_id, product_address, toStartOfMonth(date_hour) as month
   from {{ ref('fact_product_stats_1h') }}
-  where share_token_price_usd > 0
+  where share_price_usd > 0
 ),
 
 prices as (

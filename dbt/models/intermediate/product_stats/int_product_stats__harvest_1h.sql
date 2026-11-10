@@ -25,8 +25,7 @@ SELECT
   sum(h.harvest_amount) AS harvest_amount,
   sum(h.harvest_amount * h.want_price) AS harvest_amount_usd,
   avg(h.native_price) AS avg_native_price,
-  count(DISTINCT h.txn_hash) AS harvest_txn_count,
-  1 AS harvest_vault_count
+  count(DISTINCT h.txn_hash) AS harvest_txn_count
 FROM {{ ref('int_harvests') }} h
 INNER JOIN {{ ref('int_product_keys') }} p
   ON h.network_id = p.chain_id

@@ -7,12 +7,14 @@
   ('int_product_stats__share_price_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
   ('int_product_stats__tvl_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
   ('int_product_stats__apy_1h', 'date_hour', 'int_product_stats__unified_1h', 'date_hour', 2),
+  ('stg_beefy_api__apy_breakdown', 'date_time', 'int_product_stats__apy_breakdown_1h', 'date_hour', 2),
+  ('fact_asset_price_5m', 'date_time', 'int_product_stats__want_price_1h', 'date_hour', 2),
   ('int_product_stats__unified_1h', 'date_hour', 'fact_product_stats_1h', 'date_hour', 2),
   ('fact_product_stats_1h', 'date_hour', 'fact_chain_stats_1h', 'date_hour', 2),
   ('int_price_obs', 'ts', 'fact_asset_price_5m', 'date_time', 2),
   ('fact_asset_price_5m', 'date_time', 'fact_asset_price_1d', 'date_day', 48),
-  ('int_harvests', 'txn_timestamp', 'int_yield', 'txn_timestamp', 24),
-  ('int_yield', 'txn_timestamp', 'fact_harvest_obs', 'txn_timestamp', 24),
+  ('int_harvests', 'txn_timestamp', 'int_product_stats__harvest_1h', 'date_hour', 24),
+  ('int_harvests', 'txn_timestamp', 'fact_harvest_obs', 'txn_timestamp', 24),
   ('fact_account_balance_change_obs', 'block_timestamp', 'fact_account_balance_1d', 'date_day', 48),
 ] %}
 

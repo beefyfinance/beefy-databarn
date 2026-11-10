@@ -67,155 +67,137 @@ models:
         description: "TVL attributed to CLM (Concentrated Liquidity Manager) assets in USD"
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: avg_beefy_performance_fee
-        description: "Average Beefy performance fee across all products"
+      - name: avg_apy
+        description: "Average apy over the chain's products that have one"
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: avg_lp_fee
-        description: "Average LP fee across all products"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000000
+                inclusive: true
+      - name: avg_apy_vault
+        description: "Average vault APY (apy_vault) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_vault
+        description: "Average vault APR (apr_vault) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_trading
+        description: "Average trading APR (apr_trading) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_clm
+        description: "Average CLM APR (apr_clm) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_reward_pool
+        description: "Average reward pool APR (apr_reward_pool) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_reward_pool_trading
+        description: "Average reward pool trading APR (apr_reward_pool_trading) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_liquid_staking
+        description: "Average liquid staking APR (apr_liquid_staking) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_composable_pool
+        description: "Average composable pool APR (apr_composable_pool) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_merkl
+        description: "Average Merkl APR (apr_merkl) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_apr_linea_ignition
+        description: "Average Linea Ignition APR (apr_linea_ignition) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_fee_rate_performance
+        description: "Average performance fee rate (fee_rate_performance) over the chain's products that have one"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: avg_fee_rate_lp
+        description: "Average LP fee rate (fee_rate_lp) over the chain's products that have one"
         data_type: Nullable(Float64)
         codec: ZSTD(3)
       - name: avg_compoundings_per_year
-        description: "Average compoundings per year across all products"
+        description: "Average compoundings per year (compoundings_per_year) over the chain's products that have one"
         data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_apy
-        description: "Average APY across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                max_value: 1000000
-                inclusive: true
-      - name: avg_total_apy
-        description: "Average total APY across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                max_value: 1000000
-                inclusive: true
-      - name: avg_vault_apr
-        description: "Average vault APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_trading_apr
-        description: "Average trading APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_clm_apr
-        description: "Average CLM APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_reward_pool_apr
-        description: "Average reward pool APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_reward_pool_trading_apr
-        description: "Average reward pool trading APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_vault_apy
-        description: "Average vault APY across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_liquid_staking_apr
-        description: "Average liquid staking APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_composable_pool_apr
-        description: "Average composable pool APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_merkl_apr
-        description: "Average Merkl APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: avg_linea_ignition_apr
-        description: "Average Linea Ignition APR across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: beefy_performance_fee_quantiles
-        description: "Quantiles array for Beefy performance fee: [min, p25, p50, p75, max]"
-        data_type: Array(Float64)
-        codec: ZSTD(3)
-      - name: lp_fee_quantiles
-        description: "Quantiles array for LP fee: [min, p25, p50, p75, max]"
-        data_type: Array(Float64)
-        codec: ZSTD(3)
-      - name: compoundings_per_year_quantiles
-        description: "Quantiles array for compoundings per year: [min, p25, p50, p75, max]"
-        data_type: Array(Float64)
         codec: ZSTD(3)
       - name: apy_quantiles
-        description: "Quantiles array for APY: [min, p25, p50, p75, max]"
+        description: "[min, p25, p50, p75, max] of apy over the chain's products (NULLs excluded)"
         data_type: Array(Float64)
-        codec: ZSTD(3)
-      - name: total_apy_quantiles
-        description: "Quantiles array for total APY: [min, p25, p50, p75, max]"
+        codec: LZ4
+      - name: apy_vault_quantiles
+        description: "[min, p25, p50, p75, max] of apy_vault over the chain's products (NULLs excluded)"
         data_type: Array(Float64)
-        codec: ZSTD(3)
-      - name: vault_apy_quantiles
-        description: "Quantiles array for vault APY: [min, p25, p50, p75, max]"
+        codec: LZ4
+      - name: fee_rate_performance_quantiles
+        description: "[min, p25, p50, p75, max] of fee_rate_performance over the chain's products (NULLs excluded)"
         data_type: Array(Float64)
+        codec: LZ4
+      - name: fee_rate_lp_quantiles
+        description: "[min, p25, p50, p75, max] of fee_rate_lp over the chain's products (NULLs excluded)"
+        data_type: Array(Float64)
+        codec: LZ4
+      - name: compoundings_per_year_quantiles
+        description: "[min, p25, p50, p75, max] of compoundings_per_year over the chain's products (NULLs excluded)"
+        data_type: Array(Float64)
+        codec: LZ4
+      - name: harvest_count
+        description: "Distinct harvest transactions in the hour, over the chain's products"
+        data_type: Nullable(UInt64)
         codec: ZSTD(3)
-      - name: underlying_amount_compounded_usd
-        description: "Total underlying amount compounded in USD across all products"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: harvest_call_fee
-        description: "Sum of harvest call fees in native token (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: harvest_call_fee_usd
-        description: "Sum of harvest call fees in USD (chain-hour)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: gas_fee
-        description: "Sum of gas fees in native token (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: gas_fee_usd
-        description: "Sum of gas fees in USD (chain-hour)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: platform_fee
-        description: "Sum of platform fees in native token (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: platform_fee_usd
-        description: "Sum of platform fees in USD (chain-hour)"
-        data_type: Nullable(Float64)
-        codec: ZSTD(3)
-      - name: strategist_fee
-        description: "Sum of strategist fees in native token (chain-hour)"
-        data_type: Nullable(Decimal(76, 20))
-        codec: ZSTD(3)
-      - name: strategist_fee_usd
-        description: "Sum of strategist fees in USD (chain-hour)"
-        data_type: Nullable(Float64)
+      - name: harvest_product_count
+        description: "Products with at least one harvest in the hour"
+        data_type: UInt64
         codec: ZSTD(3)
       - name: harvest_amount
-        description: "Sum of harvest amounts in want token (chain-hour)"
+        description: "Sum over the chain's products of the hour's want compounded, in want token units (mixed tokens: use the USD value)"
         data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
       - name: harvest_amount_usd
-        description: "Sum of harvest amounts in USD (chain-hour)"
+        description: "Sum over the chain's products of the hour's want compounded, in USD"
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: avg_native_price
-        description: "Average native price across products with harvests in the hour"
+      - name: harvest_call_fee
+        description: "Sum over the chain's products of the hour's harvest call fees, in native token"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_call_fee_usd
+        description: "Sum over the chain's products of the hour's harvest call fees, in USD"
         data_type: Nullable(Float64)
         codec: ZSTD(3)
-      - name: harvest_txn_count
-        description: "Total count of distinct harvest transactions (chain-hour)"
-        data_type: Nullable(UInt64)
+      - name: harvest_gas_fee
+        description: "Sum over the chain's products of the hour's gas paid by harvests, in native token"
+        data_type: Nullable(Decimal(76, 20))
         codec: ZSTD(3)
-      - name: harvest_vault_count
-        description: "Number of vaults with at least one harvest in the hour"
-        data_type: Nullable(UInt64)
+      - name: harvest_gas_fee_usd
+        description: "Sum over the chain's products of the hour's gas paid by harvests, in USD"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_platform_fee
+        description: "Sum over the chain's products of the hour's platform fees, in native token"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_platform_fee_usd
+        description: "Sum over the chain's products of the hour's platform fees, in USD"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_strategist_fee
+        description: "Sum over the chain's products of the hour's strategist fees, in native token"
+        data_type: Nullable(Decimal(76, 20))
+        codec: ZSTD(3)
+      - name: harvest_strategist_fee_usd
+        description: "Sum over the chain's products of the hour's strategist fees, in USD"
+        data_type: Nullable(Float64)
+        codec: ZSTD(3)
+      - name: harvest_native_price_usd
+        description: "Average native token price over the products harvested in the hour, in USD"
+        data_type: Nullable(Float64)
         codec: ZSTD(3)

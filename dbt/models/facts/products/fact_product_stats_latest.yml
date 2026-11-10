@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: fact_product_stats_latest
-    description: "Latest product stats by product (chain_id + product_address). Contains the most recent snapshot for each product from the fact_product_stats_1h timeseries table."
+    description: "Latest product stats by product (chain_id + product_address). Each value column holds its latest non-NULL value of the last 15 days in fact_product_stats_1h (argMax skips NULLs), so columns can come from different hours: harvest_* are those of the last hour with a harvest."
     config:
       contract:
         enforced: true
@@ -83,10 +83,10 @@ models:
         tests:
           - not_null
       - name: tvl_usd
-        description: "Total value locked in USD (latest value)"
+        description: "Total value locked in USD. beefy_db, corrected (int_product_tvl_corrections); databarn v1 or the CLM subgraph for hours beefy_db missed. No source for boosts. Latest non-NULL value."
         data_type: Nullable(Float64)
       - name: apy
-        description: "Annual percentage yield (latest value)"
+        description: "Total APY, as a fraction (0.05 = 5%). The /apy/breakdown totalApy when the API has it (from December 2025, consistent with the apr_* components), else the APY beefy_db recorded (history from 2021). No source for boosts. Latest non-NULL value."
         data_type: Nullable(Float64)
         tests:
           - dbt_utils.accepted_range:
@@ -94,59 +94,56 @@ models:
                 min_value: 0
                 max_value: 1000000
                 inclusive: true
+      - name: share_price_usd
+        description: "USD value of one vault share (1e18 raw share units) at the end of the hour, corrections applied (fact_asset_price_5m). Moo-token price for classic vaults, beefy_db oracle for CLM managers and reward pools, the staked vault share for boosts. Not the want price: a non-18-decimal want reads far from it (a USDC vault is about 1e12 * ppfs). Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: want_price_usd
+        description: "USD price of one want (deposit) token at the end of the hour: the /lps/breakdown price (its LP oracle in fact_asset_price_5m, else the snapshot), else the want oracle price (int_product_stats__want_price_1h). Classic vault and boost: the vault LP or token. CLM manager: its own share (equals share_price_usd). Reward pool: the CLM share it stakes. Per 1e18 raw units of the want, like share_price_usd: a 6- or 8-decimal want (USDC or WBTC pairs, Pendle PTs) reads in the billions. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apy_vault
+        description: "Vault APY: apr_vault compounded compoundings_per_year times. Classic vaults. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_vault
+        description: "Vault APR: the strategy rewards, before compounding, after fees. Classic vaults. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_trading
+        description: "Trading fees APR of the want LP. Classic vaults on an AMM LP. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_clm
+        description: "CLM trading fees APR. CLM managers, reward pools of a CLM, and classic vaults that deposit into a CLM. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_reward_pool
+        description: "Reward pool rewards APR. Reward pools. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_reward_pool_trading
+        description: "Trading fees APR of the CLM under a reward pool. Reward pools (some). Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_liquid_staking
+        description: "Liquid staking APR of the want. Classic vaults on a liquid staking token. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_composable_pool
+        description: "Balancer composable pool APR. Classic vaults on such a pool. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_merkl
+        description: "Merkl campaign APR. Any product type with a campaign. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: apr_linea_ignition
+        description: "Linea Ignition campaign APR. Products in the campaign. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: fee_rate_performance
+        description: "Beefy performance fee rate taken on harvests, as a fraction. All but boosts. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: fee_rate_lp
+        description: "Trading fee rate of the want LP, as a fraction. Classic vaults on an AMM LP. Latest non-NULL value."
+        data_type: Nullable(Float64)
       - name: compoundings_per_year
-        description: "Number of compoundings per year (latest value)"
+        description: "Harvests per year assumed by the API to compound apr_vault into apy_vault. All but boosts. Latest non-NULL value."
         data_type: Nullable(Int64)
-      - name: beefy_performance_fee
-        description: "Beefy performance fee (latest value)"
-        data_type: Nullable(Float64)
-      - name: lp_fee
-        description: "LP fee (latest value)"
-        data_type: Nullable(Float64)
-      - name: total_apy
-        description: "Total APY (latest value)"
-        data_type: Nullable(Float64)
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                max_value: 1000000
-                inclusive: true
-      - name: vault_apr
-        description: "Vault APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: trading_apr
-        description: "Trading APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: clm_apr
-        description: "CLM APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: reward_pool_apr
-        description: "Reward pool APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: reward_pool_trading_apr
-        description: "Reward pool trading APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: vault_apy
-        description: "Vault APY (latest value)"
-        data_type: Nullable(Float64)
-      - name: liquid_staking_apr
-        description: "Liquid staking APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: composable_pool_apr
-        description: "Composable pool APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: merkl_apr
-        description: "Merkl APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: linea_ignition_apr
-        description: "Linea Ignition APR (latest value)"
-        data_type: Nullable(Float64)
-      - name: lp_price
-        description: "LP token price (latest value)"
-        data_type: Nullable(Float64)
-      - name: breakdown_tokens
-        description: "Tokens Addresses (latest value)"
+      - name: want_total_supply
+        description: "Total supply of the want token (/lps/breakdown; databarn v1 or the CLM subgraph for older hours). CLM manager: its share supply. Latest non-NULL value."
+        data_type: Nullable(Decimal(76, 20))
+      - name: want_tokens
+        description: "Tokens the want is made of (/lps/breakdown), in the order of want_balances. Empty when the hour has no breakdown snapshot. Latest non-NULL value."
         data_type: Array(String)
         meta:
           docglow:
@@ -154,27 +151,51 @@ models:
               - to: dim_token
                 field: representation_address
                 kind: many_to_many
-      - name: breakdown_balances
-        description: "Balances information (JSON) (latest value)"
+      - name: want_balances
+        description: "Want reserves of each token of want_tokens, in token units. Latest non-NULL value."
         data_type: Array(Decimal(76, 20))
-      - name: total_supply
-        description: "Total supply (latest value)"
+      - name: clm_pool_liquidity
+        description: "Liquidity of the whole AMM pool under the CLM. CLM managers and their reward pools. Latest non-NULL value."
         data_type: Nullable(Decimal(76, 20))
-      - name: underlying_liquidity
-        description: "Underlying liquidity (latest value)"
-        data_type: Nullable(Decimal(76, 20))
-      - name: underlying_balances
-        description: "Underlying balances (latest value)"
+      - name: clm_pool_liquidity_price_usd
+        description: "USD price of one unit of clm_pool_liquidity. CLM managers and their reward pools. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: clm_pool_balances
+        description: "Balances of the whole AMM pool under the CLM, in the order of want_tokens. CLM managers and their reward pools. Latest non-NULL value."
         data_type: Array(Decimal(76, 20))
-      - name: underlying_price
-        description: "Underlying token price in USD (latest value)"
-        data_type: Nullable(Float64)
-      - name: underlying_amount_compounded
-        description: "Underlying amount compounded (latest value)"
+      - name: harvest_count
+        description: "Distinct harvest transactions in the hour. NULL when there was none. Latest non-NULL value."
+        data_type: Nullable(UInt64)
+      - name: harvest_amount
+        description: "Want compounded by the harvests of the hour, in want token units. Latest non-NULL value."
         data_type: Nullable(Decimal(76, 20))
-      - name: underlying_token_price_usd
-        description: "Underlying token price in USD (latest value)"
+      - name: harvest_amount_usd
+        description: "harvest_amount in USD (want price of each harvest's 5-minute slot). Latest non-NULL value."
         data_type: Nullable(Float64)
-      - name: underlying_amount_compounded_usd
-        description: "Underlying amount compounded in USD (latest value)"
+      - name: harvest_call_fee
+        description: "Harvest call fees of the hour, in native token. Latest non-NULL value."
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_call_fee_usd
+        description: "harvest_call_fee in USD. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: harvest_gas_fee
+        description: "Gas paid by the harvests of the hour, in native token. Latest non-NULL value."
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_gas_fee_usd
+        description: "harvest_gas_fee in USD. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: harvest_platform_fee
+        description: "Platform (Beefy) fees of the hour, in native token (frxETH on Fraxtal). Latest non-NULL value."
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_platform_fee_usd
+        description: "harvest_platform_fee in USD. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: harvest_strategist_fee
+        description: "Strategist fees of the hour, in native token. Latest non-NULL value."
+        data_type: Nullable(Decimal(76, 20))
+      - name: harvest_strategist_fee_usd
+        description: "harvest_strategist_fee in USD. Latest non-NULL value."
+        data_type: Nullable(Float64)
+      - name: harvest_native_price_usd
+        description: "Average native token price over the harvests of the hour, in USD. Latest non-NULL value."
         data_type: Nullable(Float64)

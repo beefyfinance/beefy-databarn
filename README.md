@@ -276,7 +276,7 @@ One price per asset and 5-minute slot, resolved once and reused by every model t
 **Priced models.** A model that stores a price or a USD value looks it up in `databarn.fact_asset_price_5m` on its row's 5-minute
 slot, with a key lookup (`WHERE (asset_id, date_time) IN (SELECT asset_id, slot FROM facts)`), never an ASOF join
 (ClickHouse loads the whole right side of an ASOF join into memory). Small marts are priced in full each run
-(`fact_buyback_obs`, `fact_zap_obs`, `int_yield`). Incremental ones also recompute the rows of the assets a
+(`fact_buyback_obs`, `fact_zap_obs`, `fact_harvest_obs`). Incremental ones also recompute the rows of the assets a
 resolver run changed (`macros/prices/price_runs.sql`): `int_harvests`, `int_databarn_v1__vault_stats_1h`, the
 `int_product_stats__*_1h` models, `fact_product_stats_1h`, `fact_account_balance_change_obs`, `fact_account_balance_1d`.
 

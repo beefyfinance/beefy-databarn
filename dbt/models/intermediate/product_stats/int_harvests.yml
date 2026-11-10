@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_harvests
-    description: "Harvest events from stg_beefy_db__harvests priced with fact_asset_price_5m on the harvest's 5-minute slot (want, native, platform fee token); the price beefy-db stored with the harvest when the series has none. Corrections are part of the series. Applies the < $30M harvest USD sanity check on the resolved price. Incremental, re-priced when the resolver recomputes a want, native or fee price (int_price_runs). Read by int_yield, int_product_stats__harvest_1h and the harvests mart."
+    description: "Harvest events from stg_beefy_db__harvests priced with fact_asset_price_5m on the harvest's 5-minute slot (want, native, platform fee token); the price beefy-db stored with the harvest when the series has none. Corrections are part of the series. Applies the < $30M harvest USD sanity check on the resolved price. Incremental, re-priced when the resolver recomputes a want, native or fee price (int_price_runs). Read by int_product_stats__harvest_1h and fact_harvest_obs."
     tests:
       # fact_asset_price_5m is unique per (asset, slot), so the price joins must not fan out harvests
       # (rows can only be dropped by the sanity cap).
