@@ -22,11 +22,13 @@ PAGE_SIZE = 1000
 # Goldsky public endpoints allow 50 requests per 10 seconds.
 MIN_REQUEST_INTERVAL_S = 0.2
 _ID_START = "0x"
-# graph-node aborts a query when a reorg lands mid-execution; the same query then succeeds.
+# Transient graph-node failures; the same query then succeeds:
+# - a reorg lands mid-execution;
+# - the read replica's WAL replay cancels the query (Postgres hot standby conflict).
 # One try plus retries, backoff doubling: 1s, 2s, 4s, 8s, 16s.
-_REORG_ERROR = "chain was reorganized"
-_REORG_MAX_ATTEMPTS = 6
-_REORG_BACKOFF_S = 1.0
+_TRANSIENT_ERRORS = ("chain was reorganized", "conflict with recovery")
+_RETRY_MAX_ATTEMPTS = 6
+_RETRY_BACKOFF_S = 1.0
 
 
 class SubgraphError(RuntimeError):
@@ -50,16 +52,18 @@ async def query_subgraph(chain: str, query: str) -> Dict[str, Any]:
         errors = payload.get("errors")
         if not errors:
             return payload["data"]
-        if attempt >= _REORG_MAX_ATTEMPTS or _REORG_ERROR not in str(errors):
+        text = str(errors)
+        if attempt >= _RETRY_MAX_ATTEMPTS or not any(e in text for e in _TRANSIENT_ERRORS):
             raise SubgraphError(f"{SUBGRAPH_NAME}-{chain}: {errors}")
-        delay = _REORG_BACKOFF_S * (2 ** (attempt - 1))
+        delay = _RETRY_BACKOFF_S * (2 ** (attempt - 1))
         logger.warning(
-            "%s-%s reorged during query; retry %s/%s in %.0fs",
+            "%s-%s transient query error; retry %s/%s in %.0fs: %.200s",
             SUBGRAPH_NAME,
             chain,
             attempt,
-            _REORG_MAX_ATTEMPTS - 1,
+            _RETRY_MAX_ATTEMPTS - 1,
             delay,
+            text,
         )
         await asyncio.sleep(delay)
 

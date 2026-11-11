@@ -146,7 +146,7 @@ REORG_ERROR = {"errors": [{"message": "the chain was reorganized while executing
 
 
 def test_reorg_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(client, "_REORG_BACKOFF_S", 0)
+    monkeypatch.setattr(client, "_RETRY_BACKOFF_S", 0)
     payloads = [REORG_ERROR, REORG_ERROR, {"data": {"rows": []}}]
 
     async def post(url: str, *, json_body: dict[str, Any]) -> dict[str, Any]:
@@ -158,8 +158,31 @@ def test_reorg_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payloads == []
 
 
+RECOVERY_CONFLICT = {
+    "errors": [
+        {
+            "message": "Failed to get entities from store: canceling statement due to "
+            "conflict with recovery, query = select 1"
+        }
+    ]
+}
+
+
+def test_replica_recovery_conflict_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(client, "_RETRY_BACKOFF_S", 0)
+    payloads = [RECOVERY_CONFLICT, {"data": {"rows": []}}]
+
+    async def post(url: str, *, json_body: dict[str, Any]) -> dict[str, Any]:
+        return payloads.pop(0)
+
+    monkeypatch.setattr(client, "post_url_json_dict", post)
+
+    assert asyncio.run(client.query_subgraph("bsc", "{ x }")) == {"rows": []}
+    assert payloads == []
+
+
 def test_reorg_retries_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(client, "_REORG_BACKOFF_S", 0)
+    monkeypatch.setattr(client, "_RETRY_BACKOFF_S", 0)
     calls = 0
 
     async def post(url: str, *, json_body: dict[str, Any]) -> dict[str, Any]:
@@ -171,7 +194,7 @@ def test_reorg_retries_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(client.SubgraphError, match="reorganized"):
         asyncio.run(client.query_subgraph("rootstock", "{ x }"))
-    assert calls == client._REORG_MAX_ATTEMPTS
+    assert calls == client._RETRY_MAX_ATTEMPTS
 
 
 def test_missing_subgraph_is_none_and_other_failures_raise(monkeypatch: pytest.MonkeyPatch) -> None:
