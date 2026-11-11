@@ -184,3 +184,48 @@ def test_alert_dev_db_sizes_lists_each_database(dbt_alerts, tmp_path, monkeypatc
             "• `dev_fron`: 39.9 GB\n• `dev_other`: 21.0 GB",
         )
     ]
+
+
+def _capture_alerts(dbt_alerts, tmp_path, monkeypatch) -> list[tuple]:
+    monkeypatch.setattr(dbt_alerts, "ALERT_STATE_PATH", tmp_path / "state.json")
+    sent: list[tuple] = []
+    monkeypatch.setattr(
+        dbt_alerts,
+        "notify_once_per_day",
+        lambda key, title, description, state_path, **kwargs: sent.append(
+            (key, title, description)
+        )
+        or True,
+    )
+    return sent
+
+
+def test_lock_timeout_alerts_separately_from_run_failures(dbt_alerts, tmp_path, monkeypatch):
+    monkeypatch.setattr(dbt_alerts, "RUN_RESULTS_PATH", tmp_path / "missing.json")
+    sent = _capture_alerts(dbt_alerts, tmp_path, monkeypatch)
+
+    dbt_alerts.alert_run_failed(0, dbt_alerts.LOCK_BUSY_EXIT_CODE)
+    dbt_alerts.alert_run_failed(0, 1)
+
+    assert [(key, title) for key, title, _ in sent] == [
+        ("dbt_run_lock", "dbt run skipped: lock held (prod)"),
+        ("dbt_run", "dbt run failed (prod)"),
+    ]
+    assert "held the run lock" in sent[0][2]
+    assert "exit code 1" in sent[1][2]
+
+
+def test_test_lock_timeout_says_lock_held(dbt_alerts, tmp_path, monkeypatch):
+    monkeypatch.setattr(dbt_alerts, "RUN_RESULTS_PATH", tmp_path / "missing.json")
+    sent = _capture_alerts(dbt_alerts, tmp_path, monkeypatch)
+
+    dbt_alerts.alert_test_failed(0, dbt_alerts.LOCK_BUSY_EXIT_CODE)
+
+    assert sent == [
+        ("dbt_test_lock", "dbt test skipped: lock held (prod)", dbt_alerts._lock_busy_description("test"))
+    ]
+
+
+def test_lock_busy_exit_code_matches_lock_script(dbt_alerts):
+    script = (Path(__file__).resolve().parents[1] / "dbt" / "run_dbt_with_lock.sh").read_text()
+    assert f"LOCK_BUSY_EXIT_CODE={dbt_alerts.LOCK_BUSY_EXIT_CODE}\n" in script

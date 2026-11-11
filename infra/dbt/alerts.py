@@ -11,6 +11,9 @@ DBT_DIR = Path("/app/dbt")
 RUN_RESULTS_PATH = DBT_DIR / "target" / "run_results.json"
 ALERT_STATE_PATH = DBT_DIR / "target" / "discord_alert_state.json"
 
+# run_dbt_with_lock.sh exits with this when another dbt job held the lock past the wait timeout.
+LOCK_BUSY_EXIT_CODE = 75
+
 MAX_ITEMS = 10
 FAIL_STATUSES = {"fail", "error"}
 _HEX32 = re.compile(r"^[0-9a-f]{32}$")
@@ -94,7 +97,14 @@ def _failure_description(started: float, returncode: int, kind: str) -> str:
         return _summarize_run_results(RUN_RESULTS_PATH)
     return (
         f"dbt {kind} failed with exit code {returncode} and did not write run_results.json. "
-        "This is often a lock timeout or an infra error before dbt started."
+        "Likely an infra error before dbt started (lock timeouts alert separately)."
+    )
+
+
+def _lock_busy_description(kind: str) -> str:
+    return (
+        f"dbt {kind} did not start: another dbt job held the run lock past the wait timeout. "
+        "Expected while a manual job (reimport, make dbt run) runs; otherwise look for a stuck holder."
     )
 
 
@@ -107,6 +117,10 @@ def alert_deps_failed(key: str, returncode: int) -> None:
 
 
 def alert_run_failed(started: float, returncode: int) -> None:
+    # Own key: once-per-day dedup must not let a lock skip hide a real failure later that day.
+    if returncode == LOCK_BUSY_EXIT_CODE:
+        _alert("dbt_run_lock", "dbt run skipped: lock held (prod)", _lock_busy_description("run"))
+        return
     _alert("dbt_run", "dbt run failed (prod)", _failure_description(started, returncode, "run"))
 
 
@@ -139,6 +153,9 @@ def alert_run_exception(exc: BaseException) -> None:
 
 
 def alert_test_failed(started: float, returncode: int) -> None:
+    if returncode == LOCK_BUSY_EXIT_CODE:
+        _alert("dbt_test_lock", "dbt test skipped: lock held (prod)", _lock_busy_description("test"))
+        return
     if _results_written_since(started):
         _alert("dbt_test", "dbt tests failed (prod)", _summarize_run_results(RUN_RESULTS_PATH))
         return

@@ -7,11 +7,14 @@
 #   e.g. run_dbt_with_lock.sh test
 #   e.g. run_dbt_with_lock.sh batched reimport my_model+ 2026-01-01   (run_dbt_batched.py, one lock for all runs)
 #
-# Uses flock -x [ -w timeout ] file command [args] (util-linux; no -- separator).
+# Uses flock -x [ -w timeout -E code ] file command [args] (util-linux; no -- separator).
 
 LOCKFILE="${DBT_RUN_LOCKFILE:-/app/dbt/.dbt_run.lock}"
-# Max wait in seconds (default 15min); 0 = wait forever
+# Max wait in seconds (default 30s); 0 = wait forever
 LOCK_TIMEOUT="${DBT_RUN_LOCK_TIMEOUT:-30}"
+# Exit code when the lock wait times out (EX_TEMPFAIL), so callers can tell it from a dbt
+# failure (dbt exits 1 or 2). Keep in sync with LOCK_BUSY_EXIT_CODE in alerts.py.
+LOCK_BUSY_EXIT_CODE=75
 
 # Ensure lock file directory exists (e.g. if DBT_RUN_LOCKFILE points elsewhere)
 mkdir -p "$(dirname "$LOCKFILE")"
@@ -29,8 +32,8 @@ fi
 
 # flock syntax: flock [options] file command [arguments] (no -- separator in util-linux)
 if [ "$LOCK_TIMEOUT" -gt 0 ]; then
-  echo "flock -x -w $LOCK_TIMEOUT $LOCKFILE uv run $@"
-  flock -x -w "$LOCK_TIMEOUT" "$LOCKFILE" uv run "$@"
+  echo "flock -x -w $LOCK_TIMEOUT -E $LOCK_BUSY_EXIT_CODE $LOCKFILE uv run $@"
+  flock -x -w "$LOCK_TIMEOUT" -E "$LOCK_BUSY_EXIT_CODE" "$LOCKFILE" uv run "$@"
 else
   echo "flock -x $LOCKFILE uv run $@"
   flock -x "$LOCKFILE" uv run "$@"
