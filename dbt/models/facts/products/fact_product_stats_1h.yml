@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: fact_product_stats_1h
-    description: "One row per product per hour: TVL, APY and its breakdown, share and want prices, the want token breakdown, CLM pool state and the hour's harvests. Columns are grouped by prefix: apr_* / apy_* (API /apy/breakdown, which only lists the components that apply to the product type), want_* (the deposit token), clm_pool_* (the AMM pool under a CLM), harvest_* (sums over the harvests of the hour, NULL when there was none). NULL means the source has nothing for that product and hour, see each column for the product types it applies to. Boosts only have share_price_usd and want_price_usd: no source publishes TVL or APY per boost."
+    description: "One row per product per hour: TVL, APY and its breakdown, share and want prices, the want token breakdown, CLM pool state and the hour's harvests. Columns are grouped by prefix: apr_* / apy_* (API /apy/breakdown, which only lists the components that apply to the product type), want_* (the deposit token), clm_pool_* (the AMM pool under a CLM), harvest_* (sums over the harvests of the hour, NULL when there was none). NULL means the source has nothing for that product and hour, see each column for the product types it applies to. Boosts only have share_price_usd and want_price_usd: no source publishes TVL or APY per boost. A product has a row for every hour any source has something for it, and its prices keep the rows going: a retired vault, a vault on an eol chain or a boost past its period_finish keeps hourly rows with only share_price_usd / want_price_usd (and tvl_usd NULL once beefy_db stops reporting it) for as long as its prices resolve. This is deliberate: retired products and ended boosts can still hold deposits that were never withdrawn, so their rows are not cut. Filter on tvl_usd IS NOT NULL for the hours with reported TVL (is_active is the current status, not the hour's)."
     config:
       contract:
         enforced: true
@@ -323,7 +323,7 @@ models:
         data_type: Array(Decimal(76, 20))
         codec: LZ4
       - name: harvest_count
-        description: "Distinct harvest transactions in the hour. NULL when there was none."
+        description: "Distinct harvest transactions in the hour. NULL (not 0) when there was none, like every harvest_* column: an hour without a harvest is NULL for live and retired products alike. coalesce to 0 when summing or averaging per hour."
         data_type: Nullable(UInt64)
         codec: ZSTD(3)
       - name: harvest_amount
