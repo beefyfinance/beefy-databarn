@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: int_price_oracle_aliases
+    description: "Hardcoded beefy_db oracle aliases, fabricated from the values() in the model with no source tables: over [alias_from, alias_until) the oracle source_key prices the token of the oracle alias_key. kind 'renamed': beefy_db renamed the key and the old one priced the same token (price_source 'beefy_db_alias'); kind 'underlying': no older key, the token is approximated by its underlying (price_source 'underlying_fallback'). Read by int_price_series_map."
+    config:
+      meta:
+        data_origin: hardcoded  # manual corrections kept in dbt (no source tables); shown as an origin by the MCP
+        primary_key: ["alias_key", "alias_from"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - alias_key
+              - alias_from
+      - dbt_utils.expression_is_true:
+          name: int_price_oracle_aliases_window_is_ordered
+          arguments:
+            expression: "alias_from < alias_until"
+      - keys_match:
+          name: int_price_oracle_aliases_alias_in_price_oracles
+          arguments:
+            to: ref('stg_beefy_db__price_oracles')
+            columns: ["alias_key"]
+            to_columns: ["oracle_id"]
+      - keys_match:
+          name: int_price_oracle_aliases_source_in_price_oracles
+          arguments:
+            to: ref('stg_beefy_db__price_oracles')
+            columns: ["source_key"]
+            to_columns: ["oracle_id"]
+    columns:
+      - name: alias_key
+        description: "Oracle key (stg_beefy_db__price_oracles.oracle_id) whose token is priced over the window"
+        tests:
+          - not_null
+      - name: source_key
+        description: "Oracle key whose prices are used over the window"
+        tests:
+          - not_null
+      - name: alias_from
+        description: "Start of the window (UTC, inclusive)"
+      - name: alias_until
+        description: "End of the window (UTC, exclusive): for a rename, the new key's first raw price"
+      - name: replaces
+        description: "1: alias_key's own series ends at alias_from (its own prices are wrong from then on)"
+      - name: kind
+        description: "'renamed' (same token under an older key) or 'underlying' (approximated by its underlying)"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['renamed', 'underlying']
+      - name: note
+        description: "Why the alias exists"

@@ -47,7 +47,7 @@ models:
         tests:
           - not_null
       - name: price_source
-        description: "Source of the value: 'beefy_db' oracle price, 'beefy_db_alias' price of the oracle that priced a renamed oracle's token before it existed (oldBIFI before 2023-10-24), 'api' /mootokenprices share price, 'dbv1_product' / 'dbv1_feed' databarn v1 ppfs (vault stats / share-rate feed) times the want price, 'clm_subgraph' / 'classic_subgraph' CLM subgraph share price, 'corr_oracle' / 'corr_share' hardcoded correction. On a carried row, the source of the value carried."
+        description: "Source of the value: 'beefy_db' oracle price, 'beefy_db_alias' price of the oracle that priced a renamed oracle's token before it existed (oldBIFI before 2023-10-24, the sushi and Stargate keys beefy_db renamed; int_price_oracle_aliases), 'underlying_fallback' price of the token's underlying before its own oracle existed (bridged USDC.e as USDC, Multichain tokens before the July 2023 depeg), 'api' /mootokenprices share price, 'dbv1_product' / 'dbv1_feed' databarn v1 ppfs (vault stats / share-rate feed) times the want price, 'clm_subgraph' / 'classic_subgraph' CLM subgraph share price, 'corr_oracle' / 'corr_share' hardcoded correction. On a carried row, the source of the value carried."
         data_type: LowCardinality(String)
         tests:
           - not_null

@@ -71,17 +71,11 @@ WITH
     FROM {{ ref('int_beefy_clm_subgraph__share_price_1h') }}
     GROUP BY chain_id, product_address
   ),
-  -- An oracle that prices another oracle's token over [alias_from, alias_until). replaces = 1 also ends the
+  -- An oracle that prices another oracle's token over [alias_from, alias_until): renamed keys (oldBIFI, sushi-*,
+  -- Stargate...) and underlying fallbacks, listed in int_price_oracle_aliases. replaces = 1 also ends the
   -- destination's own series at alias_from.
-  --   oldBIFI: before the 2023 BIFI migration the BIFI oracle priced the token oldBIFI names.
-  --   WROSE (the Oasis native token): from 2022-11-09 beefy_db's WROSE oracle tracks Rose Finance's ROSE on Aurora
-  --   (~$0.001 against ~$0.05); its wROSE oracle keeps the Oasis price until it freezes on 2023-11-29 (Oasis
-  --   harvests end 2023-08). After that WROSE carries wROSE's last price.
   aliases AS (
-    SELECT alias_key, source_key, toDateTime(alias_from, 'UTC') AS alias_from, toDateTime(alias_until, 'UTC') AS alias_until, replaces
-    FROM values('alias_key String, source_key String, alias_from String, alias_until String, replaces UInt8',
-      ('oldBIFI', 'BIFI', '1970-01-01 00:00:00', '2023-10-24 13:45:00', 0),
-      ('WROSE', 'wROSE', '2022-11-09 00:00:00', '2023-11-29 10:05:00', 1))
+    SELECT alias_key, source_key, alias_from, alias_until, replaces, kind FROM {{ ref('int_price_oracle_aliases') }}
   ),
   corr_oracle_keys AS (
     SELECT DISTINCT beefy_price_oracle_key FROM {{ ref('int_price_oracle_corrections') }}
@@ -104,7 +98,8 @@ WITH
     UNION ALL
     -- Aliases (see aliases)
     SELECT
-      {{ price_series_id('beefy_db', 'src.id') }}, 'beefy_db_alias', dst.asset_id, 'oracle', 'usd', 50, 0, nan, 1.,
+      {{ price_series_id('beefy_db', 'src.id') }}, if(a.kind = 'underlying', 'underlying_fallback', 'beefy_db_alias'),
+      dst.asset_id, 'oracle', 'usd', 50, 0, nan, 1.,
       toDateTime(0, 'UTC'), a.alias_from, a.alias_until
     FROM aliases a
     INNER JOIN oracles src ON src.oracle_key = a.source_key

@@ -15,7 +15,7 @@ models:
         tests:
           - not_null
       - name: source
-        description: "beefy_db, beefy_db_alias, api, dbv1_product, dbv1_feed, clm_subgraph, classic_subgraph, corr_oracle, corr_share"
+        description: "beefy_db, beefy_db_alias (renamed oracle, int_price_oracle_aliases), underlying_fallback (token approximated by its underlying, int_price_oracle_aliases), api, dbv1_product, dbv1_feed, clm_subgraph, classic_subgraph, corr_oracle, corr_share"
       - name: asset_id
         description: "Asset priced by the series (asset.asset_id)"
         tests:
