@@ -33,7 +33,7 @@
 
 -- Hourly vault share price: the last 5-minute price of each hour of the product's share token in fact_asset_price_5m
 -- (corrections are part of the price series). Products map to their price series through token.asset_id.
--- Incremental on date_hour (1-day lookback), plus the hours a resolver run re-priced (price_reprice: each dirty
+-- Incremental on date_hour (1-day lookback), plus the whole history of a product new to this model, plus the hours a resolver run re-priced (price_reprice: each dirty
 -- share asset from the hour of its first changed price). Full refresh and reimport run by month (meta.batch:
 -- incremental_since / incremental_until).
 
@@ -54,6 +54,9 @@ INNER JOIN (
 WHERE (
     (p.date_time >= toDateTime('{{ threshold }}') AND p.date_time < now() + INTERVAL 1 DAY)
     OR {{ price_repriced(rp, 'p.asset_id', 'p.date_time') }}
+    -- A product with no row yet: the API lists a new product days after its share token is priced (the beefy_db
+    -- oracle and the CLM subgraph start at deployment), so its whole price history is loaded the first time.
+    OR (t.chain_id, t.representation_address) NOT IN (SELECT chain_id, product_address FROM {{ this }})
   )
   {% if until is not none %}AND p.date_time < toDateTime('{{ until }}', 'UTC'){% endif %}
 {% elif since is not none %}

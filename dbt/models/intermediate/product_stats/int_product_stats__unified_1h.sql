@@ -73,7 +73,7 @@
    'columns': ['harvest_call_fee', 'harvest_call_fee_usd', 'gas_fee', 'gas_fee_usd', 'platform_fee', 'platform_fee_usd',
                'strategist_fee', 'strategist_fee_usd', 'harvest_amount', 'harvest_amount_usd', 'avg_native_price',
                'harvest_txn_count']},
-  {'source': 'share_price', 'model': ref('int_product_stats__share_price_1h'), 'lookback': 1, 'priced': true,
+  {'source': 'share_price', 'model': ref('int_product_stats__share_price_1h'), 'lookback': 30, 'priced': true,
    'columns': ['share_token_price_usd']},
   {'source': 'want_price', 'model': ref('int_product_stats__want_price_1h'), 'lookback': 1, 'priced': true,
    'columns': ['want_price_usd']},
