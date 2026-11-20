@@ -113,6 +113,8 @@ flowchart TB
 
 - **Backups**: the prod `clickhouse-backup` sidecar runs native ClickHouse `BACKUP` to a local staging disk (`${STORAGE_DIR}/clickhouse-backups`, needs room for one full), then uploads it to a remote S3 server (`CLICKHOUSE_BACKUP_S3_*` in `.env`) with `mc mirror`, which retries and resumes: daily full, hourly incrementals. dlt staging stays on local `file://`.
 
+- **dlt run lock**: in prod, each pipeline runs under an `flock` on `/var/dlt/locks/<pipeline>.lock` (`infra/dlt/run_with_lock.sh`), taken by the scheduler and by `make dlt run|loop|reimport|drop|drop-state|drop-pending-packages`. Two processes sharing a pipeline working directory race on pending load packages, so a manual `--loop` used to crash the scheduled run with a `FileNotFoundError` in `new_jobs/`. A scheduled run waits 30 s, then skips with its own "lock held" Discord alert; a manual run waits up to 15 min. `info`, `trace` and the other read-only `make dlt` actions take no lock. Dev runs on the host and has no lock.
+
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
 ## Quick Start

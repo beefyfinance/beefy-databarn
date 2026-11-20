@@ -131,3 +131,55 @@ def test_run_pipeline_script_uses_custom_timeout(dlt_process, tmp_path, monkeypa
 
     assert sent == [1]
 
+
+
+def test_pipeline_lock_name_is_the_pipeline_of_the_script(dlt_process):
+    assert dlt_process.pipeline_lock_name("databarn_v1_pipeline.py") == "databarn_v1"
+    assert dlt_process.pipeline_lock_name("beefy_clm_subgraph_pipeline.py") == "beefy_clm_subgraph"
+
+
+def test_pipeline_lock_name_is_none_for_scripts_without_one_pipeline_dir(dlt_process):
+    assert dlt_process.pipeline_lock_name("all_pipeline.py") is None
+    assert dlt_process.pipeline_lock_name("optimize_replacing_tables.py") is None
+    assert dlt_process.pipeline_lock_name("cleanup_pipeline_state.py") is None
+
+
+def test_pipeline_command_runs_pipelines_under_the_lock(dlt_process):
+    assert dlt_process.pipeline_command("databarn_v1_pipeline.py") == [
+        dlt_process.LOCK_SCRIPT,
+        "databarn_v1",
+        "uv",
+        "run",
+        "./databarn_v1_pipeline.py",
+    ]
+    assert dlt_process.pipeline_command("optimize_replacing_tables.py") == [
+        "uv",
+        "run",
+        "./optimize_replacing_tables.py",
+    ]
+
+
+def test_run_pipeline_script_alerts_lock_busy_apart_from_failure(dlt_process, tmp_path, monkeypatch):
+    script = tmp_path / "beefy_db_pipeline.py"
+    script.write_text(f"import sys\nsys.exit({dlt_process.LOCK_BUSY_EXIT_CODE})\n")
+    busy: list[tuple] = []
+    failed: list[tuple] = []
+    real_exec = asyncio.create_subprocess_exec
+
+    async def spawn(*args, **kwargs):
+        return await real_exec(
+            sys.executable,
+            str(script),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            limit=1024 * 1024,
+        )
+
+    monkeypatch.setattr(dlt_process.asyncio, "create_subprocess_exec", spawn)
+    monkeypatch.setattr(dlt_process.alerts, "alert_job_lock_busy", lambda *args: busy.append(args))
+    monkeypatch.setattr(dlt_process.alerts, "alert_job_failed", lambda *args: failed.append(args))
+
+    asyncio.run(dlt_process.run_pipeline_script("beefy_db_pipeline.py"))
+
+    assert busy == [("beefy_db_pipeline.py", dlt_process.LOCK_WAIT_SECONDS)]
+    assert failed == []

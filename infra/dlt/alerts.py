@@ -87,6 +87,17 @@ def alert_job_failed(script_name: str, returncode: int, output: str = "") -> Non
     )
 
 
+def alert_job_lock_busy(script_name: str, wait_seconds: int) -> None:
+    # Own key: once-per-day dedup must not let a lock skip hide a real failure later that day.
+    _alert(
+        f"{script_name}:lock",
+        f"dlt job skipped: lock held: {script_name}",
+        f"Pipeline {as_inline_code(script_name)} did not start: another dlt process held its pipeline lock "
+        f"past the {wait_seconds}s wait. Expected while a manual job (loop, reimport) runs; "
+        "otherwise look for a stuck holder.",
+    )
+
+
 def alert_job_timeout(script_name: str, timeout_seconds: int, output: str = "") -> None:
     _alert(
         script_name,

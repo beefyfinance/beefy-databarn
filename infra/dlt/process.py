@@ -15,6 +15,32 @@ TASK_TIMEOUT = 60 * 30  # 30 minutes timeout max
 DLT_DIR = Path("/app/dlt")
 OUTPUT_TAIL_BYTES = 64 * 1024
 
+# Pipelines run under a per-pipeline lock (run_with_lock.sh) so a manual `make dlt loop` or
+# `reimport` in the same container never shares a working directory with a scheduled run.
+LOCK_SCRIPT = "/app/infra/dlt/run_with_lock.sh"
+# run_with_lock.sh exits with this when another run held the lock past the wait timeout.
+# Keep in sync with LOCK_BUSY_EXIT_CODE in run_with_lock.sh.
+LOCK_BUSY_EXIT_CODE = 75
+# Scheduled runs skip rather than queue up behind a long manual run.
+LOCK_WAIT_SECONDS = 30
+
+
+def pipeline_lock_name(script_name: str) -> str | None:
+    """The pipeline whose working directory a script uses: `databarn_v1_pipeline.py` -> `databarn_v1`.
+
+    None for scripts that use no pipeline directory (optimize, state cleanup) or several (all).
+    """
+    suffix = "_pipeline.py"
+    if script_name == f"all{suffix}" or not script_name.endswith(suffix):
+        return None
+    return script_name[: -len(suffix)]
+
+
+def pipeline_command(script_name: str) -> list[str]:
+    command = ["uv", "run", f"./{script_name}"]
+    name = pipeline_lock_name(script_name)
+    return command if name is None else [LOCK_SCRIPT, name, *command]
+
 
 async def collect_output(
     stream: asyncio.StreamReader,
@@ -54,9 +80,10 @@ async def run_pipeline_script(script_name: str, timeout: int = TASK_TIMEOUT) -> 
     logger.info(f"Starting {script_name} pipeline run...")
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
+    env["DLT_RUN_LOCK_TIMEOUT"] = str(LOCK_WAIT_SECONDS)
     try:
         process = await asyncio.create_subprocess_exec(
-            "uv", "run", f"./{script_name}",
+            *pipeline_command(script_name),
             cwd=str(DLT_DIR),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -97,6 +124,11 @@ async def run_pipeline_script(script_name: str, timeout: int = TASK_TIMEOUT) -> 
         return
     if process.returncode == 0:
         logger.info(f"{script_name} pipeline run completed successfully")
+        return
+
+    if process.returncode == LOCK_BUSY_EXIT_CODE:
+        logger.warning(f"{script_name} skipped: another run held the pipeline lock")
+        alerts.alert_job_lock_busy(script_name, LOCK_WAIT_SECONDS)
         return
 
     logger.error(f"{script_name} pipeline failed with return code {process.returncode}")

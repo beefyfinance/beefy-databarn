@@ -9,6 +9,10 @@
 ROOT_DIR := $(abspath ../..)
 DC := docker compose -f $(ROOT_DIR)/infra/prod/docker-compose.yml --env-file $(ROOT_DIR)/.env
 UV := uv run --env-file $(ROOT_DIR)/.env
+# Runs a command in the dlt container under the pipeline's lock: DLT_LOCKED <pipeline> <command...>.
+# The scheduler takes the same lock, so a manual run never shares a pipeline working directory with
+# a scheduled one. Waits up to 15 min for a scheduled run to finish (they take minutes).
+DLT_LOCKED := $(DC) exec -e DLT_RUN_LOCK_TIMEOUT=900 dlt /app/infra/dlt/entrypoint.sh /app/infra/dlt/run_with_lock.sh
 
 # Directories that need to exist for bind mounts (override via .env if present)
 STORAGE_DIR ?= /mnt/data
@@ -238,10 +242,10 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Running dlt source: $$SOURCE, resource: $$RESOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE; \
+				$(DLT_LOCKED) $$SOURCE uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE; \
 			elif [ -n "$$SOURCE" ]; then \
 				echo "Running dlt source: $$SOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py; \
+				$(DLT_LOCKED) $$SOURCE uv run /app/dlt/$${SOURCE}_pipeline.py; \
 			else \
 				echo "Usage: make dlt run <source>|all [resource]"; \
 				exit 1; \
@@ -261,7 +265,7 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				echo "Looping dlt source: $$SOURCE, resource: $$RESOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --loop; \
+				$(DLT_LOCKED) $$SOURCE uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --loop; \
 			else \
 				echo "Usage: make dlt loop <source> <resource>"; \
 				exit 1; \
@@ -275,10 +279,10 @@ dlt:
 			if [ -n "$$RESOURCE" ] && [ -n "$$SOURCE" ]; then \
 				if [ -n "$$SINCE" ]; then \
 					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE since $$SINCE..."; \
-					$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport $$SINCE --loop; \
+					$(DLT_LOCKED) $$SOURCE uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport $$SINCE --loop; \
 				else \
 					echo "Reimporting dlt source: $$SOURCE, resource: $$RESOURCE (full history)..."; \
-					$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport --loop; \
+					$(DLT_LOCKED) $$SOURCE uv run /app/dlt/$${SOURCE}_pipeline.py $$RESOURCE --reimport --loop; \
 				fi; \
 			else \
 				echo "Usage: make dlt reimport <source> <resource> [<since>]"; \
@@ -291,7 +295,11 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ]; then \
 				echo "Running: dlt pipeline $$SOURCE $$SUBCMD..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
+				if [ "$$SUBCMD" = "drop-pending-packages" ]; then \
+					$(DLT_LOCKED) $$SOURCE uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
+				else \
+					$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
+				fi; \
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
 				echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp"; \
@@ -305,7 +313,7 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
 				echo "Running: dlt pipeline $$SOURCE drop --state-only $$RESOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE drop --state-only $$RESOURCE; \
+				$(DLT_LOCKED) $$SOURCE uv run dlt pipeline -v $$SOURCE drop --state-only $$RESOURCE; \
 			else \
 				echo "Usage: make dlt drop-state <pipeline> <resource>"; \
 				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
@@ -318,7 +326,7 @@ dlt:
 			RESOURCE="$(word 4,$(MAKECMDGOALS))" && \
 			if [ -n "$$SOURCE" ] && [ -n "$$RESOURCE" ]; then \
 				echo "Running: dlt pipeline $$SOURCE $$SUBCMD $$RESOURCE..."; \
-				$(DC) exec dlt /app/infra/dlt/entrypoint.sh uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
+				$(DLT_LOCKED) $$SOURCE uv run dlt pipeline -v $$SOURCE $$SUBCMD $$RESOURCE; \
 			else \
 				echo "Usage: make dlt <action> <pipeline> <resource>"; \
 				echo "  pipeline: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \

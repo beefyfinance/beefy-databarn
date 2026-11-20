@@ -164,3 +164,15 @@ def test_alert_job_error_includes_exception(dlt_alerts, monkeypatch):
     title, description = sent[0]
     assert title == "dlt job error: beefy_cctp_api_pipeline.py"
     assert "RuntimeError: disk full" in description
+
+
+def test_alert_job_lock_busy_has_its_own_key_and_wording(dlt_alerts, monkeypatch):
+    sent: list[tuple] = []
+    monkeypatch.setattr(dlt_alerts, "_alert", lambda key, title, description: sent.append((key, title, description)))
+
+    dlt_alerts.alert_job_lock_busy("databarn_v1_pipeline.py", 30)
+
+    key, title, description = sent[0]
+    assert key == "databarn_v1_pipeline.py:lock"
+    assert "lock held" in title
+    assert "30s" in description
