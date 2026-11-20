@@ -82,6 +82,14 @@ def _apply_args_to_source(source: Any, args: CliArgs) -> Any:
     return source
 
 
+def _incremental_state(pipeline: Any, source_name: str, resource_name: Optional[str]) -> Any:
+    """The stored incremental cursor of a resource, None when there is none."""
+    try:
+        return repr(pipeline.state["sources"][source_name]["resources"][resource_name]["incremental"])
+    except (KeyError, TypeError):
+        return None
+
+
 def _should_loop(source: Any, args: CliArgs, previous_load_info: Any) -> bool:
     "loop the source if there is only one incremental resource and the user has requested it"
 
@@ -140,6 +148,7 @@ async def run_pipeline_loop(
         prepare_reimport(pipeline, source_config, args.only_resource, args.reimport)
 
     iteration = 0
+    cursor: Any = None
     while True:
         iteration += 1
         if args.loop:
@@ -164,5 +173,12 @@ async def run_pipeline_loop(
         print(load_info)
         if not _should_loop(source, args, load_info):
             break
+        # A source that re-reads a lag window loads rows on every run: stop once the cursor
+        # no longer moves, the end of the data is reached.
+        new_cursor = _incremental_state(pipeline, source.name, args.only_resource)
+        if new_cursor is not None and new_cursor == cursor:
+            print(f"{args.only_resource} loop completed (cursor did not advance)")
+            break
+        cursor = new_cursor
 
     return load_info
