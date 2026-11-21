@@ -104,6 +104,7 @@
     {%- do run_query("INSERT INTO " ~ scratch ~ " SELECT '" ~ model_name ~ "', k FROM (" ~ sql ~ ")") -%}
     {%- do rp.update({'scratch': "(SELECT key FROM " ~ scratch ~ " WHERE model = '" ~ model_name ~ "')", 'scratch_from': "toDateTime('" ~ n[1] ~ "', 'UTC')"}) -%}
   {%- elif n[0] > 0 -%}
+    {%- do rp.update({'keys_from': "toDateTime('" ~ n[1] ~ "', 'UTC')"}) -%}
     {%- for row in run_query("SELECT k, toString(t) FROM (" ~ sql ~ ") ORDER BY k").rows -%}
       {%- do rp['keys'].append(row[0] | string) -%}
       {%- do rp['times'].append("toDateTime('" ~ row[1] ~ "', 'UTC')") -%}
@@ -122,7 +123,11 @@
   {%- else -%}
     ({% if rp['head_from'] is not none %}{{ time_expr }} >= {{ rp['head_from'] }}{% else %}0{% endif %}
     {%- if rp['keys'] | length > 0 %}
+      {#- The first bound is implied by the transform below; it is there because the transform cannot use a primary
+          key: without it the OR makes the whole table be read (a time-first key read 425M rows for 3 products
+          repriced 3 days back, 251 s instead of 30 s; with it, 97 granules of 22897). -#}
       OR ({{ key_expr }} IN ({{ rp['keys'] | join(', ') }})
+        AND {{ time_expr }} >= {{ rp['keys_from'] }}
         AND {{ time_expr }} >= transform({{ key_expr }}, [{{ rp['keys'] | join(', ') }}], [{{ rp['times'] | join(', ') }}], toDateTime(4294967295, 'UTC')))
     {%- endif %}
     {%- if rp.get('scratch') is not none %}
