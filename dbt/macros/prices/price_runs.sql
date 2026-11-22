@@ -125,7 +125,8 @@
     {%- if rp['keys'] | length > 0 %}
       {#- The first bound is implied by the transform below; it is there because the transform cannot use a primary
           key: without it the OR makes the whole table be read (a time-first key read 425M rows for 3 products
-          repriced 3 days back, 251 s instead of 30 s; with it, 97 granules of 22897). -#}
+          repriced 3 days back, 251 s instead of 30 s; with it, 97 granules of 22897). Keep the closing tag free of `-`:
+          stripping the whitespace after it glues `OR` to the `0` or the head bound before it. #}
       OR ({{ key_expr }} IN ({{ rp['keys'] | join(', ') }})
         AND {{ time_expr }} >= {{ rp['keys_from'] }}
         AND {{ time_expr }} >= transform({{ key_expr }}, [{{ rp['keys'] | join(', ') }}], [{{ rp['times'] | join(', ') }}], toDateTime(4294967295, 'UTC')))
