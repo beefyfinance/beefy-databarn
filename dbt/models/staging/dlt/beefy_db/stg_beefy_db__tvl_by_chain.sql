@@ -18,8 +18,7 @@ SELECT
 FROM {{ source('dlt', 'beefy_db___tvl_by_chain') }} t FINAL
 LEFT JOIN {{ ref('stg_beefy_db__chain_ids') }} ci ON ci.chain_id = t.chain_id
 LEFT JOIN {{ ref('stg_beefy_db__chains') }} c ON lower(trimBoth(c.beefy_name)) = ci.chain_key
-WHERE NOT (
-  t.chain_id = 1 AND
-  date_time BETWEEN '2024-04-03' AND '2024-04-04'
-  AND tvl_usd > {{ to_decimal('8000000000') }}
-)
+-- beefy_db holds glitch rows (2022-06-25 avax, 2023-02-16 fantom, 2023-07-30 ethereum, 2024-04-03 bsc,
+-- arbitrum, optimism and ethereum, 2025-04-17 linea...): one chain at 1e9 to 1e20 USD. Summed over every
+-- chain, the other rows peak at 1.42e9 (2022-01-15), so no real chain row is above 1.5e9.
+WHERE ifNull(tvl_usd, 0) <= {{ to_decimal('1500000000') }}
