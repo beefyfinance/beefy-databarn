@@ -28,12 +28,14 @@
   {%- endif -%}
 {%- endmacro %}
 
+{# FINAL: a dlt reimport appends the corrected row next to the old one until they merge. Both would reach one insert
+   with the same ingested_at, and the tie keeps either (2026-11: 178 of 575 corrected windows kept the old values). #}
 {% macro price_obs_beefy_db() -%}
 SELECT
   {{ price_series_id('beefy_db', 'oracle_id') }} AS series_id,
   toDateTime(t, 'UTC') AS ts,
   toFloat64(val) AS value
-FROM {{ source('dlt', 'beefy_db___prices') }}
+FROM {{ source('dlt', 'beefy_db___prices') }} FINAL
 WHERE val IS NOT NULL AND {{ price_obs_window('t') }}
 {%- endmacro %}
 
