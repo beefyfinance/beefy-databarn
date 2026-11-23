@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_beefy_db__chain_ids
+    description: "Internal chain ids of the beefy_db time series tables (tvl_by_chain.chain_id) with their chain key, from the dlt beefy_db dataset"
+    columns:
+      - name: chain_id
+        description: "Internal sequential chain id (not the EVM network id)"
+        tests:
+          - not_null
+          - unique
+      - name: chain_key
+        description: "Beefy chain key (bsc, ethereum, arbitrum, ...), matches stg_beefy_db__chains.beefy_name"
+        tests:
+          - not_null
+          - unique

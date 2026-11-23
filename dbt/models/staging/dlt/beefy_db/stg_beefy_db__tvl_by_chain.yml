@@ -4,12 +4,19 @@ models:
   - name: stg_beefy_db__tvl_by_chain
     description: "Staging model for chain-level TVL time series from dlt beefy_db dataset"
     columns:
-      - name: network_id
-        description: "Network identifier (references chain.network_id)"
+      - name: chain_id
+        description: "Internal chain id (stg_beefy_db__chain_ids.chain_id), not the EVM network id"
         data_type: Int64
         codec: Delta, LZ4
         tests:
           - not_null
+      - name: chain_key
+        description: "Beefy chain key (bsc, ethereum, ...)"
+        tests:
+          - not_null
+      - name: network_id
+        description: "EVM network id (references stg_beefy_db__chains.network_id); NULL for a chain missing from the chains table"
+        data_type: Nullable(Int64)
       - name: date_time
         description: "Timestamp for the chain TVL observation"
         data_type: DateTime64(6, 'UTC')

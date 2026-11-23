@@ -27,6 +27,7 @@ LOOKUP_TABLES = {
     ],
     "price_oracles": [{"name": "id", "primary_key": True }],
     "vault_ids": [{"name": "id", "primary_key": True }],
+    "chain_ids": [{"name": "id", "primary_key": True }],
 }
 
 

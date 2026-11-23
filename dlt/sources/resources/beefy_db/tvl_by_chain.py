@@ -33,7 +33,10 @@ TABLE_SQL = f"""
     SETTINGS index_granularity = 8192;
 """
 
-CHAINS_SQL = "SELECT DISTINCT chain_id FROM chains ORDER BY chain_id"
+# tvl_by_chain.chain_id is the internal sequential id of chain_ids (1 = bsc, 18 = ethereum, ...),
+# not the EVM chain id of `chains` (1 = ethereum, 56 = bsc, ...). Filtering on `chains` kept the 4 internal
+# ids that happen to be EVM ids (1, 10, 25, 30) and dropped the other 38 series.
+CHAINS_SQL = "SELECT DISTINCT id FROM chain_ids ORDER BY id"
 
 
 async def _init_resource() -> list[int]:

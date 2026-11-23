@@ -42,6 +42,8 @@ sources:
         description: "Fee batch harvest events from Beefy database"
       - name: beefy_db___vault_ids
         description: "Vault ID mappings from Beefy database"
+      - name: beefy_db___chain_ids
+        description: "Internal chain id to chain key mapping from Beefy database (tvl_by_chain.chain_id)"
       - name: beefy_db___price_oracles
         description: "Price oracle configurations from Beefy database"
       # beefy_api tables
